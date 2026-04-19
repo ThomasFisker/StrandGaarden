@@ -8,6 +8,7 @@ import { DataStack } from '../lib/data-stack';
 import { AuthStack } from '../lib/auth-stack';
 import { ApiStack } from '../lib/api-stack';
 import { ImagePipelineStack } from '../lib/image-pipeline-stack';
+import { HostingStack } from '../lib/hosting-stack';
 
 const app = new cdk.App();
 
@@ -28,12 +29,23 @@ new CiStack(app, 'Strandgaarden-Ci', {
   description: 'GitHub Actions OIDC provider and deploy role for the Strandgaarden CI/CD pipeline',
 });
 
-const devAllowedOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+const hosting = new HostingStack(app, 'Strandgaarden-Dev-Hosting', {
+  env,
+  stage: 'dev',
+  description: 'S3 + CloudFront hosting for the React SPA (default CloudFront domain until DNS lands)',
+});
+
+// Origins that need to talk to the API (browser → API Gateway) and PUT
+// uploads (browser → originals bucket). localhost entries stay so
+// `npm run dev` keeps working alongside the deployed site.
+const webOrigin = `https://${hosting.distribution.distributionDomainName}`;
+const localDevOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+const allowedOrigins = [...localDevOrigins, webOrigin];
 
 const storage = new StorageStack(app, 'Strandgaarden-Dev-Storage', {
   env,
   stage: 'dev',
-  uploadAllowedOrigins: devAllowedOrigins,
+  uploadAllowedOrigins: allowedOrigins,
   description: 'S3 buckets for photo originals and generated derivatives',
 });
 
@@ -57,7 +69,7 @@ new ApiStack(app, 'Strandgaarden-Dev-Api', {
   derivedBucket: storage.derivedBucket,
   userPool: auth.userPool,
   userPoolClient: auth.userPoolClient,
-  allowedOrigins: devAllowedOrigins,
+  allowedOrigins,
   description: 'HTTP API Gateway + starter Lambdas (health, whoami) with Cognito JWT authorizer',
 });
 
