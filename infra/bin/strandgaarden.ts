@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import { FoundationStack } from '../lib/foundation-stack';
 import { CiStack } from '../lib/ci-stack';
 import { StorageStack } from '../lib/storage-stack';
+import { DataStack } from '../lib/data-stack';
 
 const app = new cdk.App();
 
@@ -29,6 +30,12 @@ new StorageStack(app, 'Strandgaarden-Dev-Storage', {
   stage: 'dev',
   uploadAllowedOrigins: ['http://localhost:5173', 'http://localhost:3000'],
   description: 'S3 buckets for photo originals and generated derivatives',
+});
+
+new DataStack(app, 'Strandgaarden-Dev-Data', {
+  env,
+  stage: 'dev',
+  description: 'Single-table DynamoDB for photos, audit log, person list, removals, and users',
 });
 
 cdk.Tags.of(app).add('Project', 'Strandgaarden');
