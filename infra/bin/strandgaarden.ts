@@ -5,6 +5,7 @@ import { FoundationStack } from '../lib/foundation-stack';
 import { CiStack } from '../lib/ci-stack';
 import { StorageStack } from '../lib/storage-stack';
 import { DataStack } from '../lib/data-stack';
+import { AuthStack } from '../lib/auth-stack';
 
 const app = new cdk.App();
 
@@ -36,6 +37,12 @@ new DataStack(app, 'Strandgaarden-Dev-Data', {
   env,
   stage: 'dev',
   description: 'Single-table DynamoDB for photos, audit log, person list, removals, and users',
+});
+
+new AuthStack(app, 'Strandgaarden-Dev-Auth', {
+  env,
+  stage: 'dev',
+  description: 'Cognito user pool, admin/member/viewer groups, and SPA client',
 });
 
 cdk.Tags.of(app).add('Project', 'Strandgaarden');
