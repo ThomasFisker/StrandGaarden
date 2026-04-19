@@ -1,0 +1,38 @@
+# Node
+node_modules/
+*.log
+npm-debug.log*
+.npm/
+
+# TypeScript / build
+dist/
+build/
+*.tsbuildinfo
+
+# CDK
+cdk.out/
+cdk.context.json
+.cdk.staging/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code (per-user, not shared)
+.claude/settings.local.json
+
+# AWS local
+.aws-sam/

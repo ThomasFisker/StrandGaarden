@@ -1,0 +1,12 @@
+{
+  "name": "strandgaarden",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Strandgaarden IS 100-year anniversary photo platform",
+  "workspaces": [
+    "infra"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}
