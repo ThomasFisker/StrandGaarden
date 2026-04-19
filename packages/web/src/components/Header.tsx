@@ -11,6 +11,7 @@ const primaryRole = (groups: string[]): string => {
 export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => void }) => {
   const navigate = useNavigate();
   const canUpload = claims.groups.some((g) => g === 'admin' || g === 'member');
+  const isAdmin = claims.groups.includes('admin');
   return (
     <header className="site">
       <div className="inner">
@@ -24,6 +25,11 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
           {canUpload && (
             <NavLink to="/mine" className={({ isActive }) => (isActive ? 'active' : undefined)}>
               Mine billeder
+            </NavLink>
+          )}
+          {isAdmin && (
+            <NavLink to="/review" className={({ isActive }) => (isActive ? 'active' : undefined)}>
+              Gennemgang
             </NavLink>
           )}
         </nav>

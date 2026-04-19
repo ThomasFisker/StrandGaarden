@@ -239,4 +239,14 @@ main.content {
 }
 .photo-card-body { flex: 1; min-width: 0; }
 
+.review-thumb-wrap { flex: 0 0 200px; }
+.review-thumb {
+  width: 200px;
+  height: 200px;
+}
+
+.review-controls { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.review-actions { display: flex; gap: 0.75rem; align-items: center; margin-top: 0.5rem; }
+.ok-inline { color: var(--ok); font-weight: 600; }
+
 .subtle { color: var(--muted); }

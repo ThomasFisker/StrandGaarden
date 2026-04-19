@@ -38,6 +38,35 @@ export interface MyPhoto {
   processingError: string | null;
 }
 
+export interface ReviewPhoto {
+  photoId: string;
+  status: string;
+  createdAt: string;
+  processedAt: string | null;
+  originalFilename: string;
+  description: string;
+  whoInPhoto: string;
+  year: number | null;
+  yearApprox: boolean;
+  houseNumbers: number[];
+  uploaderEmail: string | null;
+  width: number | null;
+  height: number | null;
+  visibilityWeb: boolean;
+  visibilityBook: boolean;
+  thumbnailUrl: string | null;
+  webUrl: string | null;
+}
+
+export interface DecisionResponse {
+  photoId: string;
+  status: string;
+  visibilityWeb: boolean;
+  visibilityBook: boolean;
+  decidedAt: string;
+  decidedBy: string;
+}
+
 export const ACCEPTED_MIME: Record<string, string> = {
   'image/jpeg': 'JPEG',
   'image/png': 'PNG',

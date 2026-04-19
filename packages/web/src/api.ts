@@ -1,4 +1,4 @@
-import type { MyPhoto, UploadMetadata, UploadUrlResponse } from './types';
+import type { DecisionResponse, MyPhoto, ReviewPhoto, UploadMetadata, UploadUrlResponse } from './types';
 
 const apiBase = import.meta.env.VITE_API_URL;
 if (!apiBase) throw new Error('Missing VITE_API_URL');
@@ -71,4 +71,25 @@ export const getMyPhotos = async (idToken: string): Promise<MyPhoto[]> => {
   if (!r.ok) return throwFromResponse(r, 'photos/mine');
   const body = (await r.json()) as { items: MyPhoto[] };
   return body.items ?? [];
+};
+
+export const getReviewQueue = async (idToken: string): Promise<ReviewPhoto[]> => {
+  const r = await fetch(`${apiBase}/photos/review`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'photos/review');
+  const body = (await r.json()) as { items: ReviewPhoto[] };
+  return body.items ?? [];
+};
+
+export const decidePhoto = async (
+  idToken: string,
+  photoId: string,
+  flags: { visibilityWeb: boolean; visibilityBook: boolean },
+): Promise<DecisionResponse> => {
+  const r = await fetch(`${apiBase}/photos/${encodeURIComponent(photoId)}/decision`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(flags),
+  });
+  if (!r.ok) return throwFromResponse(r, `decide ${photoId}`);
+  return r.json();
 };

@@ -95,6 +95,25 @@ export class ApiStack extends cdk.Stack {
     props.table.grantReadData(mineFn);
     props.derivedBucket.grantRead(mineFn);
 
+    const reviewListFn = new lambdaNodejs.NodejsFunction(this, 'ReviewListFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'review-list.ts'),
+      functionName: `strandgaarden-${props.stage}-review-list`,
+      description: 'Lists photos awaiting committee review (status=In Review) with thumb+web URLs',
+      timeout: cdk.Duration.seconds(20),
+    });
+    props.table.grantReadData(reviewListFn);
+    props.derivedBucket.grantRead(reviewListFn);
+
+    const reviewDecideFn = new lambdaNodejs.NodejsFunction(this, 'ReviewDecideFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'review-decide.ts'),
+      functionName: `strandgaarden-${props.stage}-review-decide`,
+      description: 'Records a committee decision: sets visibility flags, advances to Decided, audits',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(reviewDecideFn);
+
     const jwtAuthorizer = new apigwAuthz.HttpJwtAuthorizer(
       'CognitoJwtAuthorizer',
       `https://cognito-idp.${this.region}.amazonaws.com/${props.userPool.userPoolId}`,
@@ -139,6 +158,20 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/mine',
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwIntegrations.HttpLambdaIntegration('MineIntegration', mineFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/photos/review',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('ReviewListIntegration', reviewListFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/photos/{id}/decision',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('ReviewDecideIntegration', reviewDecideFn),
       authorizer: jwtAuthorizer,
     });
 
