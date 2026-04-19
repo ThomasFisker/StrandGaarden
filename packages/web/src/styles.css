@@ -344,4 +344,110 @@ button.danger {
 }
 button.danger:hover { background: #8e1d0c; }
 
+.person-tag-input { position: relative; }
+.person-tag-input .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-height: var(--touch);
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  align-items: center;
+}
+.person-tag-input .chips.disabled { opacity: 0.6; }
+.person-tag-input .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem 0.25rem 0.75rem;
+  font-size: 0.95rem;
+}
+.person-tag-input .chip.chip-pending { background: #fff5d6; border-color: #e4d28a; }
+.person-tag-input .chip .chip-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-left: 0.25rem;
+}
+.person-tag-input .chip button {
+  min-height: 0;
+  min-width: 22px;
+  padding: 0 0.35rem;
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--muted);
+}
+.person-tag-input .chip button:hover { color: var(--fg); background: transparent; }
+.person-tag-input .chip-input {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  outline: none;
+  padding: 0.25rem 0;
+  min-height: 32px;
+}
+.person-tag-input .chip-input:focus-visible { outline: none; }
+
+.tag-dropdown {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  list-style: none;
+  padding: 0.25rem 0;
+  margin: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.tag-option {
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.tag-option.active,
+.tag-option:hover { background: var(--bg-alt); }
+.tag-option-pending .tag-option-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.tag-option-propose {
+  color: var(--accent);
+  font-weight: 600;
+  border-top: 1px solid var(--border);
+}
+
+.person-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.25rem 0;
+}
+.person-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.9rem;
+  text-decoration: none;
+  color: inherit;
+}
+.person-chip.pending { background: #fff5d6; border-color: #e4d28a; }
+a.person-chip:hover { background: #ebebe7; }
+
 .subtle { color: var(--muted); }

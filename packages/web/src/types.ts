@@ -1,3 +1,24 @@
+export type PersonState = 'approved' | 'pending';
+
+export interface PersonTag {
+  slug: string;
+  displayName: string;
+  state: PersonState | string;
+}
+
+export interface AdminPerson extends PersonTag {
+  proposedBy: string | null;
+  proposedByEmail: string | null;
+  proposedAt: string | null;
+  approvedAt: string | null;
+}
+
+/** Entries in UploadMetadata.taggedPersons: either a reference by slug or a
+ * new display name the server should create as a pending proposal. */
+export type PersonTagInput =
+  | { slug: string; proposedName?: never }
+  | { proposedName: string; slug?: never };
+
 export interface UploadMetadata {
   filename: string;
   contentType: string;
@@ -7,6 +28,7 @@ export interface UploadMetadata {
   yearApprox: boolean;
   houseNumbers: number[];
   consent: boolean;
+  taggedPersons: PersonTagInput[];
 }
 
 export interface UploadUrlResponse {
@@ -36,6 +58,7 @@ export interface MyPhoto {
   blurhash: string | null;
   thumbnailUrl: string | null;
   processingError: string | null;
+  persons: PersonTag[];
 }
 
 export interface ReviewPhoto {
@@ -56,6 +79,7 @@ export interface ReviewPhoto {
   visibilityBook: boolean;
   thumbnailUrl: string | null;
   webUrl: string | null;
+  persons: PersonTag[];
 }
 
 export interface DecisionResponse {
@@ -78,11 +102,17 @@ export interface GalleryItem {
   height: number | null;
   blurhash: string | null;
   thumbnailUrl: string | null;
+  persons: PersonTag[];
+}
+
+export interface GalleryPersonOption {
+  slug: string;
+  displayName: string;
 }
 
 export interface GalleryList {
   items: GalleryItem[];
-  filters: { years: number[]; houses: number[] };
+  filters: { years: number[]; houses: number[]; persons: GalleryPersonOption[] };
 }
 
 export interface GalleryDetail extends GalleryItem {

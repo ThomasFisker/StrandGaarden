@@ -1,9 +1,11 @@
 import type {
+  AdminPerson,
   AdminUser,
   DecisionResponse,
   GalleryDetail,
   GalleryList,
   MyPhoto,
+  PersonTag,
   ReviewPhoto,
   UploadMetadata,
   UploadUrlResponse,
@@ -106,11 +108,12 @@ export const decidePhoto = async (
 
 export const getGallery = async (
   idToken: string,
-  filters?: { year?: number | null; house?: number | null },
+  filters?: { year?: number | null; house?: number | null; person?: string | null },
 ): Promise<GalleryList> => {
   const qs = new URLSearchParams();
   if (filters?.year != null) qs.set('year', String(filters.year));
   if (filters?.house != null) qs.set('house', String(filters.house));
+  if (filters?.person) qs.set('person', filters.person);
   const query = qs.toString();
   const url = query ? `${apiBase}/gallery?${query}` : `${apiBase}/gallery`;
   const r = await fetch(url, { headers: bearer(idToken) });
@@ -163,4 +166,42 @@ export const deleteUser = async (idToken: string, username: string): Promise<voi
     headers: bearer(idToken),
   });
   if (!r.ok && r.status !== 204) return throwFromResponse(r, `users/${username}/delete`);
+};
+
+export const listPersons = async (idToken: string): Promise<{ items: AdminPerson[]; includeAll: boolean }> => {
+  const r = await fetch(`${apiBase}/persons`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'persons');
+  return r.json();
+};
+
+export const createPerson = async (idToken: string, displayName: string): Promise<PersonTag> => {
+  const r = await fetch(`${apiBase}/persons`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ displayName }),
+  });
+  if (!r.ok) return throwFromResponse(r, 'persons/create');
+  return r.json();
+};
+
+export const updatePerson = async (
+  idToken: string,
+  slug: string,
+  patch: { displayName?: string; state?: 'approved' },
+): Promise<PersonTag> => {
+  const r = await fetch(`${apiBase}/persons/${encodeURIComponent(slug)}`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(patch),
+  });
+  if (!r.ok) return throwFromResponse(r, `persons/${slug}`);
+  return r.json();
+};
+
+export const deletePerson = async (idToken: string, slug: string): Promise<void> => {
+  const r = await fetch(`${apiBase}/persons/${encodeURIComponent(slug)}`, {
+    method: 'DELETE',
+    headers: bearer(idToken),
+  });
+  if (!r.ok && r.status !== 204) return throwFromResponse(r, `persons/${slug}/delete`);
 };

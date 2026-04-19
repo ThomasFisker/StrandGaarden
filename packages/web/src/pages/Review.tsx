@@ -131,6 +131,24 @@ export const ReviewPage = () => {
                       </span>
                     </div>
                     {p.whoInPhoto && <p className="meta">{p.whoInPhoto}</p>}
+                    {p.persons.length > 0 && (
+                      <div className="person-chips">
+                        {p.persons.map((person) => (
+                          <span
+                            key={person.slug}
+                            className={`person-chip${person.state === 'pending' ? ' pending' : ''}`}
+                            title={
+                              person.state === 'pending'
+                                ? 'Afventer godkendelse — tryk på "Brugere" for at godkende'
+                                : undefined
+                            }
+                          >
+                            {person.displayName}
+                            {person.state === 'pending' && ' (afventer)'}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <p className="meta">
                       Sendt af {p.uploaderEmail ?? 'ukendt'} · fil {p.originalFilename} · {prettyDate(p.processedAt ?? p.createdAt)}
                       {p.width && p.height ? <> · {p.width}×{p.height}px</> : null}

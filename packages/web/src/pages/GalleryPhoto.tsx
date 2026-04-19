@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getGalleryPhoto } from '../api';
 import { useSession } from '../session';
 import type { GalleryDetail } from '../types';
@@ -7,6 +7,7 @@ import type { GalleryDetail } from '../types';
 export const GalleryPhotoPage = () => {
   const { id } = useParams<{ id: string }>();
   const { session } = useSession();
+  const navigate = useNavigate();
   const [photo, setPhoto] = useState<GalleryDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +58,24 @@ export const GalleryPhotoPage = () => {
             <p>
               <strong>Hvem er på billedet:</strong> {photo.whoInPhoto}
             </p>
+          )}
+          {photo.persons.length > 0 && (
+            <div style={{ margin: '0.5rem 0' }}>
+              <strong style={{ marginRight: '0.5rem' }}>Tags:</strong>
+              <div className="person-chips" style={{ display: 'inline-flex', margin: 0 }}>
+                {photo.persons.map((p) => (
+                  <button
+                    key={p.slug}
+                    type="button"
+                    className="person-chip"
+                    onClick={() => navigate(`/galleri?person=${encodeURIComponent(p.slug)}`)}
+                    title={`Vis alle billeder af ${p.displayName}`}
+                  >
+                    {p.displayName}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {photo.downloadUrl && (
             <p style={{ marginTop: '1rem' }}>

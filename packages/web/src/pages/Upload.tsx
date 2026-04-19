@@ -2,9 +2,10 @@ import { useCallback, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HouseSelector } from '../components/HouseSelector';
+import { PersonTagInput } from '../components/PersonTagInput';
 import { putToS3, requestUploadUrl } from '../api';
 import { useSession } from '../session';
-import { ACCEPTED_MIME, MAX_UPLOAD_BYTES } from '../types';
+import { ACCEPTED_MIME, MAX_UPLOAD_BYTES, type PersonTagInput as PersonTagValue } from '../types';
 
 const ACCEPT_ATTR = Object.keys(ACCEPTED_MIME).join(',');
 const CURRENT_YEAR = new Date().getFullYear();
@@ -19,6 +20,7 @@ export const UploadPage = () => {
   const [yearText, setYearText] = useState('');
   const [yearApprox, setYearApprox] = useState(false);
   const [houseNumbers, setHouseNumbers] = useState<number[]>([]);
+  const [personTags, setPersonTags] = useState<PersonTagValue[]>([]);
   const toggleHouse = useCallback((n: number) => {
     setHouseNumbers((prev) =>
       prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n].sort((a, b) => a - b),
@@ -84,6 +86,7 @@ export const UploadPage = () => {
         yearApprox,
         houseNumbers,
         consent,
+        taggedPersons: personTags,
       });
       await putToS3(uploadUrl, file!, (p) => setProgress(p));
       navigate('/mine?justUploaded=1');
@@ -156,6 +159,15 @@ export const UploadPage = () => {
               onChange={(e) => setYearApprox(e.target.checked)}
             />
             <label htmlFor="yearApprox">Ca. — året er kun omtrentligt</label>
+          </div>
+        </div>
+
+        <div className="field">
+          <label>Tag personer på billedet</label>
+          <PersonTagInput value={personTags} onChange={setPersonTags} disabled={submitting} />
+          <div className="help">
+            Valgfrit. Tags gør det nemmere at finde billedet senere. Vælg fra listen, eller skriv et nyt navn
+            og klik <em>Foreslå</em>; udvalget godkender nye navne.
           </div>
         </div>
 

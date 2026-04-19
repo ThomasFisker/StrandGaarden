@@ -110,6 +110,19 @@ export const MinePage = () => {
                     </span>
                   </div>
                   {p.whoInPhoto && <p className="meta">{p.whoInPhoto}</p>}
+                  {p.persons.length > 0 && (
+                    <div className="person-chips">
+                      {p.persons.map((person) => (
+                        <span
+                          key={person.slug}
+                          className={`person-chip${person.state === 'pending' ? ' pending' : ''}`}
+                          title={person.state === 'pending' ? 'Afventer udvalgets godkendelse' : undefined}
+                        >
+                          {person.displayName}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <p className="meta">
                     Fil: {p.originalFilename} · sendt {prettyDate(p.createdAt)}
                   </p>

@@ -8,6 +8,7 @@ import { ReviewPage } from './pages/Review';
 import { GalleryPage } from './pages/Gallery';
 import { GalleryPhotoPage } from './pages/GalleryPhoto';
 import { AdminUsersPage } from './pages/AdminUsers';
+import { AdminPersonsPage } from './pages/AdminPersons';
 import { NotFoundPage } from './pages/NotFound';
 
 export const App = () => (
@@ -24,6 +25,7 @@ export const App = () => (
       <Route element={<ProtectedRoute requireGroup="admin" />}>
         <Route path="/review" element={<ReviewPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/personer" element={<AdminPersonsPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Route>

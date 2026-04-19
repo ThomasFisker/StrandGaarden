@@ -40,6 +40,11 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
               Brugere
             </NavLink>
           )}
+          {isAdmin && (
+            <NavLink to="/admin/personer" className={({ isActive }) => (isActive ? 'active' : undefined)}>
+              Personer
+            </NavLink>
+          )}
         </nav>
         <div className="me">
           <span>{claims.email ?? 'ukendt'}</span>

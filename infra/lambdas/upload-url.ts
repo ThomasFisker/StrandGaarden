@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { normalizeDisplayName, PERSON_SK_PREFIX, PERSONLIST_PK, slugify } from './persons-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
@@ -98,6 +99,64 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
   const houseNumbers = Array.from(new Set(houseNumbersRaw as number[])).sort((a, b) => a - b);
 
+  // Resolve person tags. Each entry is { slug } (already-known person) or
+  // { proposedName } (new person to create as pending). Existing slugs must
+  // already exist in DDB; proposals are upserted as pending if absent.
+  const taggedPersonsInput = Array.isArray(body.taggedPersons) ? body.taggedPersons : [];
+  if (taggedPersonsInput.length > 50) return json(400, { error: 'For many taggedPersons (max 50)' });
+  const resolvedSlugs: string[] = [];
+  const seen = new Set<string>();
+  const proposerSub = typeof claims.sub === 'string' ? claims.sub : '';
+  const proposerEmail = typeof claims.email === 'string' ? claims.email : '';
+  const proposalAt = new Date().toISOString();
+  for (const raw of taggedPersonsInput as Array<Record<string, unknown>>) {
+    if (!raw || typeof raw !== 'object') continue;
+    if (typeof raw.slug === 'string' && raw.slug.trim()) {
+      const slug = raw.slug.trim();
+      if (seen.has(slug)) continue;
+      const exists = await ddb.send(
+        new GetCommand({
+          TableName: tableName,
+          Key: { PK: PERSONLIST_PK, SK: `${PERSON_SK_PREFIX}${slug}` },
+          ProjectionExpression: 'slug',
+        }),
+      );
+      if (!exists.Item) return json(400, { error: `Ukendt person-slug: ${slug}` });
+      seen.add(slug);
+      resolvedSlugs.push(slug);
+      continue;
+    }
+    if (typeof raw.proposedName === 'string' && raw.proposedName.trim()) {
+      const displayName = normalizeDisplayName(raw.proposedName);
+      const slug = slugify(displayName);
+      if (!slug) continue;
+      if (seen.has(slug)) continue;
+      // Upsert as pending if not already present; keep existing if another
+      // member already proposed it (idempotent).
+      await ddb.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            PK: PERSONLIST_PK,
+            SK: `${PERSON_SK_PREFIX}${slug}`,
+            entity: 'Person',
+            slug,
+            displayName,
+            state: 'pending',
+            proposedBy: proposerSub,
+            proposedByEmail: proposerEmail,
+            proposedAt: proposalAt,
+          },
+          ConditionExpression: 'attribute_not_exists(PK)',
+        }),
+      ).catch((err) => {
+        if (err.name !== 'ConditionalCheckFailedException') throw err;
+      });
+      seen.add(slug);
+      resolvedSlugs.push(slug);
+    }
+  }
+
   const photoId = randomUUID();
   const s3Key = `photos/${photoId}.${ext}`;
   const createdAt = new Date().toISOString();
@@ -122,6 +181,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         consent: true,
         visibilityWeb: false,
         visibilityBook: false,
+        taggedPersonSlugs: resolvedSlugs,
         uploaderSub: claims.sub,
         uploaderEmail: claims.email,
         createdAt,

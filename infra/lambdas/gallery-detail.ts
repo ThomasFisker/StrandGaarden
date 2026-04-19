@@ -1,8 +1,9 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, BatchGetCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { PERSON_SK_PREFIX, PERSONLIST_PK } from './persons-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
@@ -63,6 +64,29 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       : Promise.resolve(null as string | null),
   ]);
 
+  const slugs = Array.isArray(item.taggedPersonSlugs) ? (item.taggedPersonSlugs as string[]) : [];
+  const persons: Array<{ slug: string; displayName: string }> = [];
+  if (slugs.length) {
+    const batch = await ddb.send(
+      new BatchGetCommand({
+        RequestItems: {
+          [tableName]: {
+            Keys: slugs.map((slug) => ({ PK: PERSONLIST_PK, SK: `${PERSON_SK_PREFIX}${slug}` })),
+          },
+        },
+      }),
+    );
+    const returned = batch.Responses?.[tableName] ?? [];
+    for (const p of returned) {
+      // Public detail page only exposes approved names.
+      if (p.state !== 'approved') continue;
+      const slug = typeof p.slug === 'string' ? p.slug : '';
+      if (!slug) continue;
+      persons.push({ slug, displayName: String(p.displayName ?? slug) });
+    }
+    persons.sort((a, b) => a.displayName.localeCompare(b.displayName, 'da'));
+  }
+
   return json(200, {
     photoId: String(item.photoId),
     description: String(item.description ?? ''),
@@ -77,5 +101,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     webUrl,
     thumbnailUrl,
     downloadUrl,
+    persons,
   });
 };

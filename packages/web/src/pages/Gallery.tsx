@@ -1,30 +1,40 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getGallery } from '../api';
 import { useSession } from '../session';
 import type { GalleryList } from '../types';
 
 export const GalleryPage = () => {
   const { session } = useSession();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<GalleryList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [year, setYear] = useState<number | null>(null);
   const [house, setHouse] = useState<number | null>(null);
+  const [personSlug, setPersonSlug] = useState<string | null>(searchParams.get('person'));
 
   const load = useCallback(async () => {
     if (!session) return;
     setError(null);
     try {
-      const result = await getGallery(session.idToken, { year, house });
+      const result = await getGallery(session.idToken, { year, house, person: personSlug });
       setData(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kunne ikke hente billeder');
     }
-  }, [session, year, house]);
+  }, [session, year, house, personSlug]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Keep the URL in sync with the person filter so it is shareable.
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (personSlug) next.set('person', personSlug);
+    else next.delete('person');
+    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
+  }, [personSlug, searchParams, setSearchParams]);
 
   return (
     <main className="content wide">
@@ -62,12 +72,24 @@ export const GalleryPage = () => {
             ))}
           </select>
         </label>
-        {(year !== null || house !== null) && (
+        <label>
+          Person
+          <select value={personSlug ?? ''} onChange={(e) => setPersonSlug(e.target.value || null)}>
+            <option value="">Alle personer</option>
+            {data?.filters.persons.map((p) => (
+              <option key={p.slug} value={p.slug}>
+                {p.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
+        {(year !== null || house !== null || personSlug !== null) && (
           <button
             type="button"
             onClick={() => {
               setYear(null);
               setHouse(null);
+              setPersonSlug(null);
             }}
           >
             Nulstil filter

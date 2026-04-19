@@ -168,6 +168,48 @@ export class ApiStack extends cdk.Stack {
       description: 'Admin-only: delete a user from the pool (cannot delete self)',
     });
 
+    const personsListFn = new lambdaNodejs.NodejsFunction(this, 'PersonsListFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'persons-list.ts'),
+      functionName: `strandgaarden-${props.stage}-persons-list`,
+      description: 'Lists people for tagging autocomplete + admin management',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadData(personsListFn);
+
+    const personsCreateFn = new lambdaNodejs.NodejsFunction(this, 'PersonsCreateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'persons-create.ts'),
+      functionName: `strandgaarden-${props.stage}-persons-create`,
+      description: 'Admin-only: create an approved person directly',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(personsCreateFn);
+
+    const personsUpdateFn = new lambdaNodejs.NodejsFunction(this, 'PersonsUpdateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'persons-update.ts'),
+      functionName: `strandgaarden-${props.stage}-persons-update`,
+      description: 'Admin-only: rename a person and/or approve a pending proposal',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(personsUpdateFn);
+
+    const personsDeleteFn = new lambdaNodejs.NodejsFunction(this, 'PersonsDeleteFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'persons-delete.ts'),
+      functionName: `strandgaarden-${props.stage}-persons-delete`,
+      description: 'Admin-only: delete a person and scrub their slug from every photo',
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+    });
+    props.table.grantReadWriteData(personsDeleteFn);
+
+    // Upload-url Lambda also needs to read and write PERSON items (to verify
+    // known slugs and upsert pending proposals). Its existing grantWriteData
+    // covers the write side; add read for the GetCommand guard.
+    props.table.grantReadData(uploadUrlFn);
+
     const userPoolAdminActions = new iam.PolicyStatement({
       actions: [
         'cognito-idp:ListUsers',
@@ -283,6 +325,31 @@ export class ApiStack extends cdk.Stack {
       path: '/users/{username}',
       methods: [apigwv2.HttpMethod.DELETE],
       integration: new apigwIntegrations.HttpLambdaIntegration('UsersDeleteIntegration', usersDeleteFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/persons',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('PersonsListIntegration', personsListFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/persons',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('PersonsCreateIntegration', personsCreateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/persons/{slug}',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('PersonsUpdateIntegration', personsUpdateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/persons/{slug}',
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: new apigwIntegrations.HttpLambdaIntegration('PersonsDeleteIntegration', personsDeleteFn),
       authorizer: jwtAuthorizer,
     });
 

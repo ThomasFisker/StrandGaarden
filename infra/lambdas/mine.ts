@@ -1,8 +1,9 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { PERSON_SK_PREFIX, PERSONLIST_PK } from './persons-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
@@ -17,6 +18,12 @@ const json = (statusCode: number, body: unknown) => ({
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify(body),
 });
+
+interface PersonTag {
+  slug: string;
+  displayName: string;
+  state: string;
+}
 
 interface PhotoRow {
   photoId: string;
@@ -37,12 +44,41 @@ interface PhotoRow {
   blurhash: string | null;
   thumbnailUrl: string | null;
   processingError: string | null;
+  persons: PersonTag[];
 }
+
+const loadPersonMap = async (): Promise<Map<string, PersonTag>> => {
+  const map = new Map<string, PersonTag>();
+  let ExclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const r = await ddb.send(
+      new QueryCommand({
+        TableName: tableName,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: { ':pk': PERSONLIST_PK, ':sk': PERSON_SK_PREFIX },
+        ExclusiveStartKey,
+      }),
+    );
+    for (const it of r.Items ?? []) {
+      const slug = typeof it.slug === 'string' ? it.slug : '';
+      if (!slug) continue;
+      map.set(slug, {
+        slug,
+        displayName: String(it.displayName ?? slug),
+        state: String(it.state ?? ''),
+      });
+    }
+    ExclusiveStartKey = r.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  return map;
+};
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const claims = event.requestContext.authorizer?.jwt?.claims ?? {};
   const sub = typeof claims.sub === 'string' ? claims.sub : null;
   if (!sub) return json(401, { error: 'Missing subject claim' });
+
+  const personMap = await loadPersonMap();
 
   const rows: PhotoRow[] = [];
   let ExclusiveStartKey: Record<string, unknown> | undefined;
@@ -83,6 +119,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         blurhash: typeof item.blurhash === 'string' ? item.blurhash : null,
         thumbnailUrl,
         processingError: typeof item.processingError === 'string' ? item.processingError : null,
+        persons: (Array.isArray(item.taggedPersonSlugs) ? (item.taggedPersonSlugs as string[]) : [])
+          .map((slug) => personMap.get(slug))
+          .filter((p): p is PersonTag => !!p),
       });
     }
     ExclusiveStartKey = result.LastEvaluatedKey;

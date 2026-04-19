@@ -3,6 +3,9 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { PERSON_SK_PREFIX, PERSONLIST_PK } from './persons-shared';
+
+interface PersonTag { slug: string; displayName: string; state: string; }
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
@@ -45,6 +48,25 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     ExclusiveStartKey = r.LastEvaluatedKey;
   } while (ExclusiveStartKey);
 
+  const personMap = new Map<string, PersonTag>();
+  let personEsk: Record<string, unknown> | undefined;
+  do {
+    const p = await ddb.send(
+      new QueryCommand({
+        TableName: tableName,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: { ':pk': PERSONLIST_PK, ':sk': PERSON_SK_PREFIX },
+        ExclusiveStartKey: personEsk,
+      }),
+    );
+    for (const it of p.Items ?? []) {
+      const slug = typeof it.slug === 'string' ? it.slug : '';
+      if (!slug) continue;
+      personMap.set(slug, { slug, displayName: String(it.displayName ?? slug), state: String(it.state ?? '') });
+    }
+    personEsk = p.LastEvaluatedKey;
+  } while (personEsk);
+
   const rows = await Promise.all(
     items.map(async (item) => {
       const thumbKey = typeof item.derivedThumbKey === 'string' ? item.derivedThumbKey : null;
@@ -75,6 +97,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         visibilityBook: item.visibilityBook === true,
         thumbnailUrl,
         webUrl,
+        persons: (Array.isArray(item.taggedPersonSlugs) ? (item.taggedPersonSlugs as string[]) : [])
+          .map((slug) => personMap.get(slug))
+          .filter((p): p is PersonTag => !!p),
       };
     }),
   );
