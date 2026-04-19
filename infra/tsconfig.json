@@ -6,6 +6,6 @@
     "lib": ["ES2022"],
     "types": ["node"]
   },
-  "include": ["bin/**/*", "lib/**/*"],
+  "include": ["bin/**/*", "lib/**/*", "lambdas/**/*"],
   "exclude": ["node_modules", "dist", "cdk.out"]
 }

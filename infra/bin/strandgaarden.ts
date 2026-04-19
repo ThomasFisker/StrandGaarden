@@ -6,6 +6,7 @@ import { CiStack } from '../lib/ci-stack';
 import { StorageStack } from '../lib/storage-stack';
 import { DataStack } from '../lib/data-stack';
 import { AuthStack } from '../lib/auth-stack';
+import { ApiStack } from '../lib/api-stack';
 
 const app = new cdk.App();
 
@@ -26,23 +27,37 @@ new CiStack(app, 'Strandgaarden-Ci', {
   description: 'GitHub Actions OIDC provider and deploy role for the Strandgaarden CI/CD pipeline',
 });
 
-new StorageStack(app, 'Strandgaarden-Dev-Storage', {
+const devAllowedOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+
+const storage = new StorageStack(app, 'Strandgaarden-Dev-Storage', {
   env,
   stage: 'dev',
-  uploadAllowedOrigins: ['http://localhost:5173', 'http://localhost:3000'],
+  uploadAllowedOrigins: devAllowedOrigins,
   description: 'S3 buckets for photo originals and generated derivatives',
 });
 
-new DataStack(app, 'Strandgaarden-Dev-Data', {
+const data = new DataStack(app, 'Strandgaarden-Dev-Data', {
   env,
   stage: 'dev',
   description: 'Single-table DynamoDB for photos, audit log, person list, removals, and users',
 });
 
-new AuthStack(app, 'Strandgaarden-Dev-Auth', {
+const auth = new AuthStack(app, 'Strandgaarden-Dev-Auth', {
   env,
   stage: 'dev',
   description: 'Cognito user pool, admin/member/viewer groups, and SPA client',
+});
+
+new ApiStack(app, 'Strandgaarden-Dev-Api', {
+  env,
+  stage: 'dev',
+  table: data.table,
+  originalsBucket: storage.originalsBucket,
+  derivedBucket: storage.derivedBucket,
+  userPool: auth.userPool,
+  userPoolClient: auth.userPoolClient,
+  allowedOrigins: devAllowedOrigins,
+  description: 'HTTP API Gateway + starter Lambdas (health, whoami) with Cognito JWT authorizer',
 });
 
 cdk.Tags.of(app).add('Project', 'Strandgaarden');
