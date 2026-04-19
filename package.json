@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "description": "Strandgaarden IS 100-year anniversary photo platform",
   "workspaces": [
-    "infra"
+    "infra",
+    "packages/*"
   ],
   "engines": {
     "node": ">=22"

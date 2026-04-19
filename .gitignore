@@ -14,10 +14,12 @@ cdk.out/
 cdk.context.json
 .cdk.staging/
 
-# Env / secrets
+# Env / secrets (everything by default; stage files with stage values are safe to commit)
 .env
 .env.*
 !.env.example
+!.env.development
+!.env.production
 *.pem
 *.key
 
