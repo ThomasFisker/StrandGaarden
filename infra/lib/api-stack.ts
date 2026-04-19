@@ -47,6 +47,10 @@ export class ApiStack extends cdk.Stack {
         minify: true,
         sourceMap: true,
         target: 'node22',
+        // Bundle the AWS SDK instead of relying on the runtime-provided copy:
+        // some sub-packages (e.g. @aws-sdk/s3-request-presigner) are not
+        // guaranteed to be present in the Node.js 22 Lambda runtime image.
+        externalModules: [],
       },
       environment: {
         NODE_OPTIONS: '--enable-source-maps',
@@ -70,6 +74,16 @@ export class ApiStack extends cdk.Stack {
       functionName: `strandgaarden-${props.stage}-whoami`,
       description: 'Returns caller JWT claims — proves the JWT authorizer works',
     });
+
+    const uploadUrlFn = new lambdaNodejs.NodejsFunction(this, 'UploadUrlFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'upload-url.ts'),
+      functionName: `strandgaarden-${props.stage}-upload-url`,
+      description: 'Issues a presigned PUT URL for an originals-bucket upload and creates the PHOTO stub row',
+      timeout: cdk.Duration.seconds(15),
+    });
+    props.table.grantWriteData(uploadUrlFn);
+    props.originalsBucket.grantPut(uploadUrlFn);
 
     const jwtAuthorizer = new apigwAuthz.HttpJwtAuthorizer(
       'CognitoJwtAuthorizer',
@@ -101,6 +115,13 @@ export class ApiStack extends cdk.Stack {
       path: '/whoami',
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwIntegrations.HttpLambdaIntegration('WhoamiIntegration', whoamiFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/upload-url',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('UploadUrlIntegration', uploadUrlFn),
       authorizer: jwtAuthorizer,
     });
 
