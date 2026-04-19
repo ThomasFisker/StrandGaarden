@@ -1,4 +1,12 @@
-import type { DecisionResponse, MyPhoto, ReviewPhoto, UploadMetadata, UploadUrlResponse } from './types';
+import type {
+  DecisionResponse,
+  GalleryDetail,
+  GalleryList,
+  MyPhoto,
+  ReviewPhoto,
+  UploadMetadata,
+  UploadUrlResponse,
+} from './types';
 
 const apiBase = import.meta.env.VITE_API_URL;
 if (!apiBase) throw new Error('Missing VITE_API_URL');
@@ -91,5 +99,25 @@ export const decidePhoto = async (
     body: JSON.stringify(flags),
   });
   if (!r.ok) return throwFromResponse(r, `decide ${photoId}`);
+  return r.json();
+};
+
+export const getGallery = async (
+  idToken: string,
+  filters?: { year?: number | null; house?: number | null },
+): Promise<GalleryList> => {
+  const qs = new URLSearchParams();
+  if (filters?.year != null) qs.set('year', String(filters.year));
+  if (filters?.house != null) qs.set('house', String(filters.house));
+  const query = qs.toString();
+  const url = query ? `${apiBase}/gallery?${query}` : `${apiBase}/gallery`;
+  const r = await fetch(url, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'gallery');
+  return r.json();
+};
+
+export const getGalleryPhoto = async (idToken: string, photoId: string): Promise<GalleryDetail> => {
+  const r = await fetch(`${apiBase}/gallery/${encodeURIComponent(photoId)}`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, `gallery/${photoId}`);
   return r.json();
 };

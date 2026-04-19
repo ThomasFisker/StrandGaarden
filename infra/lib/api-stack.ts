@@ -114,6 +114,26 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(reviewDecideFn);
 
+    const galleryListFn = new lambdaNodejs.NodejsFunction(this, 'GalleryListFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'gallery-list.ts'),
+      functionName: `strandgaarden-${props.stage}-gallery-list`,
+      description: 'Lists Decided+visibilityWeb photos with presigned thumbs; year/house filters',
+      timeout: cdk.Duration.seconds(20),
+    });
+    props.table.grantReadData(galleryListFn);
+    props.derivedBucket.grantRead(galleryListFn);
+
+    const galleryDetailFn = new lambdaNodejs.NodejsFunction(this, 'GalleryDetailFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'gallery-detail.ts'),
+      functionName: `strandgaarden-${props.stage}-gallery-detail`,
+      description: 'Detail view for a single Decided+visibilityWeb photo (web URL + download URL)',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadData(galleryDetailFn);
+    props.derivedBucket.grantRead(galleryDetailFn);
+
     const jwtAuthorizer = new apigwAuthz.HttpJwtAuthorizer(
       'CognitoJwtAuthorizer',
       `https://cognito-idp.${this.region}.amazonaws.com/${props.userPool.userPoolId}`,
@@ -172,6 +192,20 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/{id}/decision',
       methods: [apigwv2.HttpMethod.PATCH],
       integration: new apigwIntegrations.HttpLambdaIntegration('ReviewDecideIntegration', reviewDecideFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/gallery',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('GalleryListIntegration', galleryListFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/gallery/{id}',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('GalleryDetailIntegration', galleryDetailFn),
       authorizer: jwtAuthorizer,
     });
 

@@ -67,6 +67,30 @@ export interface DecisionResponse {
   decidedBy: string;
 }
 
+export interface GalleryItem {
+  photoId: string;
+  description: string;
+  whoInPhoto: string;
+  year: number | null;
+  yearApprox: boolean;
+  houseNumbers: number[];
+  width: number | null;
+  height: number | null;
+  blurhash: string | null;
+  thumbnailUrl: string | null;
+}
+
+export interface GalleryList {
+  items: GalleryItem[];
+  filters: { years: number[]; houses: number[] };
+}
+
+export interface GalleryDetail extends GalleryItem {
+  visibilityBook: boolean;
+  webUrl: string | null;
+  downloadUrl: string | null;
+}
+
 export const ACCEPTED_MIME: Record<string, string> = {
   'image/jpeg': 'JPEG',
   'image/png': 'PNG',

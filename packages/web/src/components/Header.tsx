@@ -17,6 +17,9 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
       <div className="inner">
         <a href="/" className="brand">Strandgaarden 100 år</a>
         <nav>
+          <NavLink to="/galleri" className={({ isActive }) => (isActive ? 'active' : undefined)}>
+            Galleri
+          </NavLink>
           {canUpload && (
             <NavLink to="/upload" className={({ isActive }) => (isActive ? 'active' : undefined)}>
               Upload billede
