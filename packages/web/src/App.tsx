@@ -7,6 +7,7 @@ import { MinePage } from './pages/Mine';
 import { ReviewPage } from './pages/Review';
 import { GalleryPage } from './pages/Gallery';
 import { GalleryPhotoPage } from './pages/GalleryPhoto';
+import { AdminUsersPage } from './pages/AdminUsers';
 import { NotFoundPage } from './pages/NotFound';
 
 export const App = () => (
@@ -22,6 +23,7 @@ export const App = () => (
       </Route>
       <Route element={<ProtectedRoute requireGroup="admin" />}>
         <Route path="/review" element={<ReviewPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Route>

@@ -312,4 +312,36 @@ main.content.wide { max-width: 1200px; }
 }
 .download-btn:hover { background: #1d3e5d; }
 
+.admin-invite {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1rem 0.5rem;
+  margin: 1rem 0 2rem;
+}
+.admin-invite h2 { margin-top: 0; }
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+}
+.user-table th,
+.user-table td {
+  text-align: left;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.user-table th { font-weight: 600; background: var(--bg-alt); }
+.user-table select { min-width: 180px; }
+.user-table .user-actions { text-align: right; }
+
+button.danger {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+button.danger:hover { background: #8e1d0c; }
+
 .subtle { color: var(--muted); }

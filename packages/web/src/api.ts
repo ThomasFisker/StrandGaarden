@@ -1,4 +1,5 @@
 import type {
+  AdminUser,
   DecisionResponse,
   GalleryDetail,
   GalleryList,
@@ -6,6 +7,7 @@ import type {
   ReviewPhoto,
   UploadMetadata,
   UploadUrlResponse,
+  UserRole,
 } from './types';
 
 const apiBase = import.meta.env.VITE_API_URL;
@@ -120,4 +122,45 @@ export const getGalleryPhoto = async (idToken: string, photoId: string): Promise
   const r = await fetch(`${apiBase}/gallery/${encodeURIComponent(photoId)}`, { headers: bearer(idToken) });
   if (!r.ok) return throwFromResponse(r, `gallery/${photoId}`);
   return r.json();
+};
+
+export const listUsers = async (idToken: string): Promise<AdminUser[]> => {
+  const r = await fetch(`${apiBase}/users`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'users');
+  const body = (await r.json()) as { items: AdminUser[] };
+  return body.items ?? [];
+};
+
+export const createUser = async (
+  idToken: string,
+  input: { email: string; group: UserRole; initialPassword: string },
+): Promise<{ username: string; email: string; group: UserRole }> => {
+  const r = await fetch(`${apiBase}/users`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(input),
+  });
+  if (!r.ok) return throwFromResponse(r, 'users/create');
+  return r.json();
+};
+
+export const updateUserGroup = async (
+  idToken: string,
+  username: string,
+  group: UserRole,
+): Promise<void> => {
+  const r = await fetch(`${apiBase}/users/${encodeURIComponent(username)}/groups`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ group }),
+  });
+  if (!r.ok) return throwFromResponse(r, `users/${username}/groups`);
+};
+
+export const deleteUser = async (idToken: string, username: string): Promise<void> => {
+  const r = await fetch(`${apiBase}/users/${encodeURIComponent(username)}`, {
+    method: 'DELETE',
+    headers: bearer(idToken),
+  });
+  if (!r.ok && r.status !== 204) return throwFromResponse(r, `users/${username}/delete`);
 };

@@ -5,6 +5,7 @@ import * as apigwAuthz from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import * as apigwIntegrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -134,6 +135,57 @@ export class ApiStack extends cdk.Stack {
     props.table.grantReadData(galleryDetailFn);
     props.derivedBucket.grantRead(galleryDetailFn);
 
+    // Admin user-management lambdas — all pick up USER_POOL_ID via env.
+    const userMgmtEnv = { ...commonFnProps.environment, USER_POOL_ID: props.userPool.userPoolId };
+    const userMgmtFnProps: Omit<lambdaNodejs.NodejsFunctionProps, 'entry' | 'functionName' | 'description'> = {
+      ...commonFnProps,
+      environment: userMgmtEnv,
+      timeout: cdk.Duration.seconds(15),
+    };
+
+    const usersListFn = new lambdaNodejs.NodejsFunction(this, 'UsersListFn', {
+      ...userMgmtFnProps,
+      entry: path.join(lambdaDir, 'users-list.ts'),
+      functionName: `strandgaarden-${props.stage}-users-list`,
+      description: 'Admin-only: list Cognito users with group membership and status',
+    });
+    const usersCreateFn = new lambdaNodejs.NodejsFunction(this, 'UsersCreateFn', {
+      ...userMgmtFnProps,
+      entry: path.join(lambdaDir, 'users-create.ts'),
+      functionName: `strandgaarden-${props.stage}-users-create`,
+      description: 'Admin-only: invite a new user with a permanent initial password and group',
+    });
+    const usersUpdateGroupFn = new lambdaNodejs.NodejsFunction(this, 'UsersUpdateGroupFn', {
+      ...userMgmtFnProps,
+      entry: path.join(lambdaDir, 'users-update-group.ts'),
+      functionName: `strandgaarden-${props.stage}-users-update-group`,
+      description: 'Admin-only: move a user to a different role group',
+    });
+    const usersDeleteFn = new lambdaNodejs.NodejsFunction(this, 'UsersDeleteFn', {
+      ...userMgmtFnProps,
+      entry: path.join(lambdaDir, 'users-delete.ts'),
+      functionName: `strandgaarden-${props.stage}-users-delete`,
+      description: 'Admin-only: delete a user from the pool (cannot delete self)',
+    });
+
+    const userPoolAdminActions = new iam.PolicyStatement({
+      actions: [
+        'cognito-idp:ListUsers',
+        'cognito-idp:AdminGetUser',
+        'cognito-idp:AdminCreateUser',
+        'cognito-idp:AdminSetUserPassword',
+        'cognito-idp:AdminListGroupsForUser',
+        'cognito-idp:AdminAddUserToGroup',
+        'cognito-idp:AdminRemoveUserFromGroup',
+        'cognito-idp:AdminDeleteUser',
+      ],
+      resources: [props.userPool.userPoolArn],
+    });
+    usersListFn.addToRolePolicy(userPoolAdminActions);
+    usersCreateFn.addToRolePolicy(userPoolAdminActions);
+    usersUpdateGroupFn.addToRolePolicy(userPoolAdminActions);
+    usersDeleteFn.addToRolePolicy(userPoolAdminActions);
+
     const jwtAuthorizer = new apigwAuthz.HttpJwtAuthorizer(
       'CognitoJwtAuthorizer',
       `https://cognito-idp.${this.region}.amazonaws.com/${props.userPool.userPoolId}`,
@@ -206,6 +258,31 @@ export class ApiStack extends cdk.Stack {
       path: '/gallery/{id}',
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwIntegrations.HttpLambdaIntegration('GalleryDetailIntegration', galleryDetailFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/users',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('UsersListIntegration', usersListFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/users',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('UsersCreateIntegration', usersCreateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/users/{username}/groups',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('UsersUpdateGroupIntegration', usersUpdateGroupFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/users/{username}',
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: new apigwIntegrations.HttpLambdaIntegration('UsersDeleteIntegration', usersDeleteFn),
       authorizer: jwtAuthorizer,
     });
 

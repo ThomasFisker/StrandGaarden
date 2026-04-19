@@ -91,6 +91,19 @@ export interface GalleryDetail extends GalleryItem {
   downloadUrl: string | null;
 }
 
+export type UserRole = 'admin' | 'member' | 'viewer';
+export const USER_ROLES: UserRole[] = ['admin', 'member', 'viewer'];
+
+export interface AdminUser {
+  username: string;
+  sub: string;
+  email: string;
+  status: string;
+  enabled: boolean;
+  createdAt: string | null;
+  groups: string[];
+}
+
 export const ACCEPTED_MIME: Record<string, string> = {
   'image/jpeg': 'JPEG',
   'image/png': 'PNG',
