@@ -1,0 +1,48 @@
+name: CDK deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cdk-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::734705207936:role/strandgaarden-ci-deploy
+          aws-region: eu-west-1
+
+      - name: CDK synth
+        working-directory: infra
+        run: npx cdk synth
+
+      - name: CDK diff
+        working-directory: infra
+        run: npx cdk diff
+
+      - name: CDK deploy
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        working-directory: infra
+        run: npx cdk deploy --all --require-approval never

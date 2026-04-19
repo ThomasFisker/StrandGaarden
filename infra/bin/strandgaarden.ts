@@ -2,6 +2,7 @@
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { FoundationStack } from '../lib/foundation-stack';
+import { CiStack } from '../lib/ci-stack';
 
 const app = new cdk.App();
 
@@ -14,6 +15,12 @@ new FoundationStack(app, 'Strandgaarden-Dev-Foundation', {
   env,
   stage: 'dev',
   description: 'Phase 0 proof-of-life stack for the Strandgaarden anniversary photo platform',
+});
+
+new CiStack(app, 'Strandgaarden-Ci', {
+  env,
+  githubOwnerRepo: 'ThomasFisker/StrandGaarden',
+  description: 'GitHub Actions OIDC provider and deploy role for the Strandgaarden CI/CD pipeline',
 });
 
 cdk.Tags.of(app).add('Project', 'Strandgaarden');
