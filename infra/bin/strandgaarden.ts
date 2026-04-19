@@ -3,6 +3,7 @@ import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { FoundationStack } from '../lib/foundation-stack';
 import { CiStack } from '../lib/ci-stack';
+import { StorageStack } from '../lib/storage-stack';
 
 const app = new cdk.App();
 
@@ -21,6 +22,13 @@ new CiStack(app, 'Strandgaarden-Ci', {
   env,
   githubOwnerRepo: 'ThomasFisker/StrandGaarden',
   description: 'GitHub Actions OIDC provider and deploy role for the Strandgaarden CI/CD pipeline',
+});
+
+new StorageStack(app, 'Strandgaarden-Dev-Storage', {
+  env,
+  stage: 'dev',
+  uploadAllowedOrigins: ['http://localhost:5173', 'http://localhost:3000'],
+  description: 'S3 buckets for photo originals and generated derivatives',
 });
 
 cdk.Tags.of(app).add('Project', 'Strandgaarden');
