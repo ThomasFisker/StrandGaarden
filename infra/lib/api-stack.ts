@@ -85,6 +85,15 @@ export class ApiStack extends cdk.Stack {
     props.table.grantWriteData(uploadUrlFn);
     props.originalsBucket.grantPut(uploadUrlFn);
 
+    const mineFn = new lambdaNodejs.NodejsFunction(this, 'MineFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'mine.ts'),
+      functionName: `strandgaarden-${props.stage}-mine`,
+      description: 'Returns photos uploaded by the caller',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadData(mineFn);
+
     const jwtAuthorizer = new apigwAuthz.HttpJwtAuthorizer(
       'CognitoJwtAuthorizer',
       `https://cognito-idp.${this.region}.amazonaws.com/${props.userPool.userPoolId}`,
@@ -122,6 +131,13 @@ export class ApiStack extends cdk.Stack {
       path: '/upload-url',
       methods: [apigwv2.HttpMethod.POST],
       integration: new apigwIntegrations.HttpLambdaIntegration('UploadUrlIntegration', uploadUrlFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/photos/mine',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('MineIntegration', mineFn),
       authorizer: jwtAuthorizer,
     });
 

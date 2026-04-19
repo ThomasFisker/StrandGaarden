@@ -1,0 +1,106 @@
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { getMyPhotos } from '../api';
+import { useSession } from '../session';
+import type { MyPhoto } from '../types';
+
+const STATUS_LABEL: Record<string, string> = {
+  Uploaded: 'Afventer gennemgang',
+  'In Review': 'Under gennemgang',
+  Decided: 'Afgjort',
+};
+
+const prettyStatus = (p: MyPhoto): string => {
+  if (p.status === 'Decided') {
+    const parts: string[] = [];
+    if (p.visibilityWeb) parts.push('Offentliggjort');
+    if (p.visibilityBook) parts.push('Udvalgt til bog');
+    if (parts.length === 0) return 'Afgjort — gemt';
+    return parts.join(' + ');
+  }
+  return STATUS_LABEL[p.status] ?? p.status;
+};
+
+const prettyDate = (iso: string): string => {
+  try {
+    return new Date(iso).toLocaleString('da-DK', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
+};
+
+export const MinePage = () => {
+  const { session } = useSession();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [photos, setPhotos] = useState<MyPhoto[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const justUploaded = searchParams.get('justUploaded') === '1';
+
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    getMyPhotos(session.idToken)
+      .then((items) => {
+        if (active) setPhotos(items);
+      })
+      .catch((e) => {
+        if (active) setError(e instanceof Error ? e.message : 'Kunne ikke hente billeder');
+      });
+    return () => {
+      active = false;
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!justUploaded) return;
+    const t = setTimeout(() => {
+      setSearchParams({}, { replace: true });
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [justUploaded, setSearchParams]);
+
+  return (
+    <main className="content">
+      <h1>Mine billeder</h1>
+
+      {justUploaded && <div className="ok">Tak! Billedet er sendt og venter på udvalgets gennemgang.</div>}
+
+      {error && <div className="error">{error}</div>}
+
+      {photos === null && !error && <p>Indlæser…</p>}
+
+      {photos && photos.length === 0 && (
+        <p>
+          Du har ikke sendt nogen billeder endnu. <Link to="/upload">Upload dit første billede</Link>.
+        </p>
+      )}
+
+      {photos && photos.length > 0 && (
+        <div className="photo-grid">
+          {photos.map((p) => (
+            <article key={p.photoId} className="photo-card">
+              <h3>{p.description || <em>(ingen beskrivelse)</em>}</h3>
+              <div>
+                <span className={`status${p.status === 'Decided' ? ' decided' : ''}`}>{prettyStatus(p)}</span>
+                <span className="meta">
+                  {p.year ? `${p.yearApprox ? 'ca. ' : ''}${p.year} · ` : ''}
+                  Hus {p.houseNumbers.join(', ')}
+                </span>
+              </div>
+              {p.whoInPhoto && <p className="meta">{p.whoInPhoto}</p>}
+              <p className="meta">
+                Fil: {p.originalFilename} · sendt {prettyDate(p.createdAt)}
+              </p>
+            </article>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+};

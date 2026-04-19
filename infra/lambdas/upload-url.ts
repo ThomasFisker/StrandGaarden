@@ -22,6 +22,11 @@ const ACCEPTED_CONTENT_TYPES: Record<string, string> = {
 const MAX_BYTES = 100 * 1024 * 1024;
 const URL_TTL_SECONDS = 300;
 const FILENAME_MAX = 255;
+const DESCRIPTION_MAX = 2000;
+const WHO_IN_PHOTO_MAX = 1000;
+const HOUSE_MIN = 1;
+const HOUSE_MAX = 23;
+const YEAR_MIN = 1800;
 
 const json = (statusCode: number, body: unknown) => ({
   statusCode,
@@ -42,26 +47,56 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     return json(403, { error: 'Upload is restricted to admin and member roles' });
   }
 
-  let body: { filename?: unknown; contentType?: unknown };
+  let body: Record<string, unknown>;
   try {
     body = JSON.parse(event.body ?? '{}');
   } catch {
     return json(400, { error: 'Request body must be valid JSON' });
   }
 
+  const errors: string[] = [];
+
   const filename = typeof body.filename === 'string' ? body.filename.trim() : '';
   const contentType = typeof body.contentType === 'string' ? body.contentType.trim().toLowerCase() : '';
+  const description = typeof body.description === 'string' ? body.description.trim() : '';
+  const whoInPhotoRaw = body.whoInPhoto;
+  const whoInPhoto =
+    typeof whoInPhotoRaw === 'string' ? whoInPhotoRaw.trim() : whoInPhotoRaw == null ? '' : null;
+  const yearRaw = body.year;
+  const year = yearRaw === null || yearRaw === undefined || yearRaw === '' ? null : Number(yearRaw);
+  const yearApprox = body.yearApprox === true;
+  const houseNumbersRaw = body.houseNumbers;
+  const consent = body.consent === true;
+  const currentYear = new Date().getFullYear();
 
   if (!filename || filename.length > FILENAME_MAX) {
-    return json(400, { error: `filename is required (max ${FILENAME_MAX} chars)` });
+    errors.push(`filename is required (max ${FILENAME_MAX} chars)`);
   }
-
   const ext = ACCEPTED_CONTENT_TYPES[contentType];
   if (!ext) {
-    return json(400, {
-      error: `contentType must be one of: ${Object.keys(ACCEPTED_CONTENT_TYPES).join(', ')}`,
-    });
+    errors.push(`contentType must be one of: ${Object.keys(ACCEPTED_CONTENT_TYPES).join(', ')}`);
   }
+  if (!description) errors.push('description is required');
+  else if (description.length > DESCRIPTION_MAX) errors.push(`description max ${DESCRIPTION_MAX} chars`);
+  if (whoInPhoto === null) errors.push('whoInPhoto must be a string when provided');
+  else if (whoInPhoto.length > WHO_IN_PHOTO_MAX) errors.push(`whoInPhoto max ${WHO_IN_PHOTO_MAX} chars`);
+  if (year !== null) {
+    if (!Number.isInteger(year) || year < YEAR_MIN || year > currentYear) {
+      errors.push(`year must be an integer between ${YEAR_MIN} and ${currentYear}`);
+    }
+  }
+  if (!Array.isArray(houseNumbersRaw) || houseNumbersRaw.length === 0) {
+    errors.push('houseNumbers is required — pick at least one');
+  } else if (houseNumbersRaw.length > HOUSE_MAX) {
+    errors.push(`houseNumbers may contain at most ${HOUSE_MAX} entries`);
+  } else if (!houseNumbersRaw.every((n) => Number.isInteger(n) && n >= HOUSE_MIN && n <= HOUSE_MAX)) {
+    errors.push(`every houseNumber must be an integer ${HOUSE_MIN}..${HOUSE_MAX}`);
+  }
+  if (!consent) errors.push('consent must be true — required by GDPR');
+
+  if (errors.length) return json(400, { error: 'Validation failed', details: errors });
+
+  const houseNumbers = Array.from(new Set(houseNumbersRaw as number[])).sort((a, b) => a - b);
 
   const photoId = randomUUID();
   const s3Key = `photos/${photoId}.${ext}`;
@@ -79,6 +114,14 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         s3Key,
         originalFilename: filename,
         contentType,
+        description,
+        whoInPhoto: whoInPhoto ?? '',
+        year,
+        yearApprox,
+        houseNumbers,
+        consent: true,
+        visibilityWeb: false,
+        visibilityBook: false,
         uploaderSub: claims.sub,
         uploaderEmail: claims.email,
         createdAt,
