@@ -7,6 +7,7 @@ import { StorageStack } from '../lib/storage-stack';
 import { DataStack } from '../lib/data-stack';
 import { AuthStack } from '../lib/auth-stack';
 import { ApiStack } from '../lib/api-stack';
+import { ImagePipelineStack } from '../lib/image-pipeline-stack';
 
 const app = new cdk.App();
 
@@ -58,6 +59,15 @@ new ApiStack(app, 'Strandgaarden-Dev-Api', {
   userPoolClient: auth.userPoolClient,
   allowedOrigins: devAllowedOrigins,
   description: 'HTTP API Gateway + starter Lambdas (health, whoami) with Cognito JWT authorizer',
+});
+
+new ImagePipelineStack(app, 'Strandgaarden-Dev-ImagePipeline', {
+  env,
+  stage: 'dev',
+  table: data.table,
+  originalsBucketName: storage.originalsBucket.bucketName,
+  derivedBucketName: storage.derivedBucket.bucketName,
+  description: 'S3-triggered Lambda that generates web/thumb derivatives, blurhash, and advances photos to In Review',
 });
 
 cdk.Tags.of(app).add('Project', 'Strandgaarden');

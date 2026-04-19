@@ -1,0 +1,4 @@
+# Placeholder. The sharp layer contents are generated at synth time by
+# CDK's local bundling callback in image-pipeline-stack.ts, which runs
+#   npm install --os=linux --cpu=arm64 sharp@<version>
+# into <outputDir>/nodejs. Nothing in this directory is shipped directly.

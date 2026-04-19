@@ -89,10 +89,11 @@ export class ApiStack extends cdk.Stack {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'mine.ts'),
       functionName: `strandgaarden-${props.stage}-mine`,
-      description: 'Returns photos uploaded by the caller',
-      timeout: cdk.Duration.seconds(10),
+      description: 'Returns photos uploaded by the caller, with presigned thumbnail URLs',
+      timeout: cdk.Duration.seconds(15),
     });
     props.table.grantReadData(mineFn);
+    props.derivedBucket.grantRead(mineFn);
 
     const jwtAuthorizer = new apigwAuthz.HttpJwtAuthorizer(
       'CognitoJwtAuthorizer',

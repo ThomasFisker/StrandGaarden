@@ -31,6 +31,11 @@ export interface MyPhoto {
   houseNumbers: number[];
   visibilityWeb: boolean;
   visibilityBook: boolean;
+  width: number | null;
+  height: number | null;
+  blurhash: string | null;
+  thumbnailUrl: string | null;
+  processingError: string | null;
 }
 
 export const ACCEPTED_MIME: Record<string, string> = {

@@ -219,4 +219,24 @@ main.content {
 }
 .photo-card .status.decided { background: #eaf6ee; border-color: #bfe0c9; }
 
+.photo-card-row { display: flex; gap: 1rem; align-items: flex-start; }
+.thumb-wrap { flex: 0 0 120px; }
+.thumb {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  display: block;
+  background: #e5e5e0;
+}
+.thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  border: 1px dashed var(--border);
+}
+.photo-card-body { flex: 1; min-width: 0; }
+
 .subtle { color: var(--muted); }

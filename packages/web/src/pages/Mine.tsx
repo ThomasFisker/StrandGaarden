@@ -85,18 +85,41 @@ export const MinePage = () => {
         <div className="photo-grid">
           {photos.map((p) => (
             <article key={p.photoId} className="photo-card">
-              <h3>{p.description || <em>(ingen beskrivelse)</em>}</h3>
-              <div>
-                <span className={`status${p.status === 'Decided' ? ' decided' : ''}`}>{prettyStatus(p)}</span>
-                <span className="meta">
-                  {p.year ? `${p.yearApprox ? 'ca. ' : ''}${p.year} · ` : ''}
-                  Hus {p.houseNumbers.join(', ')}
-                </span>
+              <div className="photo-card-row">
+                <div className="thumb-wrap">
+                  {p.thumbnailUrl ? (
+                    <img
+                      src={p.thumbnailUrl}
+                      alt={p.description || p.originalFilename}
+                      className="thumb"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="thumb thumb-placeholder">
+                      {p.processingError ? 'Fejl' : 'Behandles…'}
+                    </div>
+                  )}
+                </div>
+                <div className="photo-card-body">
+                  <h3>{p.description || <em>(ingen beskrivelse)</em>}</h3>
+                  <div>
+                    <span className={`status${p.status === 'Decided' ? ' decided' : ''}`}>{prettyStatus(p)}</span>
+                    <span className="meta">
+                      {p.year ? `${p.yearApprox ? 'ca. ' : ''}${p.year} · ` : ''}
+                      Hus {p.houseNumbers.join(', ')}
+                    </span>
+                  </div>
+                  {p.whoInPhoto && <p className="meta">{p.whoInPhoto}</p>}
+                  <p className="meta">
+                    Fil: {p.originalFilename} · sendt {prettyDate(p.createdAt)}
+                  </p>
+                  {p.processingError && (
+                    <p className="meta" style={{ color: 'var(--danger)' }}>
+                      Fejl ved billedbehandling: {p.processingError}
+                    </p>
+                  )}
+                </div>
               </div>
-              {p.whoInPhoto && <p className="meta">{p.whoInPhoto}</p>}
-              <p className="meta">
-                Fil: {p.originalFilename} · sendt {prettyDate(p.createdAt)}
-              </p>
             </article>
           ))}
         </div>
