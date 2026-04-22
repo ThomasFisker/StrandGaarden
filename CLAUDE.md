@@ -21,15 +21,39 @@ Stack: AWS CDK (TypeScript) · Cognito · API Gateway HTTP API · Lambda
 - **Custom domain** `jubilaeum.strandgaardenis.dk` — pending DNS
   delegation; when it lands, small additive change.
 
-## Implemented (as of 2026-04-19)
+## Implemented (as of 2026-04-22)
 
-Full end-to-end member → committee → viewer flow.
+Full end-to-end member → committee → viewer flow. Editorial "Coastal
+archival" design system in place.
 
 - **Infra stacks (all in `eu-west-1`):** Foundation, Ci, Storage, Data,
   Auth, Api, ImagePipeline, Hosting.
 - **Auth:** Cognito pool `eu-west-1_wiSTL2jB6`, SRP-only SPA client, three
   groups `admin` / `member` / `viewer`. Admin-only user creation via
-  /admin/users (invite + change role + delete).
+  /admin/users (invite + change role + delete + **rename login name** +
+  **reset password**).
+- **Login name (display only):** Every user has a `preferred_username`
+  attribute that the header shows instead of the email (e.g. "Thomas1").
+  Login still uses email. Existing two users backfilled as `Thomas1` (the
+  admin) and `Thomas2` (`thomas.f.madsen@outlook.com`) via
+  `AdminUpdateUserAttributes`. No Auth stack schema change needed —
+  `preferred_username` is a built-in Cognito standard attribute.
+- **Admin password reset:** `POST /users/{username}/password` →
+  `AdminSetUserPassword` with `Permanent: true`. Inline panel under the
+  user row: password input → Gem → green confirmation with Luk button.
+  Admin reads the new password out to the member verbally; no email
+  involved (avoids Cognito default-sender quota).
+- **Design system ("Coastal archival"):** Paper / sea / copper / sage
+  palette in `packages/web/src/styles.css`. Fraunces variable serif
+  (italic + opsz/SOFT axes) + Plus Jakarta Sans loaded from Google Fonts
+  in `packages/web/index.html`. Two background photos copied from
+  `Inbox/` to `packages/web/public/bg/` — `hero-beach.jpg` used on the
+  Login split-hero, `horizon-meadow.jpg` still unused (candidate for
+  404/help atmosphere). All pages adopted the eyebrow + Fraunces display
+  h1 + lede pattern; Gallery has editorial filters strip + asymmetric
+  tile grid (feature tiles 16:9 on 4-col); Photo-detail has paper frame
+  with copper hairline + giant year in Fraunces. The old
+  `design-preview/` mockups remain on disk as reference only.
 - **Upload flow:** member form with file (JPEG/PNG/TIFF/HEIC, ≤100 MB),
   beskrivelse, hvem er på billedet (free text), year + "ca." flag,
   houses 1–23, consent, and controlled person tags (approved or proposed).
@@ -50,6 +74,14 @@ Full end-to-end member → committee → viewer flow.
   `npm run build -w @strandgaarden/web` then `cdk deploy --all`.
 
 ## Still to do (priority order)
+
+**Commit pending — first task next session.** The current branch has 20
+modified files + 1 new file (`infra/lambdas/users-reset-password.ts`)
+covering three feature batches, all deployed and smoke-tested but not
+yet committed. Suggested split:
+1. `feat: admin-only login name (preferred_username display)`
+2. `feat: Coastal archival design system + hero images`
+3. `feat: admin password reset (AdminSetUserPassword + inline UI)`
 
 **Blocking before real member invites:**
 1. **Removal requests (GDPR).** Anyone (auth or not) submits "please remove
@@ -76,7 +108,8 @@ Full end-to-end member → committee → viewer flow.
 **Nice-to-have:** audit log viewer, PWA manifest, blurhash LQIP
 placeholder render, enforced server-side upload size limit via
 `createPresignedPost`, member self-edit of own uploads, narrow-viewport
-header overflow.
+header overflow, use `horizon-meadow.jpg` as a decorative backdrop
+somewhere (404, help page, empty-gallery state).
 
 **Ops:** prod stage stacks (`-Prod-*`), CloudWatch alarms, automated
 tests. Not urgent.
@@ -130,13 +163,23 @@ verification is the sole test strategy for now.
 ## Resuming tomorrow
 
 1. `cd "C:/Users/thoma/OneDrive - Second Epic/ClaudeProjects/Strandgaarden"`
-2. `git status` — should be clean (last commit `de210b7`, Phase 2 hosting).
-3. Open https://d2wq22ivboh02d.cloudfront.net/ and smoke-test login. If it
-   works, the whole dev environment is reachable.
-4. Pick the next item from "Still to do" above. Recommended next pair:
-   **admin photo-removal + GDPR removal requests** (both small-to-medium;
-   completes the "must-have before invites" list).
-5. If something's broken:
+2. `git status` — expect ~21 files dirty. Last commit still `2deca98`
+   (docs). All of the dirty files are tested + deployed to the dev URL;
+   see the "Commit pending" block under Still to do for the suggested
+   three-commit split.
+3. Open https://d2wq22ivboh02d.cloudfront.net/ and smoke-test login as
+   `thomas.madsen@secondepic.com` / `Picture1!`. Header should show
+   `Thomas1`. Hero image visible on /login. If all three are true the
+   whole dev environment is reachable.
+4. **First task:** commit the three pending feature batches (see Still to
+   do). After that, recommended next pair: **admin photo-removal + GDPR
+   removal requests** (both small-to-medium; completes the "must-have
+   before invites" list).
+5. One known test-data quirk: Thomas2 (`thomas.f.madsen@outlook.com`)
+   currently has password `ResetTest99!` from a smoke test of the reset
+   flow. Delete the user from /admin/users or reset the password again
+   if this matters.
+6. If something's broken:
    - API alive: `curl https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com/health`.
    - Stack statuses: `aws cloudformation list-stacks --profile strandgaarden --region eu-west-1 --query 'StackSummaries[?starts_with(StackName,\`Strandgaarden-\`) && StackStatus!=\`DELETE_COMPLETE\`].{name:StackName,status:StackStatus}'`.
    - Any photos stuck in `Uploaded`: the pipeline Lambda log group is
@@ -145,3 +188,16 @@ verification is the sole test strategy for now.
 Claude will auto-load `CLAUDE.md` (this file) and the
 `memory/project_*.md` entries at session start, so the full context is
 available without re-briefing.
+
+Add as a new ## Deployment & Verification section near the end of CLAUDE.md\n\n## Deployment & Verification
+- After deploying to a public URL, always provide the URL and a brief smoke-test checklist
+- For auth flows (Cognito SRP, OAuth), note when browser-based verification is required and document manual steps the user must run
+- When git push requires interactive browser auth, stop and hand off to the user with the exact command to run
+Add as a new ## Environment Setup section at the top of CLAUDE.md\n\n## Environment Setup
+- Before running Node/npm commands, verify PATH with `which node` and `node --version`
+- If a newly installed tool isn't found, source shell config or use absolute paths
+- For Python document generation (DOCX/PDF), always validate the output file opens correctly before declaring done
+Add as a new ## Notion Integration section\n\n## Notion Integration
+- When populating Notion pages, reconstruct from local memory/context files first, then write
+- Use the MCP Notion tools (notion-create-pages) rather than manual API calls
+- Confirm page IDs before writing to avoid overwriting wrong pages
