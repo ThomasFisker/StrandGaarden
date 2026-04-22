@@ -126,6 +126,15 @@ export class ApiStack extends cdk.Stack {
     props.originalsBucket.grantDelete(photosDeleteFn);
     props.derivedBucket.grantDelete(photosDeleteFn);
 
+    const photosSetHelpWantedFn = new lambdaNodejs.NodejsFunction(this, 'PhotosSetHelpWantedFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'photos-set-help-wanted.ts'),
+      functionName: `strandgaarden-${props.stage}-photos-set-help-wanted`,
+      description: 'Toggle helpWanted flag on a photo (uploader or admin)',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(photosSetHelpWantedFn);
+
     const galleryListFn = new lambdaNodejs.NodejsFunction(this, 'GalleryListFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'gallery-list.ts'),
@@ -319,6 +328,13 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/{id}',
       methods: [apigwv2.HttpMethod.DELETE],
       integration: new apigwIntegrations.HttpLambdaIntegration('PhotosDeleteIntegration', photosDeleteFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/photos/{id}/help-wanted',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('PhotosSetHelpWantedIntegration', photosSetHelpWantedFn),
       authorizer: jwtAuthorizer,
     });
 

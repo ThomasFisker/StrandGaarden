@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { decidePhoto, deletePhoto, getReviewQueue } from '../api';
+import { decidePhoto, deletePhoto, getReviewQueue, setHelpWanted } from '../api';
 import { useSession } from '../session';
 import type { ReviewPhoto } from '../types';
 
@@ -48,6 +48,7 @@ export const ReviewPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftFlags>>({});
   const [deletes, setDeletes] = useState<Record<string, DeleteState>>({});
+  const [savingHelp, setSavingHelp] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -96,6 +97,25 @@ export const ReviewPage = () => {
           error: e instanceof Error ? e.message : 'Fejl ved lagring',
         },
       }));
+    }
+  };
+
+  const toggleHelpWanted = async (photo: ReviewPhoto) => {
+    if (!session) return;
+    const next = !photo.helpWanted;
+    setPhotos((prev) => prev?.map((p) => (p.photoId === photo.photoId ? { ...p, helpWanted: next } : p)) ?? prev);
+    setSavingHelp((prev) => ({ ...prev, [photo.photoId]: true }));
+    try {
+      await setHelpWanted(session.idToken, photo.photoId, next);
+    } catch (e) {
+      setPhotos((prev) => prev?.map((p) => (p.photoId === photo.photoId ? { ...p, helpWanted: !next } : p)) ?? prev);
+      setError(e instanceof Error ? e.message : 'Kunne ikke opdatere flag');
+    } finally {
+      setSavingHelp((prev) => {
+        const copy = { ...prev };
+        delete copy[photo.photoId];
+        return copy;
+      });
     }
   };
 
@@ -215,6 +235,16 @@ export const ReviewPage = () => {
                           onChange={(e) => setFlag(p.photoId, 'book', e.target.checked)}
                         />
                         <label htmlFor={`book-${p.photoId}`}>Med i jubilæumsbogen</label>
+                      </div>
+                      <div className="checkbox-row">
+                        <input
+                          id={`help-${p.photoId}`}
+                          type="checkbox"
+                          checked={p.helpWanted}
+                          disabled={!!savingHelp[p.photoId]}
+                          onChange={() => toggleHelpWanted(p)}
+                        />
+                        <label htmlFor={`help-${p.photoId}`}>Hjælp søges — bed andre om at identificere</label>
                       </div>
 
                       <div className="review-actions">

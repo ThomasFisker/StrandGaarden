@@ -100,6 +100,19 @@ export const deletePhoto = async (idToken: string, photoId: string): Promise<voi
   if (!r.ok) return throwFromResponse(r, `photos/${photoId} DELETE`);
 };
 
+export const setHelpWanted = async (
+  idToken: string,
+  photoId: string,
+  helpWanted: boolean,
+): Promise<void> => {
+  const r = await fetch(`${apiBase}/photos/${encodeURIComponent(photoId)}/help-wanted`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ helpWanted }),
+  });
+  if (!r.ok) return throwFromResponse(r, `photos/${photoId}/help-wanted`);
+};
+
 export const decidePhoto = async (
   idToken: string,
   photoId: string,

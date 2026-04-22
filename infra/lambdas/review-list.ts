@@ -100,6 +100,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         persons: (Array.isArray(item.taggedPersonSlugs) ? (item.taggedPersonSlugs as string[]) : [])
           .map((slug) => personMap.get(slug))
           .filter((p): p is PersonTag => !!p),
+        helpWanted: item.helpWanted === true,
       };
     }),
   );

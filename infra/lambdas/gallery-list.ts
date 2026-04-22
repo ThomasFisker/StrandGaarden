@@ -123,6 +123,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         height: item.height === null || item.height === undefined ? null : Number(item.height),
         blurhash: typeof item.blurhash === 'string' ? item.blurhash : null,
         thumbnailUrl,
+        helpWanted: item.helpWanted === true,
         persons: (Array.isArray(item.taggedPersonSlugs) ? (item.taggedPersonSlugs as string[]) : [])
           .map((slug) => personMap.get(slug))
           .filter((p): p is PersonTag => !!p),

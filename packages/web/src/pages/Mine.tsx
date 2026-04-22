@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getMyPhotos } from '../api';
+import { getMyPhotos, setHelpWanted } from '../api';
 import { useSession } from '../session';
 import type { MyPhoto } from '../types';
 
@@ -40,7 +40,28 @@ export const MinePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [photos, setPhotos] = useState<MyPhoto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [savingHelp, setSavingHelp] = useState<Record<string, boolean>>({});
   const justUploaded = searchParams.get('justUploaded') === '1';
+
+  const toggleHelpWanted = async (photo: MyPhoto) => {
+    if (!session) return;
+    const next = !photo.helpWanted;
+    setPhotos((prev) => prev?.map((p) => (p.photoId === photo.photoId ? { ...p, helpWanted: next } : p)) ?? prev);
+    setSavingHelp((prev) => ({ ...prev, [photo.photoId]: true }));
+    try {
+      await setHelpWanted(session.idToken, photo.photoId, next);
+    } catch (e) {
+      // roll back
+      setPhotos((prev) => prev?.map((p) => (p.photoId === photo.photoId ? { ...p, helpWanted: !next } : p)) ?? prev);
+      setError(e instanceof Error ? e.message : 'Kunne ikke opdatere flag');
+    } finally {
+      setSavingHelp((prev) => {
+        const copy = { ...prev };
+        delete copy[photo.photoId];
+        return copy;
+      });
+    }
+  };
 
   useEffect(() => {
     if (!session) return;
@@ -132,6 +153,19 @@ export const MinePage = () => {
                       Fejl ved billedbehandling: {p.processingError}
                     </p>
                   )}
+                  <div className="help-wanted-toggle">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={p.helpWanted}
+                        disabled={!!savingHelp[p.photoId]}
+                        onChange={() => toggleHelpWanted(p)}
+                      />
+                      <span>
+                        <strong>Hjælp søges</strong> — bed andre om hjælp til at identificere personerne
+                      </span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </article>

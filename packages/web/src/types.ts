@@ -29,6 +29,7 @@ export interface UploadMetadata {
   houseNumbers: number[];
   consent: boolean;
   taggedPersons: PersonTagInput[];
+  helpWanted: boolean;
 }
 
 export interface UploadUrlResponse {
@@ -59,6 +60,7 @@ export interface MyPhoto {
   thumbnailUrl: string | null;
   processingError: string | null;
   persons: PersonTag[];
+  helpWanted: boolean;
 }
 
 export interface ReviewPhoto {
@@ -80,6 +82,7 @@ export interface ReviewPhoto {
   thumbnailUrl: string | null;
   webUrl: string | null;
   persons: PersonTag[];
+  helpWanted: boolean;
 }
 
 export interface DecisionResponse {
@@ -103,6 +106,7 @@ export interface GalleryItem {
   blurhash: string | null;
   thumbnailUrl: string | null;
   persons: PersonTag[];
+  helpWanted: boolean;
 }
 
 export interface GalleryPersonOption {

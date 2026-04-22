@@ -27,6 +27,7 @@ export const UploadPage = () => {
     );
   }, []);
   const [consent, setConsent] = useState(false);
+  const [helpWanted, setHelpWanted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +88,7 @@ export const UploadPage = () => {
         houseNumbers,
         consent,
         taggedPersons: personTags,
+        helpWanted,
       });
       await putToS3(uploadUrl, file!, (p) => setProgress(p));
       navigate('/mine?justUploaded=1');
@@ -176,6 +178,24 @@ export const UploadPage = () => {
           <label>Hus nr.</label>
           <div className="help" style={{ marginBottom: '0.5rem' }}>Vælg de huse billedet hører til. Mindst ét.</div>
           <HouseSelector value={houseNumbers} onToggle={toggleHouse} />
+        </div>
+
+        <div className="field">
+          <div className="checkbox-row">
+            <input
+              id="helpWanted"
+              type="checkbox"
+              checked={helpWanted}
+              onChange={(e) => setHelpWanted(e.target.checked)}
+            />
+            <label htmlFor="helpWanted">
+              Jeg kender ikke alle på billedet — bed gerne andre om hjælp
+            </label>
+          </div>
+          <div className="help">
+            Sæt hak hvis der er personer du ikke kan sætte navn på. Andre besøgende ser et lille
+            <em> Hjælp søges</em> mærke på billedet og kan sende en kommentar til udvalget.
+          </div>
         </div>
 
         <div className="field">

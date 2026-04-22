@@ -47,11 +47,12 @@ export const GalleryPage = () => {
     <Link
       key={p.photoId}
       to={`/galleri/${p.photoId}`}
-      className={`tile${isFeature ? ' feature' : ''}`}
+      className={`tile${isFeature ? ' feature' : ''}${p.helpWanted ? ' help-wanted' : ''}`}
     >
       {p.thumbnailUrl ? (
         <div className="frame">
           <img src={p.thumbnailUrl} alt={p.description || 'Strandgaarden billede'} loading="lazy" />
+          {p.helpWanted && <span className="help-wanted-ribbon">Hjælp søges</span>}
         </div>
       ) : (
         <div className="thumb-placeholder">Behandles…</div>

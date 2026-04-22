@@ -45,6 +45,7 @@ interface PhotoRow {
   thumbnailUrl: string | null;
   processingError: string | null;
   persons: PersonTag[];
+  helpWanted: boolean;
 }
 
 const loadPersonMap = async (): Promise<Map<string, PersonTag>> => {
@@ -122,6 +123,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         persons: (Array.isArray(item.taggedPersonSlugs) ? (item.taggedPersonSlugs as string[]) : [])
           .map((slug) => personMap.get(slug))
           .filter((p): p is PersonTag => !!p),
+        helpWanted: item.helpWanted === true,
       });
     }
     ExclusiveStartKey = result.LastEvaluatedKey;

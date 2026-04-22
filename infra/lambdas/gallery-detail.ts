@@ -98,6 +98,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     height: item.height === null || item.height === undefined ? null : Number(item.height),
     blurhash: typeof item.blurhash === 'string' ? item.blurhash : null,
     visibilityBook: item.visibilityBook === true,
+    helpWanted: item.helpWanted === true,
     webUrl,
     thumbnailUrl,
     downloadUrl,

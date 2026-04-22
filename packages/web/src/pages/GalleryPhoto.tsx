@@ -52,6 +52,12 @@ export const GalleryPhotoPage = () => {
       {photo && (
         <div className="photo-layout">
           <figure className="photo-frame">
+            {photo.helpWanted && (
+              <div className="help-wanted-banner" role="note">
+                <strong>Hjælp søges —</strong>
+                <span> uploaderen kender ikke alle på billedet. Kender du nogen? Skriv gerne en kommentar nedenfor.</span>
+              </div>
+            )}
             {photo.webUrl ? (
               <img
                 src={photo.webUrl}

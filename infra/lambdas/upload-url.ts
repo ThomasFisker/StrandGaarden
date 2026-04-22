@@ -68,6 +68,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const yearApprox = body.yearApprox === true;
   const houseNumbersRaw = body.houseNumbers;
   const consent = body.consent === true;
+  const helpWanted = body.helpWanted === true;
   const currentYear = new Date().getFullYear();
 
   if (!filename || filename.length > FILENAME_MAX) {
@@ -181,6 +182,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         consent: true,
         visibilityWeb: false,
         visibilityBook: false,
+        helpWanted,
         taggedPersonSlugs: resolvedSlugs,
         uploaderSub: claims.sub,
         uploaderEmail: claims.email,
