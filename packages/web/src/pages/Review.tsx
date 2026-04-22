@@ -91,14 +91,15 @@ export const ReviewPage = () => {
 
   return (
     <main className="content">
-      <h1>Gennemgang</h1>
-      <p className="subtle">
+      <p className="eyebrow">Udvalgets gennemgang</p>
+      <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>Bedøm <em>bidrag</em></h1>
+      <p className="lede">
         Billeder der afventer udvalgets beslutning. Marker hvilke der må vises på siden og hvilke der kommer i bogen,
         og klik <em>Gem beslutning</em>.
       </p>
 
-      <div style={{ marginBottom: '1rem' }}>
-        <button onClick={load}>Hent igen</button>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <button type="button" className="btn-ghost" onClick={load}>Hent igen</button>
       </div>
 
       {error && <div className="error">{error}</div>}

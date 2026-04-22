@@ -41,4 +41,6 @@ Thumbs.db
 
 # Developer test fixtures (large binaries, per-machine)
 Sample_Pictures/
-packages/web/public/
+packages/web/public/*
+# ...except the permanent hero/background images used by the SPA
+!packages/web/public/bg/

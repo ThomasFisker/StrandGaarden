@@ -141,8 +141,9 @@ export const AdminPersonsPage = () => {
 
   return (
     <main className="content wide">
-      <h1>Personer</h1>
-      <p className="subtle">
+      <p className="eyebrow">Administration</p>
+      <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>Personer</h1>
+      <p className="lede">
         Den godkendte navneliste bruges af uploadformen og galleriets person-filter. Medlemmer kan foreslå nye
         navne, som udvalget godkender eller afviser her.
       </p>

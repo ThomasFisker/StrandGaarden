@@ -67,7 +67,8 @@ export const MinePage = () => {
 
   return (
     <main className="content">
-      <h1>Mine billeder</h1>
+      <p className="eyebrow">Dine bidrag</p>
+      <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>Mine <em>billeder</em></h1>
 
       {justUploaded && <div className="ok">Tak! Billedet er sendt og venter på udvalgets gennemgang.</div>}
 

@@ -29,62 +29,92 @@ export const GalleryPhotoPage = () => {
   }, [session, id]);
 
   return (
-    <main className="content wide">
-      <p>
-        <Link to="/galleri">← Tilbage til galleriet</Link>
+    <main className="content feature">
+      <p className="crumb">
+        <Link to="/galleri">Galleri</Link>
+        {photo && (
+          <>
+            <span className="sep">/</span>
+            {photo.year ? (photo.yearApprox ? `ca. ${photo.year}` : photo.year) : 'Uden år'}
+            {photo.houseNumbers.length > 0 && (
+              <>
+                <span className="sep">/</span>
+                Hus {photo.houseNumbers.join(' · ')}
+              </>
+            )}
+          </>
+        )}
       </p>
 
       {error && <div className="error">{error}</div>}
-      {!photo && !error && <p>Indlæser…</p>}
+      {!photo && !error && <p className="subtle">Indlæser…</p>}
 
       {photo && (
-        <article>
-          {photo.webUrl && (
-            <img
-              src={photo.webUrl}
-              alt={photo.description || 'Strandgaarden billede'}
-              className="gallery-full"
-              width={photo.width ?? undefined}
-              height={photo.height ?? undefined}
-            />
-          )}
-          <h1>{photo.description || <em>(uden beskrivelse)</em>}</h1>
-          <p className="meta">
-            {photo.year ? `${photo.yearApprox ? 'ca. ' : ''}${photo.year} · ` : ''}
-            Hus {photo.houseNumbers.join(', ')}
-            {photo.width && photo.height ? ` · ${photo.width}×${photo.height}px` : ''}
-          </p>
-          {photo.whoInPhoto && (
-            <p>
-              <strong>Hvem er på billedet:</strong> {photo.whoInPhoto}
+        <div className="photo-layout">
+          <figure className="photo-frame">
+            {photo.webUrl ? (
+              <img
+                src={photo.webUrl}
+                alt={photo.description || 'Strandgaarden billede'}
+                className="gallery-full"
+                width={photo.width ?? undefined}
+                height={photo.height ?? undefined}
+              />
+            ) : (
+              <div className="photo-frame-placeholder">Billedet behandles</div>
+            )}
+          </figure>
+
+          <aside className="photo-meta">
+            <p className="eyebrow">Strandgaardens arkiv</p>
+            <p className="photo-year">
+              {photo.yearApprox && photo.year && <em>ca.</em>}
+              {photo.year ?? '—'}
             </p>
-          )}
-          {photo.persons.length > 0 && (
-            <div style={{ margin: '0.5rem 0' }}>
-              <strong style={{ marginRight: '0.5rem' }}>Tags:</strong>
-              <div className="person-chips" style={{ display: 'inline-flex', margin: 0 }}>
-                {photo.persons.map((p) => (
-                  <button
-                    key={p.slug}
-                    type="button"
-                    className="person-chip"
-                    onClick={() => navigate(`/galleri?person=${encodeURIComponent(p.slug)}`)}
-                    title={`Vis alle billeder af ${p.displayName}`}
-                  >
-                    {p.displayName}
-                  </button>
-                ))}
+            <p className="photo-meta-line">
+              {photo.houseNumbers.length > 0 ? `Hus ${photo.houseNumbers.join(' · ')}` : 'Hus ukendt'}
+              {photo.width && photo.height ? ` — ${photo.width}×${photo.height}px` : ''}
+            </p>
+            {photo.description && <p className="photo-desc">{photo.description}</p>}
+
+            {photo.whoInPhoto && (
+              <div className="photo-section">
+                <p className="photo-section-title">Hvem er på billedet</p>
+                <p style={{ margin: 0, color: 'var(--ink-soft)' }}>{photo.whoInPhoto}</p>
               </div>
+            )}
+
+            {photo.persons.length > 0 && (
+              <div className="photo-section">
+                <p className="photo-section-title">Personer på billedet</p>
+                <div className="person-chips">
+                  {photo.persons.map((p) => (
+                    <button
+                      key={p.slug}
+                      type="button"
+                      className="person-chip"
+                      onClick={() => navigate(`/galleri?person=${encodeURIComponent(p.slug)}`)}
+                      title={`Vis alle billeder af ${p.displayName}`}
+                    >
+                      {p.displayName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="photo-actions">
+              {photo.downloadUrl && (
+                <a href={photo.downloadUrl} className="btn-primary">
+                  Hent billedet <span className="arrow">↓</span>
+                </a>
+              )}
+              <span className="link-muted" style={{ cursor: 'default' }}>
+                Anmod om fjernelse — kommer snart
+              </span>
             </div>
-          )}
-          {photo.downloadUrl && (
-            <p style={{ marginTop: '1rem' }}>
-              <a href={photo.downloadUrl} className="download-btn">
-                Hent billedet (JPEG)
-              </a>
-            </p>
-          )}
-        </article>
+          </aside>
+        </div>
       )}
     </main>
   );

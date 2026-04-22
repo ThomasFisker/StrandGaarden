@@ -100,8 +100,9 @@ export const UploadPage = () => {
 
   return (
     <main className="content">
-      <h1>Upload billede</h1>
-      <p className="subtle">
+      <p className="eyebrow">Bidrag til arkivet</p>
+      <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>Upload <em>billede</em></h1>
+      <p className="lede">
         Udfyld så meget du kan. Udvalget kigger billederne igennem, før de vises på siden eller kommer med i bogen.
       </p>
 
@@ -194,12 +195,12 @@ export const UploadPage = () => {
 
         {error && <div className="error">{error}</div>}
 
-        <button type="submit" disabled={submitting}>
+        <button type="submit" className="btn-primary" disabled={submitting}>
           {submitting
             ? progress !== null
               ? `Sender… ${Math.round(progress * 100)}%`
               : 'Sender…'
-            : 'Send billede'}
+            : <>Send billede <span className="arrow">→</span></>}
         </button>
       </form>
     </main>
