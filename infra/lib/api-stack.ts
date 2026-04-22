@@ -115,6 +115,17 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(reviewDecideFn);
 
+    const photosDeleteFn = new lambdaNodejs.NodejsFunction(this, 'PhotosDeleteFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'photos-delete.ts'),
+      functionName: `strandgaarden-${props.stage}-photos-delete`,
+      description: 'Admin-only: hard-delete a photo (original + derivatives + DDB rows)',
+      timeout: cdk.Duration.seconds(30),
+    });
+    props.table.grantReadWriteData(photosDeleteFn);
+    props.originalsBucket.grantDelete(photosDeleteFn);
+    props.derivedBucket.grantDelete(photosDeleteFn);
+
     const galleryListFn = new lambdaNodejs.NodejsFunction(this, 'GalleryListFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'gallery-list.ts'),
@@ -301,6 +312,13 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/{id}/decision',
       methods: [apigwv2.HttpMethod.PATCH],
       integration: new apigwIntegrations.HttpLambdaIntegration('ReviewDecideIntegration', reviewDecideFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/photos/{id}',
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: new apigwIntegrations.HttpLambdaIntegration('PhotosDeleteIntegration', photosDeleteFn),
       authorizer: jwtAuthorizer,
     });
 

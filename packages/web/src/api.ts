@@ -92,6 +92,14 @@ export const getReviewQueue = async (idToken: string): Promise<ReviewPhoto[]> =>
   return body.items ?? [];
 };
 
+export const deletePhoto = async (idToken: string, photoId: string): Promise<void> => {
+  const r = await fetch(`${apiBase}/photos/${encodeURIComponent(photoId)}`, {
+    method: 'DELETE',
+    headers: bearer(idToken),
+  });
+  if (!r.ok) return throwFromResponse(r, `photos/${photoId} DELETE`);
+};
+
 export const decidePhoto = async (
   idToken: string,
   photoId: string,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { decidePhoto, getReviewQueue } from '../api';
+import { decidePhoto, deletePhoto, getReviewQueue } from '../api';
 import { useSession } from '../session';
 import type { ReviewPhoto } from '../types';
 
@@ -26,6 +26,12 @@ interface DraftFlags {
   error: string | null;
 }
 
+interface DeleteState {
+  confirming: boolean;
+  deleting: boolean;
+  error: string | null;
+}
+
 const initialDraft = (p: ReviewPhoto): DraftFlags => ({
   web: p.visibilityWeb,
   book: p.visibilityBook,
@@ -34,11 +40,14 @@ const initialDraft = (p: ReviewPhoto): DraftFlags => ({
   error: null,
 });
 
+const initialDelete = (): DeleteState => ({ confirming: false, deleting: false, error: null });
+
 export const ReviewPage = () => {
   const { session } = useSession();
   const [photos, setPhotos] = useState<ReviewPhoto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftFlags>>({});
+  const [deletes, setDeletes] = useState<Record<string, DeleteState>>({});
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -47,6 +56,7 @@ export const ReviewPage = () => {
       const items = await getReviewQueue(session.idToken);
       setPhotos(items);
       setDrafts(Object.fromEntries(items.map((p) => [p.photoId, initialDraft(p)])));
+      setDeletes(Object.fromEntries(items.map((p) => [p.photoId, initialDelete()])));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kunne ikke hente køen');
     }
@@ -89,6 +99,35 @@ export const ReviewPage = () => {
     }
   };
 
+  const askDelete = (photoId: string) => {
+    setDeletes((prev) => ({ ...prev, [photoId]: { confirming: true, deleting: false, error: null } }));
+  };
+  const cancelDelete = (photoId: string) => {
+    setDeletes((prev) => ({ ...prev, [photoId]: { confirming: false, deleting: false, error: null } }));
+  };
+  const confirmDelete = async (photoId: string) => {
+    if (!session) return;
+    setDeletes((prev) => ({ ...prev, [photoId]: { confirming: true, deleting: true, error: null } }));
+    try {
+      await deletePhoto(session.idToken, photoId);
+      setPhotos((prev) => (prev ? prev.filter((p) => p.photoId !== photoId) : prev));
+      setDeletes((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+    } catch (e) {
+      setDeletes((prev) => ({
+        ...prev,
+        [photoId]: {
+          confirming: true,
+          deleting: false,
+          error: e instanceof Error ? e.message : 'Sletning mislykkedes',
+        },
+      }));
+    }
+  };
+
   return (
     <main className="content">
       <p className="eyebrow">Udvalgets gennemgang</p>
@@ -110,6 +149,7 @@ export const ReviewPage = () => {
         <div className="photo-grid">
           {photos.map((p) => {
             const d = drafts[p.photoId];
+            const del = deletes[p.photoId] ?? initialDelete();
             if (!d) return null;
             return (
               <article key={p.photoId} className="photo-card">
@@ -178,11 +218,59 @@ export const ReviewPage = () => {
                       </div>
 
                       <div className="review-actions">
-                        <button className="primary" disabled={d.saving} onClick={() => save(p)}>
+                        <button className="primary" disabled={d.saving || del.deleting} onClick={() => save(p)}>
                           {d.saving ? 'Gemmer…' : d.saved ? 'Opdatér beslutning' : 'Gem beslutning'}
                         </button>
                         {d.saved && <span className="ok-inline">Gemt</span>}
+                        {!del.confirming && (
+                          <button
+                            type="button"
+                            className="danger"
+                            disabled={d.saving || del.deleting}
+                            onClick={() => askDelete(p.photoId)}
+                            style={{ marginLeft: 'auto' }}
+                          >
+                            Slet billede
+                          </button>
+                        )}
                       </div>
+
+                      {del.confirming && (
+                        <div
+                          className="delete-confirm"
+                          style={{
+                            marginTop: '0.75rem',
+                            padding: '0.75rem 1rem',
+                            background: 'var(--paper-warm)',
+                            borderLeft: '3px solid var(--danger, #b23a3a)',
+                          }}
+                        >
+                          <p style={{ margin: '0 0 0.5rem' }}>
+                            <strong>Slet billedet for altid?</strong> Original, web-kopi, miniature og
+                            alle historik-spor fjernes. Handlingen kan ikke fortrydes.
+                          </p>
+                          <div style={{ display: 'inline-flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              className="danger"
+                              disabled={del.deleting}
+                              onClick={() => confirmDelete(p.photoId)}
+                            >
+                              {del.deleting ? 'Sletter…' : 'Ja, slet for altid'}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={del.deleting}
+                              onClick={() => cancelDelete(p.photoId)}
+                            >
+                              Fortryd
+                            </button>
+                          </div>
+                          {del.error && (
+                            <div className="error" style={{ marginTop: '0.5rem' }}>{del.error}</div>
+                          )}
+                        </div>
+                      )}
 
                       {d.error && <div className="error" style={{ marginTop: '0.5rem' }}>{d.error}</div>}
                     </div>
