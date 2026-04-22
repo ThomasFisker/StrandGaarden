@@ -119,10 +119,34 @@ export interface GalleryList {
   filters: { years: number[]; houses: number[]; persons: GalleryPersonOption[] };
 }
 
+export interface AttributedAddendum {
+  commentId: string;
+  body: string;
+  authorLoginName: string;
+  createdAt: string;
+}
+
 export interface GalleryDetail extends GalleryItem {
   visibilityBook: boolean;
   webUrl: string | null;
   downloadUrl: string | null;
+  approvedComments: AttributedAddendum[];
+}
+
+export interface AdminCommentRow {
+  commentId: string;
+  photoId: string;
+  body: string;
+  authorLoginName: string;
+  authorEmail: string;
+  authorRole: string;
+  createdAt: string;
+  thumbnailUrl: string | null;
+  photoDescription: string;
+  photoPersonSlugs: string[];
+  photoYear: number | null;
+  photoYearApprox: boolean;
+  photoHouseNumbers: number[];
 }
 
 export type UserRole = 'admin' | 'member' | 'viewer';

@@ -135,6 +135,43 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(photosSetHelpWantedFn);
 
+    const commentsCreateFn = new lambdaNodejs.NodejsFunction(this, 'CommentsCreateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'comments-create.ts'),
+      functionName: `strandgaarden-${props.stage}-comments-create`,
+      description: 'Any authed user: post a comment on a gallery-visible photo (pending)',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(commentsCreateFn);
+
+    const commentsListPendingFn = new lambdaNodejs.NodejsFunction(this, 'CommentsListPendingFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'comments-list-pending.ts'),
+      functionName: `strandgaarden-${props.stage}-comments-list-pending`,
+      description: 'Admin-only: list pending comments with joined photo context + thumbnail URLs',
+      timeout: cdk.Duration.seconds(20),
+    });
+    props.table.grantReadData(commentsListPendingFn);
+    props.derivedBucket.grantRead(commentsListPendingFn);
+
+    const commentsMergeFn = new lambdaNodejs.NodejsFunction(this, 'CommentsMergeFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'comments-merge.ts'),
+      functionName: `strandgaarden-${props.stage}-comments-merge`,
+      description: 'Admin-only: apply edited description+persons, mark comment merged or shown',
+      timeout: cdk.Duration.seconds(15),
+    });
+    props.table.grantReadWriteData(commentsMergeFn);
+
+    const commentsRejectFn = new lambdaNodejs.NodejsFunction(this, 'CommentsRejectFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'comments-reject.ts'),
+      functionName: `strandgaarden-${props.stage}-comments-reject`,
+      description: 'Admin-only: hard-delete a pending or shown comment',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(commentsRejectFn);
+
     const galleryListFn = new lambdaNodejs.NodejsFunction(this, 'GalleryListFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'gallery-list.ts'),
@@ -335,6 +372,31 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/{id}/help-wanted',
       methods: [apigwv2.HttpMethod.PATCH],
       integration: new apigwIntegrations.HttpLambdaIntegration('PhotosSetHelpWantedIntegration', photosSetHelpWantedFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/photos/{id}/comments',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('CommentsCreateIntegration', commentsCreateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/comments',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('CommentsListPendingIntegration', commentsListPendingFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/photos/{photoId}/comments/{commentId}/merge',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('CommentsMergeIntegration', commentsMergeFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/photos/{photoId}/comments/{commentId}',
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: new apigwIntegrations.HttpLambdaIntegration('CommentsRejectIntegration', commentsRejectFn),
       authorizer: jwtAuthorizer,
     });
 

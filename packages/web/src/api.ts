@@ -1,4 +1,5 @@
 import type {
+  AdminCommentRow,
   AdminPerson,
   AdminUser,
   DecisionResponse,
@@ -6,6 +7,7 @@ import type {
   GalleryList,
   MyPhoto,
   PersonTag,
+  PersonTagInput,
   ReviewPhoto,
   UploadMetadata,
   UploadUrlResponse,
@@ -146,6 +148,56 @@ export const getGalleryPhoto = async (idToken: string, photoId: string): Promise
   const r = await fetch(`${apiBase}/gallery/${encodeURIComponent(photoId)}`, { headers: bearer(idToken) });
   if (!r.ok) return throwFromResponse(r, `gallery/${photoId}`);
   return r.json();
+};
+
+export const postComment = async (
+  idToken: string,
+  photoId: string,
+  body: string,
+): Promise<{ commentId: string }> => {
+  const r = await fetch(`${apiBase}/photos/${encodeURIComponent(photoId)}/comments`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ body }),
+  });
+  if (!r.ok) return throwFromResponse(r, `photos/${photoId}/comments POST`);
+  return r.json();
+};
+
+export const listPendingComments = async (idToken: string): Promise<AdminCommentRow[]> => {
+  const r = await fetch(`${apiBase}/comments?status=pending`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'comments pending');
+  const b = (await r.json()) as { items: AdminCommentRow[] };
+  return b.items ?? [];
+};
+
+export const mergeComment = async (
+  idToken: string,
+  photoId: string,
+  commentId: string,
+  input: { description: string; taggedPersons: PersonTagInput[]; keepAsAddendum: boolean },
+): Promise<void> => {
+  const r = await fetch(
+    `${apiBase}/photos/${encodeURIComponent(photoId)}/comments/${encodeURIComponent(commentId)}/merge`,
+    {
+      method: 'POST',
+      headers: jsonHeaders(idToken),
+      body: JSON.stringify(input),
+    },
+  );
+  if (!r.ok) return throwFromResponse(r, `merge comment ${commentId}`);
+};
+
+export const rejectComment = async (
+  idToken: string,
+  photoId: string,
+  commentId: string,
+): Promise<void> => {
+  const r = await fetch(
+    `${apiBase}/photos/${encodeURIComponent(photoId)}/comments/${encodeURIComponent(commentId)}`,
+    { method: 'DELETE', headers: bearer(idToken) },
+  );
+  if (!r.ok && r.status !== 204) return throwFromResponse(r, `reject comment ${commentId}`);
 };
 
 export const listUsers = async (idToken: string): Promise<AdminUser[]> => {

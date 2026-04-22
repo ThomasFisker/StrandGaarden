@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getGalleryPhoto } from '../api';
+import { getGalleryPhoto, postComment } from '../api';
 import { useSession } from '../session';
 import type { GalleryDetail } from '../types';
+
+const COMMENT_MAX = 2000;
+
+const prettyMonth = (iso: string): string => {
+  try {
+    return new Date(iso).toLocaleDateString('da-DK', { month: 'short', year: 'numeric' });
+  } catch {
+    return iso;
+  }
+};
 
 export const GalleryPhotoPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -10,6 +20,31 @@ export const GalleryPhotoPage = () => {
   const navigate = useNavigate();
   const [photo, setPhoto] = useState<GalleryDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [commentBody, setCommentBody] = useState('');
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentSent, setCommentSent] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+
+  const submitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session || !photo) return;
+    const body = commentBody.trim();
+    if (!body) {
+      setCommentError('Skriv en kommentar først.');
+      return;
+    }
+    setCommentSubmitting(true);
+    setCommentError(null);
+    try {
+      await postComment(session.idToken, photo.photoId, body);
+      setCommentBody('');
+      setCommentSent(true);
+    } catch (err) {
+      setCommentError(err instanceof Error ? err.message : 'Kunne ikke sende kommentaren');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!session || !id) return;
@@ -109,6 +144,22 @@ export const GalleryPhotoPage = () => {
               </div>
             )}
 
+            {photo.approvedComments.length > 0 && (
+              <div className="photo-section">
+                <p className="photo-section-title">Tilføjelser fra andre</p>
+                <ul className="comment-addenda">
+                  {photo.approvedComments.map((c) => (
+                    <li key={c.commentId} className="comment-addendum">
+                      <p>{c.body}</p>
+                      <p className="attribution">
+                        — {c.authorLoginName || 'ukendt'}, {prettyMonth(c.createdAt)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="photo-actions">
               {photo.downloadUrl && (
                 <a href={photo.downloadUrl} className="btn-primary">
@@ -121,6 +172,53 @@ export const GalleryPhotoPage = () => {
             </div>
           </aside>
         </div>
+      )}
+
+      {photo && (
+        <section className="comment-card">
+          <p className="eyebrow">Del din viden</p>
+          <h2 className="comment-heading">
+            Kender du <em>nogen</em> på billedet? Har du en historie?
+          </h2>
+          <p className="lede comment-lede">
+            Skriv en kommentar — udvalget kigger den igennem og kan tilføje den til billedet.
+          </p>
+          {commentSent ? (
+            <div className="comment-thanks">
+              <p><strong>Tak!</strong> Din kommentar er sendt til udvalget.</p>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => {
+                  setCommentSent(false);
+                  setCommentBody('');
+                }}
+              >
+                Skriv en kommentar til
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={submitComment}>
+              <div className="field">
+                <label htmlFor="comment-body" className="sr-only">Kommentar</label>
+                <textarea
+                  id="comment-body"
+                  rows={5}
+                  maxLength={COMMENT_MAX}
+                  value={commentBody}
+                  onChange={(e) => setCommentBody(e.target.value)}
+                  placeholder="F.eks. 'Manden med pibe er min farfar Hans Jensen.' eller en historie om billedet."
+                  disabled={commentSubmitting}
+                />
+                <div className="help">{commentBody.length}/{COMMENT_MAX} tegn</div>
+              </div>
+              {commentError && <div className="error">{commentError}</div>}
+              <button type="submit" className="btn-primary" disabled={commentSubmitting}>
+                {commentSubmitting ? 'Sender…' : <>Send til udvalget <span className="arrow">→</span></>}
+              </button>
+            </form>
+          )}
+        </section>
       )}
     </main>
   );

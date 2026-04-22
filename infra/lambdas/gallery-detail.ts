@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, BatchGetCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, BatchGetCommand, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PERSON_SK_PREFIX, PERSONLIST_PK } from './persons-shared';
@@ -87,6 +87,23 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     persons.sort((a, b) => a.displayName.localeCompare(b.displayName, 'da'));
   }
 
+  const commentsQuery = await ddb.send(
+    new QueryCommand({
+      TableName: tableName,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      ExpressionAttributeValues: { ':pk': `PHOTO#${photoId}`, ':sk': 'COMMENT#' },
+    }),
+  );
+  const approvedComments = (commentsQuery.Items ?? [])
+    .filter((c) => c.status === 'shown')
+    .map((c) => ({
+      commentId: String(c.commentId ?? ''),
+      body: String(c.body ?? ''),
+      authorLoginName: typeof c.authorLoginName === 'string' ? c.authorLoginName : '',
+      createdAt: String(c.createdAt ?? ''),
+    }))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
   return json(200, {
     photoId: String(item.photoId),
     description: String(item.description ?? ''),
@@ -103,5 +120,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     thumbnailUrl,
     downloadUrl,
     persons,
+    approvedComments,
   });
 };
