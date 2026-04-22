@@ -14,6 +14,7 @@ const userPoolId = process.env.USER_POOL_ID!;
 const cognito = new CognitoIdentityProviderClient({ region });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const LOGIN_NAME_RE = /^[A-Za-zÆØÅæøå0-9 ._-]{2,30}$/;
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   if (!requireAdmin(event)) return json(403, { error: 'Admin only' });
@@ -26,11 +27,15 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   }
 
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+  const loginName = typeof body.loginName === 'string' ? body.loginName.trim() : '';
   const group = body.group as string;
   const initialPassword = typeof body.initialPassword === 'string' ? body.initialPassword : '';
 
   const errors: string[] = [];
   if (!email || !EMAIL_RE.test(email)) errors.push('Valid email required');
+  if (!loginName || !LOGIN_NAME_RE.test(loginName)) {
+    errors.push('loginName must be 2–30 chars (letters, digits, space, . _ -)');
+  }
   if (!ALLOWED_GROUPS.includes(group as AllowedGroup)) errors.push(`group must be one of: ${ALLOWED_GROUPS.join(', ')}`);
   if (initialPassword.length < 8) errors.push('initialPassword must be at least 8 characters');
   if (errors.length) return json(400, { error: 'Validation failed', details: errors });
@@ -43,6 +48,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         UserAttributes: [
           { Name: 'email', Value: email },
           { Name: 'email_verified', Value: 'true' },
+          { Name: 'preferred_username', Value: loginName },
         ],
         MessageAction: 'SUPPRESS',
       }),
@@ -71,5 +77,5 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     }),
   );
 
-  return json(201, { username: email, email, group });
+  return json(201, { username: email, email, loginName, group });
 };

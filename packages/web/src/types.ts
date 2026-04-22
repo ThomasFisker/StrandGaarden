@@ -128,6 +128,7 @@ export interface AdminUser {
   username: string;
   sub: string;
   email: string;
+  loginName: string;
   status: string;
   enabled: boolean;
   createdAt: string | null;

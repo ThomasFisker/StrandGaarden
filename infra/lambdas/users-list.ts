@@ -36,6 +36,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         username,
         sub: attrOf(u, 'sub') ?? '',
         email: attrOf(u, 'email') ?? '',
+        loginName: attrOf(u, 'preferred_username') ?? '',
         status: u.UserStatus ?? '',
         enabled: u.Enabled === true,
         createdAt: u.UserCreateDate ? new Date(u.UserCreateDate).toISOString() : null,

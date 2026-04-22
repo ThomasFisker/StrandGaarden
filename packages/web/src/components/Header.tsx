@@ -14,9 +14,11 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
   const isAdmin = claims.groups.includes('admin');
   return (
     <header className="site">
-      <div className="inner">
-        <a href="/" className="brand">Strandgaarden 100 år</a>
-        <nav>
+      <div className="site-inner">
+        <a href="/" className="wordmark">
+          Strandgaarden <em>100 år</em>
+        </a>
+        <nav className="primary">
           <NavLink to="/galleri" className={({ isActive }) => (isActive ? 'active' : undefined)}>
             Galleri
           </NavLink>
@@ -47,7 +49,7 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
           )}
         </nav>
         <div className="me">
-          <span>{claims.email ?? 'ukendt'}</span>
+          <span>{claims.loginName ?? claims.email ?? 'ukendt'}</span>
           <span className="role-badge">{primaryRole(claims.groups)}</span>
           <button
             onClick={() => {

@@ -136,8 +136,8 @@ export const listUsers = async (idToken: string): Promise<AdminUser[]> => {
 
 export const createUser = async (
   idToken: string,
-  input: { email: string; group: UserRole; initialPassword: string },
-): Promise<{ username: string; email: string; group: UserRole }> => {
+  input: { email: string; loginName: string; group: UserRole; initialPassword: string },
+): Promise<{ username: string; email: string; loginName: string; group: UserRole }> => {
   const r = await fetch(`${apiBase}/users`, {
     method: 'POST',
     headers: jsonHeaders(idToken),
@@ -158,6 +158,32 @@ export const updateUserGroup = async (
     body: JSON.stringify({ group }),
   });
   if (!r.ok) return throwFromResponse(r, `users/${username}/groups`);
+};
+
+export const updateUserLoginName = async (
+  idToken: string,
+  username: string,
+  loginName: string,
+): Promise<void> => {
+  const r = await fetch(`${apiBase}/users/${encodeURIComponent(username)}/login-name`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ loginName }),
+  });
+  if (!r.ok) return throwFromResponse(r, `users/${username}/login-name`);
+};
+
+export const resetUserPassword = async (
+  idToken: string,
+  username: string,
+  newPassword: string,
+): Promise<void> => {
+  const r = await fetch(`${apiBase}/users/${encodeURIComponent(username)}/password`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ newPassword }),
+  });
+  if (!r.ok) return throwFromResponse(r, `users/${username}/password`);
 };
 
 export const deleteUser = async (idToken: string, username: string): Promise<void> => {

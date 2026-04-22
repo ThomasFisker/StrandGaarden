@@ -161,6 +161,18 @@ export class ApiStack extends cdk.Stack {
       functionName: `strandgaarden-${props.stage}-users-update-group`,
       description: 'Admin-only: move a user to a different role group',
     });
+    const usersUpdateNameFn = new lambdaNodejs.NodejsFunction(this, 'UsersUpdateNameFn', {
+      ...userMgmtFnProps,
+      entry: path.join(lambdaDir, 'users-update-name.ts'),
+      functionName: `strandgaarden-${props.stage}-users-update-name`,
+      description: 'Admin-only: set a user\'s display name (preferred_username)',
+    });
+    const usersResetPasswordFn = new lambdaNodejs.NodejsFunction(this, 'UsersResetPasswordFn', {
+      ...userMgmtFnProps,
+      entry: path.join(lambdaDir, 'users-reset-password.ts'),
+      functionName: `strandgaarden-${props.stage}-users-reset-password`,
+      description: 'Admin-only: set a permanent new password for a user',
+    });
     const usersDeleteFn = new lambdaNodejs.NodejsFunction(this, 'UsersDeleteFn', {
       ...userMgmtFnProps,
       entry: path.join(lambdaDir, 'users-delete.ts'),
@@ -220,12 +232,15 @@ export class ApiStack extends cdk.Stack {
         'cognito-idp:AdminAddUserToGroup',
         'cognito-idp:AdminRemoveUserFromGroup',
         'cognito-idp:AdminDeleteUser',
+        'cognito-idp:AdminUpdateUserAttributes',
       ],
       resources: [props.userPool.userPoolArn],
     });
     usersListFn.addToRolePolicy(userPoolAdminActions);
     usersCreateFn.addToRolePolicy(userPoolAdminActions);
     usersUpdateGroupFn.addToRolePolicy(userPoolAdminActions);
+    usersUpdateNameFn.addToRolePolicy(userPoolAdminActions);
+    usersResetPasswordFn.addToRolePolicy(userPoolAdminActions);
     usersDeleteFn.addToRolePolicy(userPoolAdminActions);
 
     const jwtAuthorizer = new apigwAuthz.HttpJwtAuthorizer(
@@ -319,6 +334,18 @@ export class ApiStack extends cdk.Stack {
       path: '/users/{username}/groups',
       methods: [apigwv2.HttpMethod.PATCH],
       integration: new apigwIntegrations.HttpLambdaIntegration('UsersUpdateGroupIntegration', usersUpdateGroupFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/users/{username}/login-name',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('UsersUpdateNameIntegration', usersUpdateNameFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/users/{username}/password',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('UsersResetPasswordIntegration', usersResetPasswordFn),
       authorizer: jwtAuthorizer,
     });
     this.httpApi.addRoutes({

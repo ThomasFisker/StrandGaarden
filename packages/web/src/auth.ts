@@ -38,6 +38,7 @@ export const getCurrentSession = (): Promise<CognitoUserSession | null> =>
 export interface Claims {
   sub: string;
   email?: string;
+  loginName?: string;
   groups: string[];
 }
 
@@ -49,5 +50,10 @@ export const claimsFromSession = (session: CognitoUserSession): Claims => {
     : typeof rawGroups === 'string'
       ? [rawGroups]
       : [];
-  return { sub: String(p.sub), email: p.email ? String(p.email) : undefined, groups };
+  return {
+    sub: String(p.sub),
+    email: p.email ? String(p.email) : undefined,
+    loginName: p.preferred_username ? String(p.preferred_username) : undefined,
+    groups,
+  };
 };
