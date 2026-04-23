@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { decidePhoto, deletePhoto, getReviewQueue, setHelpWanted } from '../api';
 import { useSession } from '../session';
-import type { ReviewPhoto } from '../types';
+import { formatShortId, type ReviewPhoto } from '../types';
 
 const prettyDate = (iso: string | null): string => {
   if (!iso) return '—';
@@ -211,7 +211,7 @@ export const ReviewPage = () => {
                       </div>
                     )}
                     <p className="meta">
-                      Sendt af {p.uploaderEmail ?? 'ukendt'} · fil {p.originalFilename} · {prettyDate(p.processedAt ?? p.createdAt)}
+                      <span className="short-id">{formatShortId(p.shortId)}</span> · Sendt af {p.uploaderEmail ?? 'ukendt'} · fil {p.originalFilename} · {prettyDate(p.processedAt ?? p.createdAt)}
                       {p.width && p.height ? <> · {p.width}×{p.height}px</> : null}
                     </p>
 

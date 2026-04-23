@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { normalizeDisplayName, PERSON_SK_PREFIX, PERSONLIST_PK, slugify } from './persons-shared';
@@ -162,6 +162,19 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const s3Key = `photos/${photoId}.${ext}`;
   const createdAt = new Date().toISOString();
 
+  // Atomic increment of the photo counter — concurrent uploads each get a
+  // unique sequential short ID. Formatted as ID-00042 for human reference.
+  const counter = await ddb.send(
+    new UpdateCommand({
+      TableName: tableName,
+      Key: { PK: 'COUNTER#PHOTOID', SK: 'META' },
+      UpdateExpression: 'ADD nextId :one',
+      ExpressionAttributeValues: { ':one': 1 },
+      ReturnValues: 'UPDATED_NEW',
+    }),
+  );
+  const shortId = Number(counter.Attributes?.nextId ?? 0);
+
   await ddb.send(
     new PutCommand({
       TableName: tableName,
@@ -171,6 +184,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         entity: 'Photo',
         status: 'Uploaded',
         photoId,
+        shortId,
         s3Key,
         originalFilename: filename,
         contentType,

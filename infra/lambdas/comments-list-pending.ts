@@ -82,6 +82,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         authorRole: typeof c.authorRole === 'string' ? c.authorRole : '',
         createdAt: String(c.createdAt ?? ''),
         thumbnailUrl,
+        photoShortId:
+          photo && photo.shortId !== null && photo.shortId !== undefined ? Number(photo.shortId) : null,
         photoDescription: photo ? String(photo.description ?? '') : '',
         photoPersonSlugs:
           photo && Array.isArray(photo.taggedPersonSlugs) ? (photo.taggedPersonSlugs as string[]) : [],

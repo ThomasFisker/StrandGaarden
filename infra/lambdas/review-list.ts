@@ -81,6 +81,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       ]);
       return {
         photoId: String(item.photoId),
+        shortId: item.shortId !== null && item.shortId !== undefined ? Number(item.shortId) : null,
         status: String(item.status),
         createdAt: String(item.createdAt),
         processedAt: item.processedAt ? String(item.processedAt) : null,

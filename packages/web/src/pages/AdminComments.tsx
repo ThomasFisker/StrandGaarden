@@ -3,7 +3,12 @@ import { Link } from 'react-router-dom';
 import { PersonTagInput } from '../components/PersonTagInput';
 import { listPendingComments, listPersons, mergeComment, rejectComment } from '../api';
 import { useSession } from '../session';
-import type { AdminCommentRow, AdminPerson, PersonTagInput as PersonTagValue } from '../types';
+import {
+  formatShortId,
+  type AdminCommentRow,
+  type AdminPerson,
+  type PersonTagInput as PersonTagValue,
+} from '../types';
 
 type RowMode = 'idle' | 'editing' | 'shown' | 'rejecting' | 'saving' | 'done';
 
@@ -187,6 +192,7 @@ export const AdminCommentsPage = () => {
                   )}
                   <div className="comment-row-context">
                     <p className="photo-meta-line">
+                      <span className="short-id">{formatShortId(row.photoShortId)}</span> ·{' '}
                       {row.photoYear ? `${row.photoYearApprox ? 'ca. ' : ''}${row.photoYear} · ` : ''}
                       {row.photoHouseNumbers.length > 0 ? `Hus ${row.photoHouseNumbers.join(' · ')}` : 'Uden hus'}
                     </p>

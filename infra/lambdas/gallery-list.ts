@@ -114,6 +114,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         : null;
       return {
         photoId: String(item.photoId),
+        shortId: item.shortId !== null && item.shortId !== undefined ? Number(item.shortId) : null,
         description: String(item.description ?? ''),
         whoInPhoto: String(item.whoInPhoto ?? ''),
         year: item.year === null || item.year === undefined ? null : Number(item.year),

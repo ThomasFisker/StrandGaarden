@@ -42,6 +42,7 @@ export interface UploadUrlResponse {
 
 export interface MyPhoto {
   photoId: string;
+  shortId: number | null;
   s3Key: string;
   status: string;
   createdAt: string;
@@ -65,6 +66,7 @@ export interface MyPhoto {
 
 export interface ReviewPhoto {
   photoId: string;
+  shortId: number | null;
   status: string;
   createdAt: string;
   processedAt: string | null;
@@ -96,6 +98,7 @@ export interface DecisionResponse {
 
 export interface GalleryItem {
   photoId: string;
+  shortId: number | null;
   description: string;
   whoInPhoto: string;
   year: number | null;
@@ -136,6 +139,7 @@ export interface GalleryDetail extends GalleryItem {
 export interface AdminCommentRow {
   commentId: string;
   photoId: string;
+  photoShortId: number | null;
   body: string;
   authorLoginName: string;
   authorEmail: string;
@@ -173,3 +177,8 @@ export const ACCEPTED_MIME: Record<string, string> = {
 
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 export const HOUSES = Array.from({ length: 23 }, (_, i) => i + 1);
+
+/** Human-readable short ID like "ID-00042". Used when referring to a photo
+ * verbally or in chat — easier than a UUID. */
+export const formatShortId = (n: number | null | undefined): string =>
+  n === null || n === undefined ? 'ID-?????' : `ID-${String(n).padStart(5, '0')}`;

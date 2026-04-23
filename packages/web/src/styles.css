@@ -1499,3 +1499,22 @@ main > *:nth-child(5) { animation-delay: 280ms; }
   border-radius: 2px;
 }
 .comment-reject-confirm p { margin: 0 0 0.5rem; }
+
+/* ---------- Human-readable short ID (ID-00042) ---------- */
+
+.short-id {
+  font-family: 'JetBrains Mono', Menlo, Consolas, monospace;
+  font-size: 0.8em;
+  letter-spacing: 0.02em;
+  color: var(--copper-deep);
+  background: var(--paper-warm);
+  padding: 0.05em 0.4em;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.eyebrow .short-id {
+  background: transparent;
+  padding: 0;
+  font-weight: 500;
+}

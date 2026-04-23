@@ -27,6 +27,7 @@ interface PersonTag {
 
 interface PhotoRow {
   photoId: string;
+  shortId: number | null;
   s3Key: string;
   status: string;
   createdAt: string;
@@ -103,6 +104,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         : null;
       rows.push({
         photoId: String(item.photoId),
+        shortId: item.shortId !== null && item.shortId !== undefined ? Number(item.shortId) : null,
         s3Key: String(item.s3Key),
         status: String(item.status),
         createdAt: String(item.createdAt),

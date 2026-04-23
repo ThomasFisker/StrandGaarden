@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getMyPhotos, setHelpWanted } from '../api';
 import { useSession } from '../session';
-import type { MyPhoto } from '../types';
+import { formatShortId, type MyPhoto } from '../types';
 
 const STATUS_LABEL: Record<string, string> = {
   Uploaded: 'Afventer gennemgang',
@@ -146,7 +146,7 @@ export const MinePage = () => {
                     </div>
                   )}
                   <p className="meta">
-                    Fil: {p.originalFilename} · sendt {prettyDate(p.createdAt)}
+                    <span className="short-id">{formatShortId(p.shortId)}</span> · Fil: {p.originalFilename} · sendt {prettyDate(p.createdAt)}
                   </p>
                   {p.processingError && (
                     <p className="meta" style={{ color: 'var(--danger)' }}>

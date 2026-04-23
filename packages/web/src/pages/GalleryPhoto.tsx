@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getGalleryPhoto, postComment } from '../api';
 import { useSession } from '../session';
-import type { GalleryDetail } from '../types';
+import { formatShortId, type GalleryDetail } from '../types';
 
 const COMMENT_MAX = 2000;
 
@@ -107,7 +107,9 @@ export const GalleryPhotoPage = () => {
           </figure>
 
           <aside className="photo-meta">
-            <p className="eyebrow">Strandgaardens arkiv</p>
+            <p className="eyebrow">
+              Strandgaardens arkiv <span className="short-id">· {formatShortId(photo.shortId)}</span>
+            </p>
             <p className="photo-year">
               {photo.yearApprox && photo.year && <em>ca.</em>}
               {photo.year ?? '—'}
