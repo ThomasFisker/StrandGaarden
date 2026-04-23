@@ -21,10 +21,11 @@ Stack: AWS CDK (TypeScript) · Cognito · API Gateway HTTP API · Lambda
 - **Custom domain** `jubilaeum.strandgaardenis.dk` — pending DNS
   delegation; when it lands, small additive change.
 
-## Implemented (as of 2026-04-22)
+## Implemented (as of 2026-04-23)
 
-Full end-to-end member → committee → viewer flow. Editorial "Coastal
-archival" design system in place.
+Full end-to-end member → committee → viewer flow with comment,
+removal-request, and short-ID features. Editorial "Coastal archival"
+design system in place.
 
 - **Infra stacks (all in `eu-west-1`):** Foundation, Ci, Storage, Data,
   Auth, Api, ImagePipeline, Hosting.
@@ -70,30 +71,60 @@ archival" design system in place.
 - **Controlled person list:** approved + pending PERSON rows; member
   autocomplete at upload, admin CRUD at /admin/personer (godkend, afvis,
   omdøb, slet). Delete scrubs the slug from every tagged photo first.
+- **Admin photo delete (Review page):** `DELETE /photos/{id}` — scrubs
+  original + web + thumb from S3 and every DDB row under `PHOTO#<id>`.
+  Red "Slet billede" button per review card with inline confirm panel.
+- **Hjælp søges flag:** boolean on PHOTO META. Uploader checkbox at
+  upload ("Jeg kender ikke alle på billedet"); uploader/admin toggle on
+  /mine + /review; copper corner ribbon on Gallery tiles + warm banner
+  on photo detail. `PATCH /photos/{id}/help-wanted` (uploader or admin).
+- **Viewer comments + committee merge:** COMMENT item under
+  `PHOTO#<id>`, status pending/merged/shown/rejected. Any authed user
+  posts via the inline card on the detail page. Admin queue at
+  /admin/kommentarer with three actions per comment: **Flet ind i
+  beskrivelsen** (editor with current description + persons prefilled,
+  full PersonTagInput), **Vis som tilføjelse** (renders as attributed
+  addendum on the detail page with italic Fraunces "— Thomas1, apr.
+  2026"), or **Afvis** (hard-delete). Pending comments live in a
+  dedicated GSI1 partition `COMMENTSTATUS#pending`.
+- **Photo short ID (ID-00042):** atomic counter item
+  (`COUNTER#PHOTOID`, `ADD nextId :1`) assigned at upload time; existing
+  photos backfilled 1..7 by createdAt via
+  `infra/scripts/backfill-short-ids.ts`. Displayed as copper monospace
+  badge on detail + Mine + Review + admin-comments + admin-removals.
+  `formatShortId(n)` helper in types.ts pads to 5 digits.
+- **GDPR removal requests:** REMOVAL item under `PHOTO#<id>`, GSI1
+  partition `REMOVALSTATUS#pending`. Any authed user anmoder via
+  inline form on gallery detail (reason required). Admin queue at
+  /admin/fjernelser with **Godkend — slet for altid** (writes
+  top-level AUDIT row with requestor/approver/reason/decisionNote/
+  shortId BEFORE the S3 + DDB scrub, so the audit survives the
+  photo) or **Afvis** (keeps photo, flips status, drops from pending
+  partition). Single-admin approve, no notification (committee
+  handles comms directly).
 - **CI/CD:** GitHub Actions OIDC role; push to `main` runs
   `npm run build -w @strandgaarden/web` then `cdk deploy --all`.
 
 ## Still to do (priority order)
 
-**Commit pending — first task next session.** The current branch has 20
-modified files + 1 new file (`infra/lambdas/users-reset-password.ts`)
-covering three feature batches, all deployed and smoke-tested but not
-yet committed. Suggested split:
-1. `feat: admin-only login name (preferred_username display)`
-2. `feat: Coastal archival design system + hero images`
-3. `feat: admin password reset (AdminSetUserPassword + inline UI)`
+Working tree is clean (all committed + deployed). Current HEAD is
+`f4f8b0f` on `main`.
 
 **Blocking before real member invites:**
-1. **Removal requests (GDPR).** Anyone (auth or not) submits "please remove
-   this photo"; flows to committee queue; admin hard-deletes (original +
-   derivatives + DDB row + audit).
-2. **Admin photo-removal endpoint + UI.** Hard-delete bad uploads from the
-   Review page today.
-3. **Danish help page** "Sådan bruger du siden".
-4. **SES** for password resets / approval notices / committee emails
+1. **Two committee members test-drive the system.** Email draft in
+   the session transcript; user creates their accounts manually via
+   /admin/users and sends the invite. Goal: catch UX issues before
+   opening to all 21 members.
+2. **Danish help page** "Sådan bruger du siden".
+3. **SES** for password resets / approval notices / committee emails
    (currently Cognito default sender, low quota).
-5. **Shared viewer credential.** One-off `AdminCreateUser` via /admin/users
+4. **Shared viewer credential.** One-off `AdminCreateUser` via /admin/users
    for the committee's shared viewer login.
+5. **Approve-path smoke test for GDPR removal.** Reject path is
+   browser-tested; approve-path (hard-delete) has been exercised only
+   via the admin photo-delete button (same code). Upload a throwaway
+   photo, submit a removal request, approve it, verify AUDIT row +
+   gone photo. Skipped today to avoid nuking the shared test photo.
 
 **Should-have fairly early:**
 6. Bulk ZIP download of `visibilityBook=true` photos for the printed
@@ -102,14 +133,18 @@ yet committed. Suggested split:
    architecture).
 8. CloudWatch log retention on every Lambda (currently never expire).
 9. Committee can edit photo metadata during review (retag persons, fix
-   typos).
+   typos). Partially covered by comment-merge flow, but there's no
+   standalone edit-photo admin action.
 10. Merge two persons into one.
+11. Pending-count badge on "Kommentarer" / "Fjernelser" nav links
+    (trivial: one more Query per nav render, or push via SSE later).
 
-**Nice-to-have:** audit log viewer, PWA manifest, blurhash LQIP
-placeholder render, enforced server-side upload size limit via
-`createPresignedPost`, member self-edit of own uploads, narrow-viewport
-header overflow, use `horizon-meadow.jpg` as a decorative backdrop
-somewhere (404, help page, empty-gallery state).
+**Nice-to-have:** audit log viewer (top-level `PK=AUDIT` items now
+exist from the GDPR flow), PWA manifest, blurhash LQIP placeholder
+render, enforced server-side upload size limit via `createPresignedPost`,
+member self-edit of own uploads, narrow-viewport header overflow, use
+`horizon-meadow.jpg` as a decorative backdrop somewhere (404, help
+page, empty-gallery state).
 
 **Ops:** prod stage stacks (`-Prod-*`), CloudWatch alarms, automated
 tests. Not urgent.
@@ -163,27 +198,43 @@ verification is the sole test strategy for now.
 ## Resuming tomorrow
 
 1. `cd "C:/Users/thoma/OneDrive - Second Epic/ClaudeProjects/Strandgaarden"`
-2. `git status` — expect ~21 files dirty. Last commit still `2deca98`
-   (docs). All of the dirty files are tested + deployed to the dev URL;
-   see the "Commit pending" block under Still to do for the suggested
-   three-commit split.
-3. Open https://d2wq22ivboh02d.cloudfront.net/ and smoke-test login as
+2. `git status` — expect clean. Last commit `f4f8b0f`
+   (`feat: GDPR removal requests — viewer submit, committee decide`).
+   Previous session shipped 5 commits: admin user management, Coastal
+   design, CLAUDE.md update, admin photo delete, Hjælp søges,
+   viewer+committee comments, short IDs, GDPR removals.
+3. Open https://d2wq22ivboh02d.cloudfront.net/ (hard-refresh if the
+   cached bundle is stale) and smoke-test login as
    `thomas.madsen@secondepic.com` / `Picture1!`. Header should show
-   `Thomas1`. Hero image visible on /login. If all three are true the
-   whole dev environment is reachable.
-4. **First task:** commit the three pending feature batches (see Still to
-   do). After that, recommended next pair: **admin photo-removal + GDPR
-   removal requests** (both small-to-medium; completes the "must-have
-   before invites" list).
-5. One known test-data quirk: Thomas2 (`thomas.f.madsen@outlook.com`)
-   currently has password `ResetTest99!` from a smoke test of the reset
-   flow. Delete the user from /admin/users or reset the password again
-   if this matters.
+   `Thomas1` + "Kommentarer" + "Fjernelser" nav links. Open any gallery
+   photo — eyebrow should read "Strandgaardens arkiv · ID-00006" (or
+   similar). Expected current bundle hash is `index-DDXBsN87.js`.
+4. **Recommended next task:** the committee-member invite email. A
+   Danish draft is in the previous session's transcript (problem →
+   hvad systemet gør → opfordring + link). User wants to create their
+   accounts manually at /admin/users and send. Rest of the Still-to-do
+   list (help page, SES, shared viewer credential, etc.) can wait
+   until after the two testers have kicked the tires.
+5. **Known test-state on dev (not a blocker, just awareness):**
+   - Photo `a04b87ce-…` (ID-00006) had its description overwritten
+     during comment-merge smoke testing ("Sækkevædeløb organiseret
+     af Else Madsen til fødselsdag for Thomas Madsen. Begivenheden
+     fandt sted omkring sankthans 1972 ved Hus 9."). Has one attributed
+     addendum from a test comment, and two rejected removal requests
+     in its history (not visible to users).
+   - Thomas2 (`thomas.f.madsen@outlook.com`) still has password
+     `ResetTest99!` from an earlier smoke test — delete or reset
+     before the real invites go out.
+   - Counter `COUNTER#PHOTOID` is at 7; next upload becomes ID-00008.
 6. If something's broken:
-   - API alive: `curl https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com/health`.
+   - API alive: `curl -sk https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com/health`
+     (use `-k` on this Windows shell — schannel revocation check otherwise fails).
    - Stack statuses: `aws cloudformation list-stacks --profile strandgaarden --region eu-west-1 --query 'StackSummaries[?starts_with(StackName,\`Strandgaarden-\`) && StackStatus!=\`DELETE_COMPLETE\`].{name:StackName,status:StackStatus}'`.
    - Any photos stuck in `Uploaded`: the pipeline Lambda log group is
      `/aws/lambda/strandgaarden-dev-process-image`.
+   - CDK synth EPERM on Windows OneDrive: transient, just retry the
+     `cdk deploy` — it's the `cdk.out/bundling-temp-*` rename hitting
+     a file lock.
 
 Claude will auto-load `CLAUDE.md` (this file) and the
 `memory/project_*.md` entries at session start, so the full context is
