@@ -1,6 +1,7 @@
 import type {
   AdminCommentRow,
   AdminPerson,
+  AdminRemovalRow,
   AdminUser,
   DecisionResponse,
   GalleryDetail,
@@ -198,6 +199,44 @@ export const rejectComment = async (
     { method: 'DELETE', headers: bearer(idToken) },
   );
   if (!r.ok && r.status !== 204) return throwFromResponse(r, `reject comment ${commentId}`);
+};
+
+export const postRemovalRequest = async (
+  idToken: string,
+  photoId: string,
+  reason: string,
+): Promise<{ removalId: string }> => {
+  const r = await fetch(`${apiBase}/photos/${encodeURIComponent(photoId)}/removals`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ reason }),
+  });
+  if (!r.ok) return throwFromResponse(r, `photos/${photoId}/removals POST`);
+  return r.json();
+};
+
+export const listPendingRemovals = async (idToken: string): Promise<AdminRemovalRow[]> => {
+  const r = await fetch(`${apiBase}/removals?status=pending`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'removals pending');
+  const b = (await r.json()) as { items: AdminRemovalRow[] };
+  return b.items ?? [];
+};
+
+export const decideRemoval = async (
+  idToken: string,
+  photoId: string,
+  removalId: string,
+  input: { approved: boolean; note?: string },
+): Promise<void> => {
+  const r = await fetch(
+    `${apiBase}/photos/${encodeURIComponent(photoId)}/removals/${encodeURIComponent(removalId)}/decide`,
+    {
+      method: 'POST',
+      headers: jsonHeaders(idToken),
+      body: JSON.stringify(input),
+    },
+  );
+  if (!r.ok) return throwFromResponse(r, `decide removal ${removalId}`);
 };
 
 export const listUsers = async (idToken: string): Promise<AdminUser[]> => {

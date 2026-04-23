@@ -10,6 +10,7 @@ import { GalleryPhotoPage } from './pages/GalleryPhoto';
 import { AdminUsersPage } from './pages/AdminUsers';
 import { AdminPersonsPage } from './pages/AdminPersons';
 import { AdminCommentsPage } from './pages/AdminComments';
+import { AdminRemovalsPage } from './pages/AdminRemovals';
 import { NotFoundPage } from './pages/NotFound';
 
 export const App = () => (
@@ -28,6 +29,7 @@ export const App = () => (
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/personer" element={<AdminPersonsPage />} />
         <Route path="/admin/kommentarer" element={<AdminCommentsPage />} />
+        <Route path="/admin/fjernelser" element={<AdminRemovalsPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Route>

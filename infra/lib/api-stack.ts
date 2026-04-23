@@ -172,6 +172,36 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(commentsRejectFn);
 
+    const removalsCreateFn = new lambdaNodejs.NodejsFunction(this, 'RemovalsCreateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'removals-create.ts'),
+      functionName: `strandgaarden-${props.stage}-removals-create`,
+      description: 'Any authed user: request a gallery-visible photo be removed (GDPR)',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(removalsCreateFn);
+
+    const removalsListPendingFn = new lambdaNodejs.NodejsFunction(this, 'RemovalsListPendingFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'removals-list-pending.ts'),
+      functionName: `strandgaarden-${props.stage}-removals-list-pending`,
+      description: 'Admin-only: list pending removal requests with joined photo context',
+      timeout: cdk.Duration.seconds(20),
+    });
+    props.table.grantReadData(removalsListPendingFn);
+    props.derivedBucket.grantRead(removalsListPendingFn);
+
+    const removalsDecideFn = new lambdaNodejs.NodejsFunction(this, 'RemovalsDecideFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'removals-decide.ts'),
+      functionName: `strandgaarden-${props.stage}-removals-decide`,
+      description: 'Admin-only: approve (hard-delete) or reject a removal request',
+      timeout: cdk.Duration.seconds(30),
+    });
+    props.table.grantReadWriteData(removalsDecideFn);
+    props.originalsBucket.grantDelete(removalsDecideFn);
+    props.derivedBucket.grantDelete(removalsDecideFn);
+
     const galleryListFn = new lambdaNodejs.NodejsFunction(this, 'GalleryListFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'gallery-list.ts'),
@@ -397,6 +427,25 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/{photoId}/comments/{commentId}',
       methods: [apigwv2.HttpMethod.DELETE],
       integration: new apigwIntegrations.HttpLambdaIntegration('CommentsRejectIntegration', commentsRejectFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/photos/{id}/removals',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('RemovalsCreateIntegration', removalsCreateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/removals',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('RemovalsListPendingIntegration', removalsListPendingFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/photos/{photoId}/removals/{removalId}/decide',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('RemovalsDecideIntegration', removalsDecideFn),
       authorizer: jwtAuthorizer,
     });
 

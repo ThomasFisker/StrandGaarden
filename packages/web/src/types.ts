@@ -136,6 +136,23 @@ export interface GalleryDetail extends GalleryItem {
   approvedComments: AttributedAddendum[];
 }
 
+export interface AdminRemovalRow {
+  removalId: string;
+  photoId: string;
+  photoShortId: number | null;
+  photoExists: boolean;
+  photoDescription: string;
+  photoYear: number | null;
+  photoYearApprox: boolean;
+  photoHouseNumbers: number[];
+  reason: string;
+  requestorLoginName: string;
+  requestorEmail: string;
+  requestorRole: string;
+  createdAt: string;
+  thumbnailUrl: string | null;
+}
+
 export interface AdminCommentRow {
   commentId: string;
   photoId: string;

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getGalleryPhoto, postComment } from '../api';
+import { getGalleryPhoto, postComment, postRemovalRequest } from '../api';
 import { useSession } from '../session';
 import { formatShortId, type GalleryDetail } from '../types';
 
 const COMMENT_MAX = 2000;
+const REMOVAL_REASON_MAX = 1000;
 
 const prettyMonth = (iso: string): string => {
   try {
@@ -24,6 +25,32 @@ export const GalleryPhotoPage = () => {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentSent, setCommentSent] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [removalOpen, setRemovalOpen] = useState(false);
+  const [removalReason, setRemovalReason] = useState('');
+  const [removalSubmitting, setRemovalSubmitting] = useState(false);
+  const [removalSent, setRemovalSent] = useState(false);
+  const [removalError, setRemovalError] = useState<string | null>(null);
+
+  const submitRemoval = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session || !photo) return;
+    const reason = removalReason.trim();
+    if (!reason) {
+      setRemovalError('Skriv en kort begrundelse.');
+      return;
+    }
+    setRemovalSubmitting(true);
+    setRemovalError(null);
+    try {
+      await postRemovalRequest(session.idToken, photo.photoId, reason);
+      setRemovalReason('');
+      setRemovalSent(true);
+    } catch (err) {
+      setRemovalError(err instanceof Error ? err.message : 'Kunne ikke sende anmodningen');
+    } finally {
+      setRemovalSubmitting(false);
+    }
+  };
 
   const submitComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,10 +195,65 @@ export const GalleryPhotoPage = () => {
                   Hent billedet <span className="arrow">↓</span>
                 </a>
               )}
-              <span className="link-muted" style={{ cursor: 'default' }}>
-                Anmod om fjernelse — kommer snart
-              </span>
+              {!removalOpen && !removalSent && (
+                <button
+                  type="button"
+                  className="link-muted"
+                  onClick={() => setRemovalOpen(true)}
+                >
+                  Anmod om fjernelse
+                </button>
+              )}
             </div>
+
+            {removalSent && (
+              <div className="removal-thanks">
+                <p>
+                  <strong>Tak.</strong> Anmodningen er sendt til udvalget. Du får besked når der er truffet
+                  en beslutning.
+                </p>
+              </div>
+            )}
+
+            {removalOpen && !removalSent && (
+              <form className="removal-form" onSubmit={submitRemoval}>
+                <p className="removal-intro">
+                  <strong>Anmod udvalget om at fjerne billedet.</strong> Skriv en kort begrundelse (f.eks.
+                  at en person på billedet har bedt om det). Udvalget ser anmodningen igennem.
+                  Hvis godkendt, slettes billedet permanent.
+                </p>
+                <div className="field">
+                  <label htmlFor="removal-reason" className="sr-only">Begrundelse</label>
+                  <textarea
+                    id="removal-reason"
+                    rows={4}
+                    maxLength={REMOVAL_REASON_MAX}
+                    value={removalReason}
+                    onChange={(e) => setRemovalReason(e.target.value)}
+                    placeholder="Kort begrundelse til udvalget."
+                    disabled={removalSubmitting}
+                  />
+                  <div className="help">{removalReason.length}/{REMOVAL_REASON_MAX} tegn</div>
+                </div>
+                {removalError && <div className="error">{removalError}</div>}
+                <div className="removal-actions">
+                  <button type="submit" className="danger" disabled={removalSubmitting}>
+                    {removalSubmitting ? 'Sender…' : 'Send anmodning'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRemovalOpen(false);
+                      setRemovalReason('');
+                      setRemovalError(null);
+                    }}
+                    disabled={removalSubmitting}
+                  >
+                    Fortryd
+                  </button>
+                </div>
+              </form>
+            )}
           </aside>
         </div>
       )}

@@ -1518,3 +1518,72 @@ main > *:nth-child(5) { animation-delay: 280ms; }
   padding: 0;
   font-weight: 500;
 }
+
+/* ---------- GDPR removal form (gallery detail) ---------- */
+
+.removal-form {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: var(--paper-warm);
+  border-left: 3px solid #b23a3a;
+  border-radius: 2px;
+}
+
+.removal-intro {
+  margin: 0 0 0.75rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+.removal-form textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.7rem 0.9rem;
+  background: var(--paper);
+  border: 1px solid var(--paper-deep);
+  border-radius: 2px;
+  resize: vertical;
+}
+
+.removal-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.removal-thanks {
+  margin-top: 1rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--paper-warm);
+  border-left: 3px solid var(--sage);
+  border-radius: 2px;
+  color: var(--ink-soft);
+}
+.removal-thanks p { margin: 0; }
+
+button.link-muted {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--ink-mute);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+button.link-muted:hover { color: var(--copper-deep); }
+
+/* ---------- Admin removals queue ---------- */
+
+.removal-decide {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--paper-warm);
+  border-left: 3px solid #b23a3a;
+  border-radius: 2px;
+}
+.removal-decide p { margin: 0; }
