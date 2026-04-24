@@ -3,6 +3,8 @@ import type {
   AdminPerson,
   AdminRemovalRow,
   AdminUser,
+  BookExportResponse,
+  BookPhoto,
   DecisionResponse,
   GalleryDetail,
   GalleryList,
@@ -259,6 +261,26 @@ export const decideRemoval = async (
     },
   );
   if (!r.ok) return throwFromResponse(r, `decide removal ${removalId}`);
+};
+
+export const listBookPhotos = async (idToken: string): Promise<BookPhoto[]> => {
+  const r = await fetch(`${apiBase}/book`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'book');
+  const b = (await r.json()) as { items: BookPhoto[] };
+  return b.items ?? [];
+};
+
+export const exportBookZip = async (
+  idToken: string,
+  photoIds: string[],
+): Promise<BookExportResponse> => {
+  const r = await fetch(`${apiBase}/book/export`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ photoIds }),
+  });
+  if (!r.ok) return throwFromResponse(r, 'book/export');
+  return r.json();
 };
 
 export const listUsers = async (idToken: string): Promise<AdminUser[]> => {

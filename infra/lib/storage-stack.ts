@@ -92,6 +92,12 @@ export class StorageStack extends cdk.Stack {
           enabled: true,
           abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
         },
+        {
+          id: 'expire-book-exports-after-7d',
+          enabled: true,
+          prefix: 'exports/',
+          expiration: cdk.Duration.days(7),
+        },
       ],
     });
 

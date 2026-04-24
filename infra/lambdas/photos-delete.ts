@@ -55,11 +55,13 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const originalKey = typeof meta.Item.s3Key === 'string' ? meta.Item.s3Key : undefined;
   const webKey = typeof meta.Item.derivedWebKey === 'string' ? meta.Item.derivedWebKey : undefined;
   const thumbKey = typeof meta.Item.derivedThumbKey === 'string' ? meta.Item.derivedThumbKey : undefined;
+  const bookKey = typeof meta.Item.derivedBookKey === 'string' ? meta.Item.derivedBookKey : undefined;
 
   await Promise.all([
     deleteS3Best(originalsBucket, originalKey),
     deleteS3Best(derivedBucket, webKey),
     deleteS3Best(derivedBucket, thumbKey),
+    deleteS3Best(derivedBucket, bookKey),
   ]);
 
   let ExclusiveStartKey: Record<string, unknown> | undefined;

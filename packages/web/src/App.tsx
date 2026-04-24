@@ -11,6 +11,7 @@ import { AdminUsersPage } from './pages/AdminUsers';
 import { AdminPersonsPage } from './pages/AdminPersons';
 import { AdminCommentsPage } from './pages/AdminComments';
 import { AdminRemovalsPage } from './pages/AdminRemovals';
+import { AdminBookPage } from './pages/AdminBook';
 import { NotFoundPage } from './pages/NotFound';
 
 export const App = () => (
@@ -30,6 +31,7 @@ export const App = () => (
         <Route path="/admin/personer" element={<AdminPersonsPage />} />
         <Route path="/admin/kommentarer" element={<AdminCommentsPage />} />
         <Route path="/admin/fjernelser" element={<AdminRemovalsPage />} />
+        <Route path="/admin/bog" element={<AdminBookPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Route>

@@ -211,6 +211,28 @@ export class ApiStack extends cdk.Stack {
     props.originalsBucket.grantDelete(removalsDecideFn);
     props.derivedBucket.grantDelete(removalsDecideFn);
 
+    const bookListFn = new lambdaNodejs.NodejsFunction(this, 'BookListFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'book-list.ts'),
+      functionName: `strandgaarden-${props.stage}-book-list`,
+      description: 'Admin-only: list photos selected for the jubilee book (visibilityBook=true) with book+thumb URLs',
+      timeout: cdk.Duration.seconds(20),
+    });
+    props.table.grantReadData(bookListFn);
+    props.derivedBucket.grantRead(bookListFn);
+
+    const bookExportFn = new lambdaNodejs.NodejsFunction(this, 'BookExportFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'book-export.ts'),
+      functionName: `strandgaarden-${props.stage}-book-export`,
+      description: 'Admin-only: bundle selected book photos + text sidecars into a ZIP in derived/exports/',
+      timeout: cdk.Duration.minutes(10),
+      memorySize: 1024,
+      ephemeralStorageSize: cdk.Size.mebibytes(1024),
+    });
+    props.table.grantReadData(bookExportFn);
+    props.derivedBucket.grantReadWrite(bookExportFn);
+
     const galleryListFn = new lambdaNodejs.NodejsFunction(this, 'GalleryListFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'gallery-list.ts'),
@@ -462,6 +484,19 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/{photoId}/removals/{removalId}/decide',
       methods: [apigwv2.HttpMethod.POST],
       integration: new apigwIntegrations.HttpLambdaIntegration('RemovalsDecideIntegration', removalsDecideFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/book',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('BookListIntegration', bookListFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/book/export',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('BookExportIntegration', bookExportFn),
       authorizer: jwtAuthorizer,
     });
 

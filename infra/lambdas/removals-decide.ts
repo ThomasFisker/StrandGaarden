@@ -158,10 +158,12 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const originalKey = typeof photo.s3Key === 'string' ? photo.s3Key : undefined;
   const webKey = typeof photo.derivedWebKey === 'string' ? photo.derivedWebKey : undefined;
   const thumbKey = typeof photo.derivedThumbKey === 'string' ? photo.derivedThumbKey : undefined;
+  const bookKey = typeof photo.derivedBookKey === 'string' ? photo.derivedBookKey : undefined;
   await Promise.all([
     deleteS3Best(originalsBucket, originalKey),
     deleteS3Best(derivedBucket, webKey),
     deleteS3Best(derivedBucket, thumbKey),
+    deleteS3Best(derivedBucket, bookKey),
   ]);
 
   // DDB scrub — every item under PK=PHOTO#<id> (META + AUDIT + COMMENT + REMOVAL).

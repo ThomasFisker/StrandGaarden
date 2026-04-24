@@ -15,10 +15,18 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region }));
 
 const WEB_MAX = 2400;
 const THUMB_MAX = 400;
+const BOOK_MAX = 3000;
 const WEB_QUALITY = 85;
 const THUMB_QUALITY = 80;
 const BLURHASH_MAX = 32;
 const ROTATED_ORIENTATIONS = new Set([5, 6, 7, 8]);
+
+// Target a book-export JPEG <2 MB. Start reasonably high and step down
+// until we fit. Values chosen so even very large sources land in one or
+// two iterations. Minimum quality 55 keeps print acceptable; if that
+// still doesn't fit, we accept the slightly-over result (very rare).
+const BOOK_TARGET_BYTES = 2 * 1000 * 1000; // 2,000,000 bytes ≈ 1.9 MiB
+const BOOK_QUALITIES = [88, 82, 75, 68, 60, 55];
 
 export const handler: S3Handler = async (event: S3Event) => {
   for (const record of event.Records) {
@@ -81,6 +89,8 @@ async function processOne(key: string, photoId: string): Promise<void> {
     .jpeg({ quality: THUMB_QUALITY, mozjpeg: true })
     .toBuffer();
 
+  const { buffer: bookBuf, quality: bookQuality } = await encodeBookJpeg(buf);
+
   const { data: hashPixels, info: hashInfo } = await sharp(buf, { failOn: 'none' })
     .rotate()
     .resize({ width: BLURHASH_MAX, height: BLURHASH_MAX, fit: 'inside' })
@@ -91,6 +101,7 @@ async function processOne(key: string, photoId: string): Promise<void> {
 
   const webKey = `web/${photoId}.jpg`;
   const thumbKey = `thumb/${photoId}.jpg`;
+  const bookKey = `book/${photoId}.jpg`;
   await Promise.all([
     s3.send(
       new PutObjectCommand({
@@ -110,6 +121,15 @@ async function processOne(key: string, photoId: string): Promise<void> {
         CacheControl: 'public, max-age=31536000, immutable',
       }),
     ),
+    s3.send(
+      new PutObjectCommand({
+        Bucket: derivedBucket,
+        Key: bookKey,
+        Body: bookBuf,
+        ContentType: 'image/jpeg',
+        CacheControl: 'public, max-age=31536000, immutable',
+      }),
+    ),
   ]);
 
   const processedAt = new Date().toISOString();
@@ -119,7 +139,8 @@ async function processOne(key: string, photoId: string): Promise<void> {
       Key: { PK: `PHOTO#${photoId}`, SK: 'META' },
       ConditionExpression: '#s = :uploaded',
       UpdateExpression:
-        'SET #s = :inReview, derivedWebKey = :w, derivedThumbKey = :t, blurhash = :b, ' +
+        'SET #s = :inReview, derivedWebKey = :w, derivedThumbKey = :t, derivedBookKey = :bk, ' +
+        'derivedBookBytes = :bb, derivedBookQuality = :bq, blurhash = :b, ' +
         'width = :ww, height = :hh, processedAt = :p, GSI1PK = :gpk, GSI1SK = :gsk ' +
         'REMOVE processingError, processingErrorAt',
       ExpressionAttributeNames: { '#s': 'status' },
@@ -128,6 +149,9 @@ async function processOne(key: string, photoId: string): Promise<void> {
         ':inReview': 'In Review',
         ':w': webKey,
         ':t': thumbKey,
+        ':bk': bookKey,
+        ':bb': bookBuf.byteLength,
+        ':bq': bookQuality,
         ':b': blurhash,
         ':ww': displayW,
         ':hh': displayH,
@@ -150,10 +174,34 @@ async function processOne(key: string, photoId: string): Promise<void> {
         to: 'In Review',
         at: processedAt,
         by: 'system:pipeline',
-        details: { webKey, thumbKey, width: displayW, height: displayH },
+        details: {
+          webKey,
+          thumbKey,
+          bookKey,
+          bookBytes: bookBuf.byteLength,
+          bookQuality,
+          width: displayW,
+          height: displayH,
+        },
       },
     }),
   );
+}
+
+async function encodeBookJpeg(source: Buffer): Promise<{ buffer: Buffer; quality: number }> {
+  let last: { buffer: Buffer; quality: number } | null = null;
+  for (const q of BOOK_QUALITIES) {
+    // .rotate() applies EXIF orientation; sharp's default output strips EXIF
+    // (including GPS), so the book JPEG is both correctly oriented and clean.
+    const out = await sharp(source, { failOn: 'none' })
+      .rotate()
+      .resize({ width: BOOK_MAX, height: BOOK_MAX, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: q, mozjpeg: true, progressive: true })
+      .toBuffer();
+    last = { buffer: out, quality: q };
+    if (out.byteLength <= BOOK_TARGET_BYTES) return last;
+  }
+  return last!;
 }
 
 async function markFailed(photoId: string, message: string): Promise<void> {

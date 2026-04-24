@@ -170,6 +170,29 @@ export interface AdminCommentRow {
   photoHouseNumbers: number[];
 }
 
+export interface BookPhoto {
+  photoId: string;
+  shortId: number | null;
+  description: string;
+  whoInPhoto: string;
+  year: number | null;
+  yearApprox: boolean;
+  houseNumbers: number[];
+  originalFilename: string;
+  bookBytes: number | null;
+  bookReady: boolean;
+  thumbnailUrl: string | null;
+  bookUrl: string | null;
+  persons: PersonTag[];
+}
+
+export interface BookExportResponse {
+  exportId: string;
+  photoCount: number;
+  downloadUrl: string;
+  expiresInSeconds: number;
+}
+
 export type UserRole = 'admin' | 'member' | 'viewer';
 export const USER_ROLES: UserRole[] = ['admin', 'member', 'viewer'];
 
