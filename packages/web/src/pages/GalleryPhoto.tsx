@@ -1,11 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getGalleryPhoto, postComment, postRemovalRequest } from '../api';
+import {
+  deletePhoto,
+  getGalleryPhoto,
+  postComment,
+  postRemovalRequest,
+  updatePhoto,
+} from '../api';
+import { PersonTagInput as PersonTagInputField } from '../components/PersonTagInput';
 import { useSession } from '../session';
-import { formatShortId, type GalleryDetail } from '../types';
+import {
+  formatShortId,
+  HOUSES,
+  type GalleryDetail,
+  type PersonTagInput,
+} from '../types';
 
 const COMMENT_MAX = 2000;
 const REMOVAL_REASON_MAX = 1000;
+const DESCRIPTION_MAX = 2000;
+const WHO_IN_PHOTO_MAX = 1000;
 
 const prettyMonth = (iso: string): string => {
   try {
@@ -30,6 +44,82 @@ export const GalleryPhotoPage = () => {
   const [removalSubmitting, setRemovalSubmitting] = useState(false);
   const [removalSent, setRemovalSent] = useState(false);
   const [removalError, setRemovalError] = useState<string | null>(null);
+
+  const isAdmin = session?.claims.groups.includes('admin') ?? false;
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDesc, setEditDesc] = useState('');
+  const [editWho, setEditWho] = useState('');
+  const [editYear, setEditYear] = useState<string>('');
+  const [editYearApprox, setEditYearApprox] = useState(false);
+  const [editHouses, setEditHouses] = useState<number[]>([]);
+  const [editPersons, setEditPersons] = useState<PersonTagInput[]>([]);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const openEdit = () => {
+    if (!photo) return;
+    setEditDesc(photo.description);
+    setEditWho(photo.whoInPhoto);
+    setEditYear(photo.year === null ? '' : String(photo.year));
+    setEditYearApprox(photo.yearApprox);
+    setEditHouses(photo.houseNumbers.slice());
+    setEditPersons(photo.persons.map((p) => ({ slug: p.slug })));
+    setEditError(null);
+    setEditOpen(true);
+  };
+
+  const toggleEditHouse = (h: number) => {
+    setEditHouses((prev) => (prev.includes(h) ? prev.filter((x) => x !== h) : [...prev, h].sort((a, b) => a - b)));
+  };
+
+  const submitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session || !photo) return;
+    const desc = editDesc.trim();
+    if (!desc) {
+      setEditError('Beskrivelse må ikke være tom.');
+      return;
+    }
+    if (editHouses.length === 0) {
+      setEditError('Vælg mindst ét hus.');
+      return;
+    }
+    const yearNum = editYear.trim() ? Number(editYear) : null;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      await updatePhoto(session.idToken, photo.photoId, {
+        description: desc,
+        whoInPhoto: editWho.trim(),
+        year: yearNum,
+        yearApprox: editYearApprox,
+        houseNumbers: editHouses,
+        taggedPersons: editPersons,
+      });
+      // Refetch so the rendered meta column reflects server-resolved persons.
+      const fresh = await getGalleryPhoto(session.idToken, photo.photoId);
+      setPhoto(fresh);
+      setEditOpen(false);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Kunne ikke gemme ændringerne');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const submitDelete = async () => {
+    if (!session || !photo) return;
+    setDeleting(true);
+    try {
+      await deletePhoto(session.idToken, photo.photoId);
+      navigate('/galleri', { replace: true });
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Kunne ikke slette billedet');
+      setDeleting(false);
+    }
+  };
 
   const submitRemoval = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,6 +226,17 @@ export const GalleryPhotoPage = () => {
           <aside className="photo-meta">
             <p className="eyebrow">
               Strandgaardens arkiv <span className="short-id">· {formatShortId(photo.shortId)}</span>
+              {isAdmin && !editOpen && (
+                <button
+                  type="button"
+                  className="edit-pencil"
+                  onClick={openEdit}
+                  title="Rediger billedets oplysninger"
+                  aria-label="Rediger billede"
+                >
+                  ✎ Rediger
+                </button>
+              )}
             </p>
             <p className="photo-year">
               {photo.yearApprox && photo.year && <em>ca.</em>}
@@ -145,32 +246,146 @@ export const GalleryPhotoPage = () => {
               {photo.houseNumbers.length > 0 ? `Hus ${photo.houseNumbers.join(' · ')}` : 'Hus ukendt'}
               {photo.width && photo.height ? ` — ${photo.width}×${photo.height}px` : ''}
             </p>
-            {photo.description && <p className="photo-desc">{photo.description}</p>}
 
-            {photo.whoInPhoto && (
-              <div className="photo-section">
-                <p className="photo-section-title">Hvem er på billedet</p>
-                <p style={{ margin: 0, color: 'var(--ink-soft)' }}>{photo.whoInPhoto}</p>
-              </div>
-            )}
-
-            {photo.persons.length > 0 && (
-              <div className="photo-section">
-                <p className="photo-section-title">Personer på billedet</p>
-                <div className="person-chips">
-                  {photo.persons.map((p) => (
-                    <button
-                      key={p.slug}
-                      type="button"
-                      className="person-chip"
-                      onClick={() => navigate(`/galleri?person=${encodeURIComponent(p.slug)}`)}
-                      title={`Vis alle billeder af ${p.displayName}`}
-                    >
-                      {p.displayName}
-                    </button>
-                  ))}
+            {editOpen ? (
+              <form className="photo-edit-form" onSubmit={submitEdit}>
+                <div className="field">
+                  <label htmlFor="edit-desc">Beskrivelse</label>
+                  <textarea
+                    id="edit-desc"
+                    rows={4}
+                    maxLength={DESCRIPTION_MAX}
+                    value={editDesc}
+                    onChange={(e) => setEditDesc(e.target.value)}
+                    disabled={editSaving}
+                  />
+                  <div className="help">{editDesc.length}/{DESCRIPTION_MAX} tegn</div>
                 </div>
-              </div>
+                <div className="field">
+                  <label htmlFor="edit-who">Hvem er på billedet (fritekst)</label>
+                  <textarea
+                    id="edit-who"
+                    rows={2}
+                    maxLength={WHO_IN_PHOTO_MAX}
+                    value={editWho}
+                    onChange={(e) => setEditWho(e.target.value)}
+                    disabled={editSaving}
+                  />
+                </div>
+                <div className="field-row">
+                  <div className="field">
+                    <label htmlFor="edit-year">År</label>
+                    <input
+                      id="edit-year"
+                      type="number"
+                      value={editYear}
+                      onChange={(e) => setEditYear(e.target.value)}
+                      disabled={editSaving}
+                      placeholder="f.eks. 1972"
+                    />
+                  </div>
+                  <label className="checkbox-inline">
+                    <input
+                      type="checkbox"
+                      checked={editYearApprox}
+                      onChange={(e) => setEditYearApprox(e.target.checked)}
+                      disabled={editSaving}
+                    />
+                    <span>ca.</span>
+                  </label>
+                </div>
+                <div className="field">
+                  <label>Hus</label>
+                  <div className="house-chips">
+                    {HOUSES.map((h) => (
+                      <label
+                        key={h}
+                        className={`house-chip${editHouses.includes(h) ? ' selected' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={editHouses.includes(h)}
+                          onChange={() => toggleEditHouse(h)}
+                          disabled={editSaving}
+                        />
+                        <span>{h}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Personer på billedet</label>
+                  <PersonTagInputField value={editPersons} onChange={setEditPersons} disabled={editSaving} />
+                </div>
+                {editError && <div className="error">{editError}</div>}
+                <div className="photo-edit-actions">
+                  <button type="submit" className="btn-primary" disabled={editSaving}>
+                    {editSaving ? 'Gemmer…' : 'Gem ændringer'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditOpen(false); setEditError(null); }}
+                    disabled={editSaving}
+                  >
+                    Fortryd
+                  </button>
+                  {!confirmDelete ? (
+                    <button
+                      type="button"
+                      className="link-danger"
+                      onClick={() => setConfirmDelete(true)}
+                      disabled={editSaving || deleting}
+                    >
+                      Slet billede
+                    </button>
+                  ) : (
+                    <span className="delete-confirm-inline">
+                      <strong>Sikker?</strong>
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={submitDelete}
+                        disabled={deleting}
+                      >
+                        {deleting ? 'Sletter…' : 'Ja, slet permanent'}
+                      </button>
+                      <button type="button" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                        Nej
+                      </button>
+                    </span>
+                  )}
+                </div>
+              </form>
+            ) : (
+              <>
+                {photo.description && <p className="photo-desc">{photo.description}</p>}
+
+                {photo.whoInPhoto && (
+                  <div className="photo-section">
+                    <p className="photo-section-title">Hvem er på billedet</p>
+                    <p style={{ margin: 0, color: 'var(--ink-soft)' }}>{photo.whoInPhoto}</p>
+                  </div>
+                )}
+
+                {photo.persons.length > 0 && (
+                  <div className="photo-section">
+                    <p className="photo-section-title">Personer på billedet</p>
+                    <div className="person-chips">
+                      {photo.persons.map((p) => (
+                        <button
+                          key={p.slug}
+                          type="button"
+                          className="person-chip"
+                          onClick={() => navigate(`/galleri?person=${encodeURIComponent(p.slug)}`)}
+                          title={`Vis alle billeder af ${p.displayName}`}
+                        >
+                          {p.displayName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {photo.approvedComments.length > 0 && (

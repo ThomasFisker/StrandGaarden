@@ -126,6 +126,15 @@ export class ApiStack extends cdk.Stack {
     props.originalsBucket.grantDelete(photosDeleteFn);
     props.derivedBucket.grantDelete(photosDeleteFn);
 
+    const photosUpdateFn = new lambdaNodejs.NodejsFunction(this, 'PhotosUpdateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'photos-update.ts'),
+      functionName: `strandgaarden-${props.stage}-photos-update`,
+      description: 'Admin-only: edit description, whoInPhoto, year, houses, persons on an existing photo',
+      timeout: cdk.Duration.seconds(15),
+    });
+    props.table.grantReadWriteData(photosUpdateFn);
+
     const photosSetHelpWantedFn = new lambdaNodejs.NodejsFunction(this, 'PhotosSetHelpWantedFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'photos-set-help-wanted.ts'),
@@ -395,6 +404,13 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/{id}',
       methods: [apigwv2.HttpMethod.DELETE],
       integration: new apigwIntegrations.HttpLambdaIntegration('PhotosDeleteIntegration', photosDeleteFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/photos/{id}',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('PhotosUpdateIntegration', photosUpdateFn),
       authorizer: jwtAuthorizer,
     });
 

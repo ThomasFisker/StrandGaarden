@@ -1603,3 +1603,139 @@ button.link-muted:hover { color: var(--copper-deep); }
   border-radius: 2px;
 }
 .removal-decide p { margin: 0; }
+
+/* ---------- Admin: Photo inline edit on gallery detail ---------- */
+
+.edit-pencil {
+  margin-left: 0.75rem;
+  background: transparent;
+  border: 1px solid var(--copper);
+  color: var(--copper-deep);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.edit-pencil:hover { background: var(--copper); color: var(--paper); }
+
+.photo-edit-form {
+  margin: 1rem 0 1.5rem;
+  padding: 1.2rem;
+  background: var(--paper-warm);
+  border-left: 3px solid var(--copper);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.photo-edit-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.photo-edit-form label {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  font-weight: 600;
+}
+.photo-edit-form textarea,
+.photo-edit-form input[type="number"],
+.photo-edit-form input[type="text"] {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 2px;
+  color: var(--ink);
+}
+.photo-edit-form .field-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+}
+.photo-edit-form .field-row .field { flex: 1; }
+.photo-edit-form .checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  text-transform: none;
+  letter-spacing: normal;
+  padding-bottom: 0.55rem;
+}
+.photo-edit-form .help {
+  font-size: 0.75rem;
+  color: var(--ink-mute);
+  align-self: flex-end;
+}
+
+.photo-edit-form .house-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.photo-edit-form .house-chip {
+  position: relative;
+  cursor: pointer;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 2px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+.photo-edit-form .house-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.photo-edit-form .house-chip.selected {
+  background: var(--copper);
+  color: var(--paper);
+  border-color: var(--copper);
+}
+
+.photo-edit-actions {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.photo-edit-actions .link-danger {
+  background: transparent;
+  border: none;
+  color: #b23a3a;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  margin-left: auto;
+  font-size: 0.9rem;
+}
+.photo-edit-actions .link-danger:hover { color: #8a2929; }
+.delete-confirm-inline {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-left: auto;
+  font-size: 0.9rem;
+  color: #b23a3a;
+}
+.delete-confirm-inline button.danger {
+  background: #b23a3a;
+  color: var(--paper);
+  border: none;
+  padding: 0.35rem 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 2px;
+}

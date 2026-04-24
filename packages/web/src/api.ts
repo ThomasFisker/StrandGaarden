@@ -103,6 +103,28 @@ export const deletePhoto = async (idToken: string, photoId: string): Promise<voi
   if (!r.ok) return throwFromResponse(r, `photos/${photoId} DELETE`);
 };
 
+export interface PhotoEditPatch {
+  description: string;
+  whoInPhoto: string;
+  year: number | null;
+  yearApprox: boolean;
+  houseNumbers: number[];
+  taggedPersons: PersonTagInput[];
+}
+
+export const updatePhoto = async (
+  idToken: string,
+  photoId: string,
+  patch: PhotoEditPatch,
+): Promise<void> => {
+  const r = await fetch(`${apiBase}/photos/${encodeURIComponent(photoId)}`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(patch),
+  });
+  if (!r.ok) return throwFromResponse(r, `photos/${photoId} PATCH`);
+};
+
 export const setHelpWanted = async (
   idToken: string,
   photoId: string,
