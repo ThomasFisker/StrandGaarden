@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getGallery } from '../api';
 import { useSession } from '../session';
-import type { GalleryItem, GalleryList } from '../types';
+import { formatShortId, type GalleryItem, type GalleryList } from '../types';
 
 export const GalleryPage = () => {
   const { session } = useSession();
@@ -53,6 +53,7 @@ export const GalleryPage = () => {
         <div className="frame">
           <img src={p.thumbnailUrl} alt={p.description || 'Strandgaarden billede'} loading="lazy" />
           {p.helpWanted && <span className="help-wanted-ribbon">Hjælp søges</span>}
+          <span className="tile-short-id">{formatShortId(p.shortId)}</span>
         </div>
       ) : (
         <div className="thumb-placeholder">Behandles…</div>

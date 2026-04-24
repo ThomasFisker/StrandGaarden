@@ -1280,6 +1280,22 @@ main > *:nth-child(5) { animation-delay: 280ms; }
   pointer-events: none;
 }
 
+.tile-short-id {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  background: rgba(252, 249, 242, 0.92);
+  color: var(--copper-deep);
+  font-family: 'JetBrains Mono', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  font-weight: 500;
+}
+
 .help-wanted-banner {
   background: var(--paper-warm);
   border-left: 3px solid var(--copper);
