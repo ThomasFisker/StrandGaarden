@@ -12,6 +12,7 @@ import { AdminPersonsPage } from './pages/AdminPersons';
 import { AdminCommentsPage } from './pages/AdminComments';
 import { AdminRemovalsPage } from './pages/AdminRemovals';
 import { AdminBookPage } from './pages/AdminBook';
+import { AdminHomePage } from './pages/AdminHome';
 import { NotFoundPage } from './pages/NotFound';
 
 export const App = () => (
@@ -26,6 +27,7 @@ export const App = () => (
         <Route path="/mine" element={<MinePage />} />
       </Route>
       <Route element={<ProtectedRoute requireGroup="admin" />}>
+        <Route path="/admin" element={<AdminHomePage />} />
         <Route path="/review" element={<ReviewPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/personer" element={<AdminPersonsPage />} />

@@ -1917,3 +1917,78 @@ button.link-muted:hover { color: var(--copper-deep); }
   border-radius: 2px;
 }
 .book-delete-actions button.danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- Admin: Udvalget hub ---------- */
+
+.admin-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.admin-hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.4rem 1.4rem 1.2rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+  min-height: 180px;
+}
+.admin-hub-card:hover {
+  border-color: var(--copper);
+  box-shadow: 0 4px 14px rgba(143, 72, 38, 0.1);
+  transform: translateY(-2px);
+}
+
+.admin-hub-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.admin-hub-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.5rem;
+  margin: 0;
+  color: var(--sea-deep);
+  font-weight: 500;
+}
+
+.admin-hub-badge {
+  background: var(--copper);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: 0.95rem;
+  min-width: 1.7rem;
+  height: 1.7rem;
+  padding: 0 0.5rem;
+  border-radius: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.admin-hub-desc {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.admin-hub-cta {
+  margin: 0;
+  color: var(--copper-deep);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}

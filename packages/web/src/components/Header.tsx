@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { Claims } from '../auth';
 
 const primaryRole = (groups: string[]): string => {
@@ -10,8 +10,13 @@ const primaryRole = (groups: string[]): string => {
 
 export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => void }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const canUpload = claims.groups.some((g) => g === 'admin' || g === 'member');
   const isAdmin = claims.groups.includes('admin');
+  const onAdminSection =
+    location.pathname === '/admin' ||
+    location.pathname === '/review' ||
+    location.pathname.startsWith('/admin/');
   return (
     <header className="site">
       <div className="site-inner">
@@ -33,28 +38,11 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
             </NavLink>
           )}
           {isAdmin && (
-            <NavLink to="/review" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-              Gennemgang
-            </NavLink>
-          )}
-          {isAdmin && (
-            <NavLink to="/admin/users" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-              Brugere
-            </NavLink>
-          )}
-          {isAdmin && (
-            <NavLink to="/admin/personer" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-              Personer
-            </NavLink>
-          )}
-          {isAdmin && (
-            <NavLink to="/admin/kommentarer" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-              Kommentarer
-            </NavLink>
-          )}
-          {isAdmin && (
-            <NavLink to="/admin/fjernelser" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-              Fjernelser
+            <NavLink
+              to="/admin"
+              className={() => (onAdminSection ? 'active' : undefined)}
+            >
+              Udvalget
             </NavLink>
           )}
         </nav>
