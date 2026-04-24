@@ -21,7 +21,7 @@ Stack: AWS CDK (TypeScript) · Cognito · API Gateway HTTP API · Lambda
 - **Custom domain** `jubilaeum.strandgaardenis.dk` — pending DNS
   delegation; when it lands, small additive change.
 
-## Implemented (as of 2026-04-23)
+## Implemented (as of 2026-04-24)
 
 Full end-to-end member → committee → viewer flow with comment,
 removal-request, and short-ID features. Editorial "Coastal archival"
@@ -107,8 +107,24 @@ design system in place.
 
 ## Still to do (priority order)
 
-Working tree is clean (all committed + deployed). Current HEAD is
-`f4f8b0f` on `main`.
+Working tree is clean (all committed + deployed + pushed). Current HEAD is
+`4bd368a` on `main`; CI green on that sha.
+
+Latest shipped in this session:
+- **Committee inline edit** (`6a4f99f`) — admins click a pencil on
+  any gallery-detail page to edit description, whoInPhoto, year,
+  houses, and tagged persons. Full before/after audit row written.
+  PATCH /photos/{id} via photos-update Lambda.
+- **Jubilee book export** (`e6a77cb`) — process-image now makes a
+  third derivative `book/<id>.jpg` <2 MB via a quality ladder,
+  admins select photos at /admin/bog and download individual JPEGs
+  or a ZIP (via book-export Lambda). Exports land in `exports/`
+  with a 7-day S3 lifecycle rule.
+- **Unified admin hub** (`4bd368a`) — 5 admin nav links replaced
+  with a single "Udvalget" link → /admin hub page showing 6 cards
+  (Gennemgang, Kommentarer, Fjernelser, Bog, Personer, Brugere)
+  each with a live pending-count badge.
+- **Short-ID badge on gallery tiles** (`b070ef0`) — small UI polish.
 
 **Blocking before real member invites:**
 1. **Two committee members test-drive the system.** Email draft in
@@ -127,17 +143,10 @@ Working tree is clean (all committed + deployed). Current HEAD is
    gone photo. Skipped today to avoid nuking the shared test photo.
 
 **Should-have fairly early:**
-6. Bulk ZIP download of `visibilityBook=true` photos for the printed
-   catalog.
-7. Cross-region replication of the originals bucket (locked in the
+6. Cross-region replication of the originals bucket (locked in the
    architecture).
-8. CloudWatch log retention on every Lambda (currently never expire).
-9. Committee can edit photo metadata during review (retag persons, fix
-   typos). Partially covered by comment-merge flow, but there's no
-   standalone edit-photo admin action.
-10. Merge two persons into one.
-11. Pending-count badge on "Kommentarer" / "Fjernelser" nav links
-    (trivial: one more Query per nav render, or push via SSE later).
+7. CloudWatch log retention on every Lambda (currently never expire).
+8. Merge two persons into one.
 
 **Nice-to-have:** audit log viewer (top-level `PK=AUDIT` items now
 exist from the GDPR flow), PWA manifest, blurhash LQIP placeholder
@@ -198,17 +207,18 @@ verification is the sole test strategy for now.
 ## Resuming tomorrow
 
 1. `cd "C:/Users/thoma/OneDrive - Second Epic/ClaudeProjects/Strandgaarden"`
-2. `git status` — expect clean. Last commit `f4f8b0f`
-   (`feat: GDPR removal requests — viewer submit, committee decide`).
-   Previous session shipped 5 commits: admin user management, Coastal
-   design, CLAUDE.md update, admin photo delete, Hjælp søges,
-   viewer+committee comments, short IDs, GDPR removals.
+2. `git status` — expect clean. Last commit `4bd368a`
+   (`feat: unified admin hub page — Udvalget`). Previous session
+   shipped 4 commits: short-ID tile badge, committee inline edit,
+   jubilee book export, admin hub page. All pushed; CI green.
 3. Open https://d2wq22ivboh02d.cloudfront.net/ (hard-refresh if the
    cached bundle is stale) and smoke-test login as
    `thomas.madsen@secondepic.com` / `Picture1!`. Header should show
-   `Thomas1` + "Kommentarer" + "Fjernelser" nav links. Open any gallery
-   photo — eyebrow should read "Strandgaardens arkiv · ID-00006" (or
-   similar). Expected current bundle hash is `index-DDXBsN87.js`.
+   `Thomas1` + a single "Udvalget" admin link. Clicking "Udvalget"
+   lands on /admin with 6 cards (Gennemgang / Kommentarer /
+   Fjernelser / Bog / Personer / Brugere) — each with a live
+   pending-count badge. Gallery tiles should show a copper ID-XXXXX
+   badge top-right. Expected current bundle hash is `index-yqcpcC_Y.js`.
 4. **Recommended next task:** the committee-member invite email. A
    Danish draft is in the previous session's transcript (problem →
    hvad systemet gør → opfordring + link). User wants to create their
@@ -216,16 +226,15 @@ verification is the sole test strategy for now.
    list (help page, SES, shared viewer credential, etc.) can wait
    until after the two testers have kicked the tires.
 5. **Known test-state on dev (not a blocker, just awareness):**
-   - Photo `a04b87ce-…` (ID-00006) had its description overwritten
-     during comment-merge smoke testing ("Sækkevædeløb organiseret
-     af Else Madsen til fødselsdag for Thomas Madsen. Begivenheden
-     fandt sted omkring sankthans 1972 ved Hus 9."). Has one attributed
-     addendum from a test comment, and two rejected removal requests
-     in its history (not visible to users).
+   - All 7 early test photos (ID-00001 through ID-00007) were
+     deleted during this session's cleanup, including the
+     `a04b87ce-…` photo that had a test-merged description.
+     Only shortIds 9 and 10 remain. Book derivatives
+     (`book/<id>.jpg`) exist for those two.
    - Thomas2 (`thomas.f.madsen@outlook.com`) still has password
      `ResetTest99!` from an earlier smoke test — delete or reset
      before the real invites go out.
-   - Counter `COUNTER#PHOTOID` is at 7; next upload becomes ID-00008.
+   - Counter `COUNTER#PHOTOID` is at 10; next upload becomes ID-00011.
 6. If something's broken:
    - API alive: `curl -sk https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com/health`
      (use `-k` on this Windows shell — schannel revocation check otherwise fails).
