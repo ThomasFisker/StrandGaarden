@@ -21,6 +21,13 @@ const THUMB_QUALITY = 80;
 const BLURHASH_MAX = 32;
 const ROTATED_ORIENTATIONS = new Set([5, 6, 7, 8]);
 
+// Resolution gates. Long edge in pixels.
+//   < MIN_LONG_EDGE        → Rejected (almost certainly a thumbnail/screenshot)
+//   < BOOK_MIN_LONG_EDGE   → processed, but stamped with qualityWarning so the
+//                            committee sees a "for lille til bog" chip in review.
+const MIN_LONG_EDGE = 800;
+const BOOK_MIN_LONG_EDGE = 1500;
+
 // Target a book-export JPEG <2 MB. Start reasonably high and step down
 // until we fit. Values chosen so even very large sources land in one or
 // two iterations. Minimum quality 55 keeps print acceptable; if that
@@ -76,16 +83,32 @@ async function processOne(key: string, photoId: string): Promise<void> {
   const rawH = meta.height ?? 0;
   const displayW = ROTATED_ORIENTATIONS.has(orientation) ? rawH : rawW;
   const displayH = ROTATED_ORIENTATIONS.has(orientation) ? rawW : rawH;
+  const longEdge = Math.max(displayW, displayH);
 
+  if (longEdge > 0 && longEdge < MIN_LONG_EDGE) {
+    await markRejected(photoId, displayW, displayH);
+    return;
+  }
+
+  const qualityWarning =
+    longEdge > 0 && longEdge < BOOK_MIN_LONG_EDGE ? 'low-resolution-for-book' : null;
+
+  // sRGB pipeline: iPhone HEICs (and some modern cameras) ship in Display-P3.
+  // toColorspace converts the working buffer; withIccProfile embeds the sRGB
+  // profile so browsers and print pipelines render colors faithfully.
   const webBuf = await sharp(buf, { failOn: 'none' })
     .rotate()
     .resize({ width: WEB_MAX, height: WEB_MAX, fit: 'inside', withoutEnlargement: true })
+    .toColorspace('srgb')
+    .withIccProfile('srgb')
     .jpeg({ quality: WEB_QUALITY, mozjpeg: true })
     .toBuffer();
 
   const thumbBuf = await sharp(buf, { failOn: 'none' })
     .rotate()
     .resize({ width: THUMB_MAX, height: THUMB_MAX, fit: 'inside', withoutEnlargement: true })
+    .toColorspace('srgb')
+    .withIccProfile('srgb')
     .jpeg({ quality: THUMB_QUALITY, mozjpeg: true })
     .toBuffer();
 
@@ -94,6 +117,7 @@ async function processOne(key: string, photoId: string): Promise<void> {
   const { data: hashPixels, info: hashInfo } = await sharp(buf, { failOn: 'none' })
     .rotate()
     .resize({ width: BLURHASH_MAX, height: BLURHASH_MAX, fit: 'inside' })
+    .toColorspace('srgb')
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
@@ -141,7 +165,8 @@ async function processOne(key: string, photoId: string): Promise<void> {
       UpdateExpression:
         'SET #s = :inReview, derivedWebKey = :w, derivedThumbKey = :t, derivedBookKey = :bk, ' +
         'derivedBookBytes = :bb, derivedBookQuality = :bq, blurhash = :b, ' +
-        'width = :ww, height = :hh, processedAt = :p, GSI1PK = :gpk, GSI1SK = :gsk ' +
+        'width = :ww, height = :hh, processedAt = :p, GSI1PK = :gpk, GSI1SK = :gsk, ' +
+        'qualityWarning = :qw ' +
         'REMOVE processingError, processingErrorAt',
       ExpressionAttributeNames: { '#s': 'status' },
       ExpressionAttributeValues: {
@@ -158,6 +183,7 @@ async function processOne(key: string, photoId: string): Promise<void> {
         ':p': processedAt,
         ':gpk': 'STATUS#In Review',
         ':gsk': `${processedAt}#${photoId}`,
+        ':qw': qualityWarning,
       },
     }),
   );
@@ -182,7 +208,52 @@ async function processOne(key: string, photoId: string): Promise<void> {
           bookQuality,
           width: displayW,
           height: displayH,
+          qualityWarning,
         },
+      },
+    }),
+  );
+}
+
+async function markRejected(photoId: string, width: number, height: number): Promise<void> {
+  const at = new Date().toISOString();
+  const reason =
+    `Billedet er for lille til at blive brugt (${width}×${height} pixel). ` +
+    `Mindst ${MIN_LONG_EDGE} pixel på den længste side er nødvendigt — ` +
+    `upload den originale version fra kameraet eller mobilen.`;
+  // Condition guards against re-running the pipeline on a row that has already
+  // moved past Uploaded (e.g. manual replay or duplicate S3 events).
+  await ddb.send(
+    new UpdateCommand({
+      TableName: tableName,
+      Key: { PK: `PHOTO#${photoId}`, SK: 'META' },
+      ConditionExpression: '#s = :uploaded',
+      UpdateExpression:
+        'SET #s = :rejected, width = :ww, height = :hh, processingError = :e, processingErrorAt = :a',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: {
+        ':uploaded': 'Uploaded',
+        ':rejected': 'Rejected',
+        ':ww': width,
+        ':hh': height,
+        ':e': reason,
+        ':a': at,
+      },
+    }),
+  );
+  await ddb.send(
+    new PutCommand({
+      TableName: tableName,
+      Item: {
+        PK: `PHOTO#${photoId}`,
+        SK: `AUDIT#${at}#rejected`,
+        entity: 'Audit',
+        event: 'Rejected',
+        from: 'Uploaded',
+        to: 'Rejected',
+        at,
+        by: 'system:pipeline',
+        details: { width, height, reason: 'low-resolution', minLongEdge: MIN_LONG_EDGE },
       },
     }),
   );
@@ -193,9 +264,12 @@ async function encodeBookJpeg(source: Buffer): Promise<{ buffer: Buffer; quality
   for (const q of BOOK_QUALITIES) {
     // .rotate() applies EXIF orientation; sharp's default output strips EXIF
     // (including GPS), so the book JPEG is both correctly oriented and clean.
+    // toColorspace + withIccProfile guarantee an sRGB-tagged file for print.
     const out = await sharp(source, { failOn: 'none' })
       .rotate()
       .resize({ width: BOOK_MAX, height: BOOK_MAX, fit: 'inside', withoutEnlargement: true })
+      .toColorspace('srgb')
+      .withIccProfile('srgb')
       .jpeg({ quality: q, mozjpeg: true, progressive: true })
       .toBuffer();
     last = { buffer: out, quality: q };

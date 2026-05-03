@@ -214,6 +214,22 @@ export const ReviewPage = () => {
                       <span className="short-id">{formatShortId(p.shortId)}</span> · Sendt af {p.uploaderEmail ?? 'ukendt'} · fil {p.originalFilename} · {prettyDate(p.processedAt ?? p.createdAt)}
                       {p.width && p.height ? <> · {p.width}×{p.height}px</> : null}
                     </p>
+                    {p.qualityWarning === 'low-resolution-for-book' && (
+                      <p
+                        className="meta"
+                        style={{
+                          color: 'var(--copper, #b85a2a)',
+                          background: 'var(--paper-warm, #faf2e6)',
+                          padding: '0.4rem 0.6rem',
+                          borderLeft: '3px solid var(--copper, #b85a2a)',
+                          margin: '0.4rem 0',
+                        }}
+                      >
+                        <strong>For lille til bog</strong> — billedet er under 1500 pixel på den længste
+                        side. Det kan godt vises på siden, men vil sandsynligvis ikke være skarpt nok til
+                        den trykte bog.
+                      </p>
+                    )}
 
                     <div className="review-controls">
                       <div className="checkbox-row">

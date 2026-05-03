@@ -8,6 +8,7 @@ const STATUS_LABEL: Record<string, string> = {
   Uploaded: 'Afventer gennemgang',
   'In Review': 'Under gennemgang',
   Decided: 'Afgjort',
+  Rejected: 'Afvist — for lille',
 };
 
 const prettyStatus = (p: MyPhoto): string => {
@@ -118,7 +119,7 @@ export const MinePage = () => {
                     />
                   ) : (
                     <div className="thumb thumb-placeholder">
-                      {p.processingError ? 'Fejl' : 'Behandles…'}
+                      {p.status === 'Rejected' ? 'Afvist' : p.processingError ? 'Fejl' : 'Behandles…'}
                     </div>
                   )}
                 </div>
@@ -148,24 +149,38 @@ export const MinePage = () => {
                   <p className="meta">
                     <span className="short-id">{formatShortId(p.shortId)}</span> · Fil: {p.originalFilename} · sendt {prettyDate(p.createdAt)}
                   </p>
-                  {p.processingError && (
+                  {p.status === 'Rejected' && p.processingError && (
+                    <p className="meta" style={{ color: 'var(--danger)' }}>
+                      <strong>Billedet kunne ikke bruges:</strong> {p.processingError}
+                    </p>
+                  )}
+                  {p.status !== 'Rejected' && p.processingError && (
                     <p className="meta" style={{ color: 'var(--danger)' }}>
                       Fejl ved billedbehandling: {p.processingError}
                     </p>
                   )}
-                  <div className="help-wanted-toggle">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={p.helpWanted}
-                        disabled={!!savingHelp[p.photoId]}
-                        onChange={() => toggleHelpWanted(p)}
-                      />
-                      <span>
-                        <strong>Hjælp søges</strong> — bed andre om hjælp til at identificere personerne
-                      </span>
-                    </label>
-                  </div>
+                  {p.qualityWarning === 'low-resolution-for-book' && p.status !== 'Rejected' && (
+                    <p className="meta" style={{ color: 'var(--copper, #b85a2a)' }}>
+                      <strong>Bemærk:</strong> billedet er lidt småt — det kan vises på siden, men er
+                      muligvis ikke skarpt nok til den trykte bog. Hvis du har en større original, så
+                      upload den gerne.
+                    </p>
+                  )}
+                  {p.status !== 'Rejected' && (
+                    <div className="help-wanted-toggle">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={p.helpWanted}
+                          disabled={!!savingHelp[p.photoId]}
+                          onChange={() => toggleHelpWanted(p)}
+                        />
+                        <span>
+                          <strong>Hjælp søges</strong> — bed andre om hjælp til at identificere personerne
+                        </span>
+                      </label>
+                    </div>
+                  )}
                 </div>
               </div>
             </article>

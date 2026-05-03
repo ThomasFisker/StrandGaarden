@@ -98,6 +98,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         visibilityBook: item.visibilityBook === true,
         thumbnailUrl,
         webUrl,
+        qualityWarning: typeof item.qualityWarning === 'string' ? item.qualityWarning : null,
         persons: (Array.isArray(item.taggedPersonSlugs) ? (item.taggedPersonSlugs as string[]) : [])
           .map((slug) => personMap.get(slug))
           .filter((p): p is PersonTag => !!p),

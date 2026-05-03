@@ -5,16 +5,41 @@ import { HouseSelector } from '../components/HouseSelector';
 import { PersonTagInput } from '../components/PersonTagInput';
 import { putToS3, requestUploadUrl } from '../api';
 import { useSession } from '../session';
-import { ACCEPTED_MIME, MAX_UPLOAD_BYTES, type PersonTagInput as PersonTagValue } from '../types';
+import {
+  ACCEPTED_MIME,
+  BOOK_MIN_LONG_EDGE,
+  MAX_UPLOAD_BYTES,
+  MIN_LONG_EDGE,
+  type PersonTagInput as PersonTagValue,
+} from '../types';
 
 const ACCEPT_ATTR = Object.keys(ACCEPTED_MIME).join(',');
 const CURRENT_YEAR = new Date().getFullYear();
+
+/** Best-effort client-side pixel-dimension probe. Browsers can decode JPEG
+ * and PNG natively; HEIC/HEIF/TIFF can't be decoded without a heavy WASM
+ * library, so we skip the check for those and rely on the server's
+ * authoritative check in `process-image.ts`. */
+const probeDimensions = async (
+  f: File,
+): Promise<{ longEdge: number } | null> => {
+  if (f.type !== 'image/jpeg' && f.type !== 'image/png') return null;
+  try {
+    const bmp = await createImageBitmap(f);
+    const longEdge = Math.max(bmp.width, bmp.height);
+    if (typeof bmp.close === 'function') bmp.close();
+    return { longEdge };
+  } catch {
+    return null;
+  }
+};
 
 export const UploadPage = () => {
   const { session } = useSession();
   const navigate = useNavigate();
 
   const [file, setFile] = useState<File | null>(null);
+  const [dimensionWarning, setDimensionWarning] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [whoInPhoto, setWhoInPhoto] = useState('');
   const [yearText, setYearText] = useState('');
@@ -39,19 +64,41 @@ export const UploadPage = () => {
     return Number.isInteger(n) ? n : NaN;
   }, [yearText]);
 
-  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null;
-    if (f && !ACCEPTED_MIME[f.type]) {
-      setError(`Filen skal være en af: ${Object.values(ACCEPTED_MIME).join(', ')}`);
-      setFile(null);
+    setFile(null);
+    setDimensionWarning(null);
+    if (!f) {
+      setError(null);
       return;
     }
-    if (f && f.size > MAX_UPLOAD_BYTES) {
+    if (!ACCEPTED_MIME[f.type]) {
+      setError(`Filen skal være en af: ${Object.values(ACCEPTED_MIME).join(', ')}`);
+      return;
+    }
+    if (f.size > MAX_UPLOAD_BYTES) {
       setError(`Filen er for stor (maks ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB)`);
-      setFile(null);
       return;
     }
     setError(null);
+    const dim = await probeDimensions(f);
+    if (dim) {
+      if (dim.longEdge < MIN_LONG_EDGE) {
+        setError(
+          `Billedet er for lille (${dim.longEdge} pixel på den længste side). ` +
+            `Mindst ${MIN_LONG_EDGE} pixel kræves. Brug originalen fra kameraet eller ` +
+            `mobilen — ikke et lille billede modtaget på SMS eller Messenger.`,
+        );
+        return;
+      }
+      if (dim.longEdge < BOOK_MIN_LONG_EDGE) {
+        setDimensionWarning(
+          `Billedet er ${dim.longEdge} pixel på den længste side. Det kan godt vises på siden, ` +
+            `men er muligvis ikke skarpt nok til den trykte bog. Hvis du har en større original, ` +
+            `så upload den gerne i stedet.`,
+        );
+      }
+    }
     setFile(f);
   };
 
@@ -113,9 +160,41 @@ export const UploadPage = () => {
           <label htmlFor="file">Billedfil</label>
           <input id="file" type="file" accept={ACCEPT_ATTR} onChange={onFileChange} required />
           <div className="help">
-            Tilladt: JPEG, PNG, TIFF, HEIC. Maks {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB.
-            {file && <> Valgt: <strong>{file.name}</strong> ({Math.round(file.size / 1024)} KB)</>}
+            <p style={{ margin: '0 0 0.4rem' }}>
+              <strong>Brug originalen</strong> fra kameraet eller mobilen — ikke et lille billede du har
+              modtaget på SMS, Messenger eller WhatsApp. Sådanne billeder er ofte gjort meget små
+              undervejs og kan ikke bruges i den trykte bog.
+            </p>
+            <p style={{ margin: '0 0 0.4rem' }}>
+              <strong>iPhone-billeder (.HEIC) er fint</strong> — vi laver dem automatisk om til JPEG, så
+              du behøver ikke konvertere noget selv. Live Photos uploades som det almindelige stillbillede;
+              den korte videoklip følger ikke med.
+            </p>
+            <p style={{ margin: 0 }}>
+              Tilladt: JPEG, PNG, TIFF, HEIC. Mindst {MIN_LONG_EDGE} pixel på den længste side
+              ({BOOK_MIN_LONG_EDGE}+ anbefales for at komme med i bogen). Maks{' '}
+              {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB.
+            </p>
           </div>
+          {file && (
+            <div className="help" style={{ marginTop: '0.4rem' }}>
+              Valgt: <strong>{file.name}</strong> ({Math.round(file.size / 1024)} KB)
+            </div>
+          )}
+          {dimensionWarning && (
+            <div
+              style={{
+                marginTop: '0.5rem',
+                padding: '0.5rem 0.75rem',
+                background: 'var(--paper-warm, #faf2e6)',
+                borderLeft: '3px solid var(--copper, #b85a2a)',
+                color: 'var(--copper, #b85a2a)',
+                fontSize: '0.95rem',
+              }}
+            >
+              {dimensionWarning}
+            </div>
+          )}
         </div>
 
         <div className="field">

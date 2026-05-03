@@ -45,6 +45,7 @@ interface PhotoRow {
   blurhash: string | null;
   thumbnailUrl: string | null;
   processingError: string | null;
+  qualityWarning: string | null;
   persons: PersonTag[];
   helpWanted: boolean;
 }
@@ -122,6 +123,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         blurhash: typeof item.blurhash === 'string' ? item.blurhash : null,
         thumbnailUrl,
         processingError: typeof item.processingError === 'string' ? item.processingError : null,
+        qualityWarning: typeof item.qualityWarning === 'string' ? item.qualityWarning : null,
         persons: (Array.isArray(item.taggedPersonSlugs) ? (item.taggedPersonSlugs as string[]) : [])
           .map((slug) => personMap.get(slug))
           .filter((p): p is PersonTag => !!p),
