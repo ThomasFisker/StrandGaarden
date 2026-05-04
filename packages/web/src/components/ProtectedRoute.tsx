@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useSession } from '../session';
+import { GdprGate } from './GdprGate';
 
 export const ProtectedRoute = ({ requireGroup }: { requireGroup?: 'admin' | 'member' | 'viewer' }) => {
   const { session, loading } = useSession();
@@ -17,5 +18,9 @@ export const ProtectedRoute = ({ requireGroup }: { requireGroup?: 'admin' | 'mem
     );
   }
 
-  return <Outlet />;
+  return (
+    <GdprGate>
+      <Outlet />
+    </GdprGate>
+  );
 };

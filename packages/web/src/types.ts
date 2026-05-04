@@ -233,7 +233,7 @@ export interface Activity {
 }
 
 /** The caller's own profile, returned by GET /me. Used to prefill the
- * uploader's assigned house and (later) gate the GDPR consent flow. */
+ * uploader's assigned house and gate the GDPR consent flow. */
 export interface MyProfile {
   sub: string;
   email: string | null;
@@ -242,6 +242,13 @@ export interface MyProfile {
   houseNumber: number | null;
   gdprAcceptedAt: string | null;
   gdprAcceptedVersion: string | null;
+  gdprCurrentVersion: string;
+  gdprNeedsAcceptance: boolean;
+}
+
+export interface GdprText {
+  version: string;
+  text: string;
 }
 
 export const ACCEPTED_MIME: Record<string, string> = {

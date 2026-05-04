@@ -10,6 +10,7 @@ import type {
   DecisionResponse,
   GalleryDetail,
   GalleryList,
+  GdprText,
   MyPhoto,
   MyProfile,
   PersonTag,
@@ -50,6 +51,25 @@ export const whoami = async (idToken: string): Promise<unknown> => {
 export const getMyProfile = async (idToken: string): Promise<MyProfile> => {
   const r = await fetch(`${apiBase}/me`, { headers: bearer(idToken) });
   if (!r.ok) return throwFromResponse(r, 'me');
+  return r.json();
+};
+
+export const getGdprText = async (idToken: string): Promise<GdprText> => {
+  const r = await fetch(`${apiBase}/gdpr-text`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'gdpr-text');
+  return r.json();
+};
+
+export const acceptGdpr = async (
+  idToken: string,
+  version: string,
+): Promise<{ gdprAcceptedAt: string; gdprAcceptedVersion: string }> => {
+  const r = await fetch(`${apiBase}/me/gdpr-accept`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ version }),
+  });
+  if (!r.ok) return throwFromResponse(r, 'me/gdpr-accept');
   return r.json();
 };
 

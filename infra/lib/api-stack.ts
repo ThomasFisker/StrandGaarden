@@ -315,6 +315,24 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadData(meFn);
 
+    const gdprTextFn = new lambdaNodejs.NodejsFunction(this, 'GdprTextFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'gdpr-text.ts'),
+      functionName: `strandgaarden-${props.stage}-gdpr-text`,
+      description: 'Returns the current GDPR text + version (authed)',
+      timeout: cdk.Duration.seconds(5),
+    });
+    props.table.grantReadData(gdprTextFn);
+
+    const meAcceptGdprFn = new lambdaNodejs.NodejsFunction(this, 'MeAcceptGdprFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'me-accept-gdpr.ts'),
+      functionName: `strandgaarden-${props.stage}-me-accept-gdpr`,
+      description: 'Record the caller\'s acceptance of the current GDPR version',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(meAcceptGdprFn);
+
     const configGetFn = new lambdaNodejs.NodejsFunction(this, 'ConfigGetFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'config-get.ts'),
@@ -474,6 +492,18 @@ export class ApiStack extends cdk.Stack {
       path: '/me',
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwIntegrations.HttpLambdaIntegration('MeIntegration', meFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/me/gdpr-accept',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('MeAcceptGdprIntegration', meAcceptGdprFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/gdpr-text',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('GdprTextIntegration', gdprTextFn),
       authorizer: jwtAuthorizer,
     });
 
