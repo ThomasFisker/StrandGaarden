@@ -166,6 +166,19 @@ export const updatePhoto = async (
   if (!r.ok) return throwFromResponse(r, `photos/${photoId} PATCH`);
 };
 
+export const swapPhotoPriority = async (
+  idToken: string,
+  photoId: string,
+  direction: 'up' | 'down',
+): Promise<void> => {
+  const r = await fetch(`${apiBase}/photos/${encodeURIComponent(photoId)}/priority`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ direction }),
+  });
+  if (!r.ok) return throwFromResponse(r, `photos/${photoId}/priority`);
+};
+
 export const setHelpWanted = async (
   idToken: string,
   photoId: string,

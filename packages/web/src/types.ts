@@ -69,6 +69,10 @@ export interface MyPhoto {
   helpWanted: boolean;
   activityKey: string | null;
   activityName: string | null;
+  /** Stage-1 ranking the uploader sets via the up/down arrows on /mine.
+   * Number 1..maxBookSlotsPerHouse for the uploader's own house photos;
+   * null for activity photos and pre-stage-1 uploads. */
+  priority: number | null;
 }
 
 export interface ReviewPhoto {
