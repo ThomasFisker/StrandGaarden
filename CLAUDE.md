@@ -10,7 +10,8 @@ photos ahead of the anniversary in June 2027. Target: ~500 photos, elderly
 audience, large fonts, simple flows.
 
 Stack: AWS CDK (TypeScript) · Cognito · API Gateway HTTP API · Lambda
-(Node 22 / ARM64) · DynamoDB single-table · S3 + CloudFront · Vite + React.
+(Node 22 / ARM64) · DynamoDB single-table · S3 + CloudFront · Vite + React
++ Tiptap.
 
 ## Live URLs
 
@@ -21,126 +22,251 @@ Stack: AWS CDK (TypeScript) · Cognito · API Gateway HTTP API · Lambda
 - **Custom domain** `jubilaeum.strandgaardenis.dk` — pending DNS
   delegation; when it lands, small additive change.
 
-## Implemented (as of 2026-04-24)
+## Valid house numbers
 
-Full end-to-end member → committee → viewer flow with comment,
-removal-request, and short-ID features. Editorial "Coastal archival"
-design system in place.
+The Strandgaarden site has 23 houses with **non-contiguous** numbers — no
+houses 1, 2, 19, 21 etc. The canonical list (also the UI display order):
 
-- **Infra stacks (all in `eu-west-1`):** Foundation, Ci, Storage, Data,
-  Auth, Api, ImagePipeline, Hosting.
+```
+3 5 7 9 11 13 15 17    (odd, 8 houses)
+4 6 8 10 12 14 16 18 20 22 24 26 28 30 32    (even, 15 houses)
+```
+
+Defined twice (must stay in sync):
+- `infra/lambdas/users-shared.ts` → `VALID_HOUSES` + `isValidHouse(n)`
+- `packages/web/src/types.ts` → `HOUSES`
+
+## Implemented (as of 2026-05-04)
+
+Full member → committee → viewer flow plus a multi-stage workflow
+(indsamling → frys → public) that the committee can flip from
+/admin/fase.
+
+### Infra
+
+- **Stacks (all `eu-west-1`):** Foundation, Ci, Storage, Data, Auth, Api,
+  ImagePipeline, Hosting.
 - **Auth:** Cognito pool `eu-west-1_wiSTL2jB6`, SRP-only SPA client, three
-  groups `admin` / `member` / `viewer`. Admin-only user creation via
-  /admin/users (invite + change role + delete + **rename login name** +
-  **reset password**).
-- **Login name (display only):** Every user has a `preferred_username`
-  attribute that the header shows instead of the email (e.g. "Thomas1").
-  Login still uses email. Existing two users backfilled as `Thomas1` (the
-  admin) and `Thomas2` (`thomas.f.madsen@outlook.com`) via
-  `AdminUpdateUserAttributes`. No Auth stack schema change needed —
-  `preferred_username` is a built-in Cognito standard attribute.
-- **Admin password reset:** `POST /users/{username}/password` →
-  `AdminSetUserPassword` with `Permanent: true`. Inline panel under the
-  user row: password input → Gem → green confirmation with Luk button.
-  Admin reads the new password out to the member verbally; no email
-  involved (avoids Cognito default-sender quota).
-- **Design system ("Coastal archival"):** Paper / sea / copper / sage
-  palette in `packages/web/src/styles.css`. Fraunces variable serif
-  (italic + opsz/SOFT axes) + Plus Jakarta Sans loaded from Google Fonts
-  in `packages/web/index.html`. Two background photos copied from
-  `Inbox/` to `packages/web/public/bg/` — `hero-beach.jpg` used on the
-  Login split-hero, `horizon-meadow.jpg` still unused (candidate for
-  404/help atmosphere). All pages adopted the eyebrow + Fraunces display
-  h1 + lede pattern; Gallery has editorial filters strip + asymmetric
-  tile grid (feature tiles 16:9 on 4-col); Photo-detail has paper frame
-  with copper hairline + giant year in Fraunces. The old
-  `design-preview/` mockups remain on disk as reference only.
-- **Upload flow:** member form with file (JPEG/PNG/TIFF/HEIC, ≤100 MB),
-  beskrivelse, hvem er på billedet (free text), year + "ca." flag,
-  houses 1–23, consent, and controlled person tags (approved or proposed).
-- **Image pipeline:** S3 PutObject → sharp Lambda → web 2400px JPEG + 400px
-  thumbnail + 4×4 blurhash → derived bucket; EXIF-based rotation baked in;
-  original GPS/EXIF stripped from derivatives; DDB row flips
-  `Uploaded → In Review`; audit row written.
-- **Review UI (admin):** queue of In Review photos with 200×200 thumbs
-  linking to the web JPEG; two checkboxes (web/book) + "Gem beslutning"
-  advances to `Decided` with visibility flags + audit row.
-- **Gallery (any authed user):** thumbnail grid of Decided + visibilityWeb
-  photos, filters by year / house / person; detail page with full web JPEG,
-  clickable approved-person chips, and a presigned download URL.
-- **Controlled person list:** approved + pending PERSON rows; member
-  autocomplete at upload, admin CRUD at /admin/personer (godkend, afvis,
-  omdøb, slet). Delete scrubs the slug from every tagged photo first.
-- **Admin photo delete (Review page):** `DELETE /photos/{id}` — scrubs
-  original + web + thumb from S3 and every DDB row under `PHOTO#<id>`.
-  Red "Slet billede" button per review card with inline confirm panel.
-- **Hjælp søges flag:** boolean on PHOTO META. Uploader checkbox at
-  upload ("Jeg kender ikke alle på billedet"); uploader/admin toggle on
-  /mine + /review; copper corner ribbon on Gallery tiles + warm banner
-  on photo detail. `PATCH /photos/{id}/help-wanted` (uploader or admin).
-- **Viewer comments + committee merge:** COMMENT item under
-  `PHOTO#<id>`, status pending/merged/shown/rejected. Any authed user
-  posts via the inline card on the detail page. Admin queue at
-  /admin/kommentarer with three actions per comment: **Flet ind i
-  beskrivelsen** (editor with current description + persons prefilled,
-  full PersonTagInput), **Vis som tilføjelse** (renders as attributed
-  addendum on the detail page with italic Fraunces "— Thomas1, apr.
-  2026"), or **Afvis** (hard-delete). Pending comments live in a
-  dedicated GSI1 partition `COMMENTSTATUS#pending`.
-- **Photo short ID (ID-00042):** atomic counter item
-  (`COUNTER#PHOTOID`, `ADD nextId :1`) assigned at upload time; existing
-  photos backfilled 1..7 by createdAt via
-  `infra/scripts/backfill-short-ids.ts`. Displayed as copper monospace
-  badge on detail + Mine + Review + admin-comments + admin-removals.
-  `formatShortId(n)` helper in types.ts pads to 5 digits.
-- **GDPR removal requests:** REMOVAL item under `PHOTO#<id>`, GSI1
-  partition `REMOVALSTATUS#pending`. Any authed user anmoder via
-  inline form on gallery detail (reason required). Admin queue at
-  /admin/fjernelser with **Godkend — slet for altid** (writes
-  top-level AUDIT row with requestor/approver/reason/decisionNote/
-  shortId BEFORE the S3 + DDB scrub, so the audit survives the
-  photo) or **Afvis** (keeps photo, flips status, drops from pending
-  partition). Single-admin approve, no notification (committee
-  handles comms directly).
-- **CI/CD:** GitHub Actions OIDC role; push to `main` runs
-  `npm run build -w @strandgaarden/web` then `cdk deploy --all`.
+  groups `admin` / `member` / `viewer`. `preferred_username` stores the
+  display name shown in the header.
+- **CI/CD:** GitHub Actions OIDC role; **push to `main` runs
+  `npm run build -w @strandgaarden/web` then `cdk deploy --all`**. This is
+  the only deploy path — local `cdk deploy` is no longer used (running
+  both in parallel races on CloudFormation locks; see commits 17c5af4 /
+  e4506de aftermath in session transcript).
+
+### Authentication & user lifecycle
+
+- **Admin user management** (/admin/users): invite + change role + delete
+  + rename login name + reset password + assign house number. Inline
+  password reset reads the new password aloud (no email; avoids Cognito
+  default-sender quota).
+- **GDPR consent gate** — `<GdprGate>` blocks every protected route until
+  the caller has accepted the current GDPR text version. Records
+  `gdprAcceptedAt` + `gdprAcceptedVersion` to the user's `USER#<sub>/META`
+  row. Re-fires when an admin bumps the version on /admin/fase.
+- **/samtykke page** — any authed user can re-read the current GDPR text
+  and see when they accepted it. Linked from the upload page in place of
+  the old per-upload consent checkbox.
+- **`<ProfileProvider>`** — single source of truth for /me on the client.
+  Wraps the entire route tree in `App.tsx`; consumed by GdprGate,
+  StageBanner, Upload, Mine, GalleryPhoto, Header. One /me round trip per
+  protected page load — no duplicates.
+
+### Stage workflow
+
+Singleton CONFIG row holds:
+- `stage: 1 | 2 | 3` (default 3)
+- `maxBookSlotsPerHouse: number` (default 7)
+- `maxHouseTextChars: number` (default 900)
+- `gdprText: string` + `gdprVersion: string`
+
+Admins edit at /admin/fase (full form: radio for stage, threshold inputs,
+GDPR textarea + "ny version" toggle).
+
+- **Stage 1 — Indsamling.** Members upload to either:
+  - Their own assigned house (locked, capped at `maxBookSlotsPerHouse`)
+  - A club-wide activity (Sankt Hans, Generalforsamling, …) — picked from
+    /activities list.
+  Server enforces XOR for non-admins; cap is checked by scanning photos
+  whose `houseNumbers` contain the user's house. Admins keep free-form
+  upload behavior.
+- **Stage 2 — Frys.** Non-admin write endpoints (`upload-url`,
+  `comments-create`, `removals-create`, `photos-set-help-wanted`,
+  `house-text-update`) reject with 423 Locked. `<StageBanner>` renders
+  inside `<GdprGate>` above the outlet whenever stage ≠ 3. Forms hide
+  themselves on Upload, Mine (helpWanted toggle), GalleryPhoto (comment +
+  removal). Admins are exempt — they keep full access during freeze.
+- **Stage 3 — Offentlig.** Today's behavior: free upload, gallery open.
+
+### Activities
+
+- /admin/aktiviteter — full CRUD on activity keywords (key, displayName,
+  displayOrder).
+- `loadActivityNameMap` helper joins `activityKey` → displayName at read
+  time in `mine`, `review-list`, `book-list`, `gallery-list`,
+  `gallery-detail`. Cards display "Aktivitet: X" when no houses are set.
+- Stage-1 activity uploads write `activityKey` to the PHOTO row alongside
+  empty `houseNumbers`.
+
+### House texts (book chapter intros)
+
+- `HOUSETEXT#<n>/META` row per house: body (HTML) + audit fields.
+- Members edit their own house's text on /mine via a Tiptap editor with
+  three buttons (Overskrift / Fed / Kursiv). Visible-char counter
+  (tag-stripped) against `maxHouseTextChars`. Locked when frozen.
+- Admin /admin/hustekster — read-only overview of all 23 houses; written
+  ones render through DOMPurify (allow-list: p/br/b/strong/i/em/h2),
+  unwritten ones show a dashed empty card.
+- Server validates length on visible chars; raw-bytes hard limit at 8×
+  the cap blocks oversized empty markup.
+
+### Gallery for admins
+
+- /galleri shows the public-published photos to any authed user in
+  stage 3. For non-admins in stage 1/2 the gallery is replaced with a
+  stage-aware landing ("Vi samler billeder" / "Galleriet er på pause")
+  pointing to /mine + /upload.
+- Admin "Vis alle billeder" checkbox sends `?all=1` to `gallery-list`
+  which skips the `visibilityWeb` filter — book-only photos show up with
+  a dark "Kun bog" ribbon.
+- Activity filter dropdown alongside year/house/person filters when any
+  decided photo carries an `activityKey`.
+- /galleri/:id allows admin access to non-published photos so they can
+  use the existing edit pencil. /admin/bog cards link "Rediger / se
+  detaljer" → /galleri/<id>.
+- /admin/bog has a 3-way "Sortér" radio: by ID (default), by house, by
+  activity. Headed sections under the chosen view; "Vis kun" dropdown
+  scopes to a single house/activity bucket. "Vælg alle" respects the
+  current view + filter.
+
+### Existing features (carryover)
+
+- **Image pipeline:** S3 PutObject → sharp Lambda → web 2400px JPEG +
+  400px thumbnail + 4×4 blurhash + book-derivative <2 MB → derived
+  bucket. EXIF rotation baked in; original GPS/EXIF stripped.
+  `Uploaded → In Review` flip; audit row written.
+- **Review** (/admin/gennemgang) — In Review queue, web/book checkboxes,
+  decision advances to `Decided`.
+- **Controlled person list** + admin /admin/personer.
+- **Photo short ID** (`ID-00042`) via atomic counter row.
+- **Hjælp søges** flag + ribbon + banner.
+- **Comments + committee merge** (/admin/kommentarer).
+- **GDPR removal requests** + admin queue (/admin/fjernelser); approve
+  path writes top-level AUDIT row before scrubbing.
+- **Jubilee book export** — admin selects from /admin/bog, downloads
+  individual JPEGs or a ZIP via `/book/export`. Exports land under
+  `exports/` in the derived bucket with a 7-day lifecycle rule.
+- **Unified admin hub** /admin — 9 cards (Fase, Gennemgang, Kommentarer,
+  Fjernelser, Bog, Aktiviteter, Personer, Hustekster, Brugere) with
+  pending-count badges.
+- **Design system "Coastal archival"** — paper / sea / copper / sage,
+  Fraunces + Plus Jakarta Sans, eyebrow + display + lede pattern.
+
+### API surface
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | `/health` | public | Liveness |
+| GET | `/whoami` | authed | Echo claims |
+| GET | `/me` | authed | Profile incl. `stage`, `houseNumber`, `myHouseSlotsUsed`, `myHouseText`, GDPR fields |
+| POST | `/me/gdpr-accept` | authed | Record GDPR acceptance |
+| GET | `/gdpr-text` | authed | Live GDPR text + version |
+| POST | `/upload-url` | member/admin | Presigned S3 PUT + PHOTO stub (stage-aware) |
+| GET | `/photos/mine` | authed | Caller's own uploads |
+| GET | `/photos/review` | admin | In Review queue |
+| PATCH | `/photos/{id}/decision` | admin | Set web/book visibility |
+| DELETE | `/photos/{id}` | admin | Hard delete (S3 + DDB) |
+| PATCH | `/photos/{id}` | admin | Edit metadata |
+| PATCH | `/photos/{id}/help-wanted` | uploader/admin | Toggle flag |
+| POST | `/photos/{id}/comments` | authed | Post comment (pending) |
+| GET | `/comments` | admin | Pending comments queue |
+| POST | `/photos/{p}/comments/{c}/merge` | admin | Apply merge |
+| DELETE | `/photos/{p}/comments/{c}` | admin | Reject |
+| POST | `/photos/{id}/removals` | authed | Submit removal request |
+| GET | `/removals` | admin | Pending removals |
+| POST | `/photos/{p}/removals/{r}/decide` | admin | Approve/reject |
+| GET | `/book` | admin | Book-flagged photos |
+| POST | `/book/export` | admin | Bundle ZIP |
+| GET | `/gallery` | authed | Public list (admin: `?all=1`, `?activity=`) |
+| GET | `/gallery/{id}` | authed | Detail (admin can view non-public) |
+| GET | `/users` | admin | List users |
+| POST | `/users` | admin | Invite |
+| PATCH | `/users/{u}/groups` | admin | Change role |
+| PATCH | `/users/{u}/login-name` | admin | Rename `preferred_username` |
+| PATCH | `/users/{u}/house` | admin | Assign house |
+| POST | `/users/{u}/password` | admin | Set permanent password |
+| DELETE | `/users/{u}` | admin | Delete |
+| GET | `/persons` | authed | Person list (autocomplete) |
+| POST | `/persons` | admin | Create approved |
+| PATCH | `/persons/{slug}` | admin | Rename / approve |
+| DELETE | `/persons/{slug}` | admin | Delete + scrub |
+| GET | `/config` | admin | Read CONFIG |
+| PATCH | `/config` | admin | Update stage/thresholds/GDPR text |
+| GET | `/activities` | authed | List activity keywords |
+| POST | `/activities` | admin | Create |
+| PATCH | `/activities/{key}` | admin | Rename/reorder |
+| DELETE | `/activities/{key}` | admin | Delete |
+| GET | `/house-texts` | admin | All 23 house texts |
+| PATCH | `/house-texts/{house}` | admin or member-of-house | Edit body |
+
+## Deployment flow (push-only)
+
+1. Edit code locally.
+2. Type-check both sides:
+   - `cd infra && npx tsc --noEmit`
+   - `cd packages/web && npx tsc --noEmit`
+3. Commit + `git push origin main`. CI runs `cdk deploy --all` (~3 min).
+   Verify via the workflow run page or `gh run list` (no `gh` CLI on
+   this machine — fall back to the GitHub REST API:
+   `curl -sk https://api.github.com/repos/ThomasFisker/StrandGaarden/actions/runs?branch=main&per_page=1`).
+4. Hard-refresh the live URL and smoke-test.
+
+**Do NOT run `cdk deploy` locally.** It races CI's deploy on
+CloudFormation locks and produces spurious failure emails (see Sample_Pictures/*.eml from the earlier session for the symptom).
+
+## Local dev (no deploy)
+
+For UI-only iteration without deploying:
+
+```
+export PATH="/c/Program Files/nodejs:$PATH"
+npm run dev -w @strandgaarden/web   # localhost:5173 against the deployed dev API
+```
+
+For features that need real photo content, copy a few files from
+`Sample_Pictures/` (gitignored) into `packages/web/public/` so Vite
+serves them; fetch them from browser JS and feed them through the
+/upload-url → S3 PUT path. Delete from `packages/web/public/` after.
+
+DDB / S3 verification via `aws` CLI from
+`/c/Program Files/Amazon/AWSCLIV2/aws.exe` with
+`AWS_PROFILE=strandgaarden` and `MSYS_NO_PATHCONV=1` for path args.
+
+## Verification convention
+
+- After a deploy, share the URL + a brief smoke-test checklist (the
+  user runs it; we don't have headless-browser auth to Cognito).
+- For auth flows, document the manual steps explicitly.
+- Note when a change isn't browser-observable (backend-only); skip the
+  preview step in that case.
 
 ## Still to do (priority order)
 
-Working tree is clean (all committed + deployed + pushed). Current HEAD is
-`4bd368a` on `main`; CI green on that sha.
-
-Latest shipped in this session:
-- **Committee inline edit** (`6a4f99f`) — admins click a pencil on
-  any gallery-detail page to edit description, whoInPhoto, year,
-  houses, and tagged persons. Full before/after audit row written.
-  PATCH /photos/{id} via photos-update Lambda.
-- **Jubilee book export** (`e6a77cb`) — process-image now makes a
-  third derivative `book/<id>.jpg` <2 MB via a quality ladder,
-  admins select photos at /admin/bog and download individual JPEGs
-  or a ZIP (via book-export Lambda). Exports land in `exports/`
-  with a 7-day S3 lifecycle rule.
-- **Unified admin hub** (`4bd368a`) — 5 admin nav links replaced
-  with a single "Udvalget" link → /admin hub page showing 6 cards
-  (Gennemgang, Kommentarer, Fjernelser, Bog, Personer, Brugere)
-  each with a live pending-count badge.
-- **Short-ID badge on gallery tiles** (`b070ef0`) — small UI polish.
-
 **Blocking before real member invites:**
 1. **Two committee members test-drive the system.** Email draft in
-   the session transcript; user creates their accounts manually via
-   /admin/users and sends the invite. Goal: catch UX issues before
-   opening to all 21 members.
-2. **Danish help page** "Sådan bruger du siden".
-3. **SES** for password resets / approval notices / committee emails
+   the earlier session transcript; user creates accounts manually via
+   /admin/users and sends the invite.
+2. **Approve-path smoke test for GDPR removal.** Reject path is
+   browser-tested; approve path (hard-delete) has only been exercised
+   via the admin photo-delete button. Upload throwaway, anmod, godkend,
+   verify AUDIT row + gone photo.
+3. **Danish help page** "Sådan bruger du siden" — onboarding for
+   elderly members. Could use `horizon-meadow.jpg` as backdrop.
+4. **SES** for password resets / approval notices / committee emails
    (currently Cognito default sender, low quota).
-4. **Shared viewer credential.** One-off `AdminCreateUser` via /admin/users
-   for the committee's shared viewer login.
-5. **Approve-path smoke test for GDPR removal.** Reject path is
-   browser-tested; approve-path (hard-delete) has been exercised only
-   via the admin photo-delete button (same code). Upload a throwaway
-   photo, submit a removal request, approve it, verify AUDIT row +
-   gone photo. Skipped today to avoid nuking the shared test photo.
+5. **Shared viewer credential** for the committee's shared kigge login
+   (one `AdminCreateUser` via /admin/users).
 
 **Should-have fairly early:**
 6. Cross-region replication of the originals bucket (locked in the
@@ -148,116 +274,60 @@ Latest shipped in this session:
 7. CloudWatch log retention on every Lambda (currently never expire).
 8. Merge two persons into one.
 
-**Nice-to-have:** audit log viewer (top-level `PK=AUDIT` items now
-exist from the GDPR flow), PWA manifest, blurhash LQIP placeholder
-render, enforced server-side upload size limit via `createPresignedPost`,
-member self-edit of own uploads, narrow-viewport header overflow, use
-`horizon-meadow.jpg` as a decorative backdrop somewhere (404, help
-page, empty-gallery state).
+**Nice-to-have:** audit log viewer (top-level `PK=AUDIT` items exist),
+PWA manifest, blurhash LQIP placeholder render, server-side upload size
+limit via `createPresignedPost`, member self-edit of own uploads,
+narrow-viewport header overflow, `horizon-meadow.jpg` decoration.
 
 **Ops:** prod stage stacks (`-Prod-*`), CloudWatch alarms, automated
 tests. Not urgent.
 
-See memory `project_bootstrap_state.md` for the deployed-state snapshot.
-
-## Test method in use
-
-Each increment is built, deployed, and verified in a real browser before
-commit+push. No automated test suite exists — manual preview-browser
-verification is the sole test strategy for now.
-
-**Local flow:**
-
-1. `npm install` at repo root (workspaces: `infra`, `packages/web`).
-2. Edit code. Type-check both sides:
-   - `cd infra && npx tsc --noEmit`
-   - `cd packages/web && npx tsc --noEmit`
-3. Deploy affected stacks locally (for infra changes):
-   ```
-   cd infra
-   AWS_PROFILE=strandgaarden AWS_REGION=eu-west-1 npx cdk deploy <stack> --require-approval never
-   ```
-4. Run the SPA against the deployed dev backend:
-   ```
-   npm run build -w @strandgaarden/web   # for hosting-stack redeploys
-   npm run dev   -w @strandgaarden/web   # for local edits on localhost:5173
-   ```
-5. Exercise the new path in the browser. For committee/admin paths, log in
-   as `thomas.madsen@secondepic.com` / `Picture1!`.
-6. For features that need real photo content, copy a few files from
-   `Sample_Pictures/` (gitignored) into `packages/web/public/` so Vite
-   serves them; fetch them from browser JS and feed them through the
-   /upload-url → S3 PUT path. Delete from `packages/web/public/` after.
-7. Clean up test photos afterward: `AWS_PROFILE=strandgaarden aws dynamodb
-   delete-item ... PHOTO#<id>/META` + matching `s3api delete-object` for
-   originals/web/thumb keys + audit rows.
-
-**Claude-driven verification inside these sessions:**
-
-- Preview tool starts Vite via `.claude/launch.json` (`node
-  node_modules/vite/bin/vite.js packages/web --port 5173`).
-- Browser automation via `mcp__Claude_Preview__preview_*` (screenshot,
-  snapshot, fill, click, eval). `Claude_in_Chrome` is used for real
-  deployed URLs when available.
-- DDB / S3 verification via `aws` CLI from `/c/Program Files/Amazon/AWSCLIV2/aws.exe`
-  with `AWS_PROFILE=strandgaarden` and `MSYS_NO_PATHCONV=1` for path args.
-- Node / npm live at `/c/Program Files/nodejs/` — not on PATH by default,
-  so `export PATH="/c/Program Files/nodejs:$PATH"` in bash commands.
-
-## Resuming tomorrow
+## Resuming next session
 
 1. `cd "C:/Users/thoma/OneDrive - Second Epic/ClaudeProjects/Strandgaarden"`
-2. `git status` — expect clean. Last commit `4bd368a`
-   (`feat: unified admin hub page — Udvalget`). Previous session
-   shipped 4 commits: short-ID tile badge, committee inline edit,
-   jubilee book export, admin hub page. All pushed; CI green.
-3. Open https://d2wq22ivboh02d.cloudfront.net/ (hard-refresh if the
-   cached bundle is stale) and smoke-test login as
-   `thomas.madsen@secondepic.com` / `Picture1!`. Header should show
-   `Thomas1` + a single "Udvalget" admin link. Clicking "Udvalget"
-   lands on /admin with 6 cards (Gennemgang / Kommentarer /
-   Fjernelser / Bog / Personer / Brugere) — each with a live
-   pending-count badge. Gallery tiles should show a copper ID-XXXXX
-   badge top-right. Expected current bundle hash is `index-yqcpcC_Y.js`.
-4. **Recommended next task:** the committee-member invite email. A
-   Danish draft is in the previous session's transcript (problem →
-   hvad systemet gør → opfordring + link). User wants to create their
-   accounts manually at /admin/users and send. Rest of the Still-to-do
-   list (help page, SES, shared viewer credential, etc.) can wait
-   until after the two testers have kicked the tires.
-5. **Known test-state on dev (not a blocker, just awareness):**
-   - All 7 early test photos (ID-00001 through ID-00007) were
-     deleted during this session's cleanup, including the
-     `a04b87ce-…` photo that had a test-merged description.
-     Only shortIds 9 and 10 remain. Book derivatives
-     (`book/<id>.jpg`) exist for those two.
-   - Thomas2 (`thomas.f.madsen@outlook.com`) still has password
-     `ResetTest99!` from an earlier smoke test — delete or reset
-     before the real invites go out.
-   - Counter `COUNTER#PHOTOID` is at 10; next upload becomes ID-00011.
+2. `git status` — expect clean. Last commit `8dc64fe`
+   (`fix: use Strandgaarden's actual non-contiguous house numbers`).
+   This session shipped 14 commits; all pushed; CI green.
+3. Open https://d2wq22ivboh02d.cloudfront.net/ (hard-refresh). Login as
+   `thomas.madsen@secondepic.com` / `Picture1!`. Expected current bundle
+   hash: **`index-BmiyxeHp.js`**.
+4. Quick visual-state check:
+   - Header shows `Thomas1` + Galleri + Upload + Mine + Udvalget links.
+   - /admin shows 9 cards with badges.
+   - /admin/fase loads the stage editor (radio + thresholds + GDPR
+     textarea); current stage is **3**.
+   - /upload shows the GDPR reference note (no checkbox); the house
+     selector lists the new non-contiguous house numbers (3,5,7…17,
+     4,6…32) in that exact order.
+   - /mine shows the rich-text "Tekst til bogen — Hus N" card if your
+     user has a house assigned.
+5. **Recommended next task** (per Still-to-do): the committee-member
+   invite. Two testers; manual `AdminCreateUser` from /admin/users; send
+   the Danish draft email. Until they kick the tires, the rest of the
+   list is blocked behind real feedback.
 6. If something's broken:
    - API alive: `curl -sk https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com/health`
-     (use `-k` on this Windows shell — schannel revocation check otherwise fails).
+     (use `-k` on this Windows shell — schannel revocation otherwise fails).
    - Stack statuses: `aws cloudformation list-stacks --profile strandgaarden --region eu-west-1 --query 'StackSummaries[?starts_with(StackName,\`Strandgaarden-\`) && StackStatus!=\`DELETE_COMPLETE\`].{name:StackName,status:StackStatus}'`.
-   - Any photos stuck in `Uploaded`: the pipeline Lambda log group is
+   - Photos stuck in `Uploaded`: pipeline log group is
      `/aws/lambda/strandgaarden-dev-process-image`.
-   - CDK synth EPERM on Windows OneDrive: transient, just retry the
-     `cdk deploy` — it's the `cdk.out/bundling-temp-*` rename hitting
-     a file lock.
+   - CDK synth EPERM on Windows OneDrive: rare now (only if local cdk
+     deploy is run); if it happens just retry — `cdk.out/bundling-temp-*`
+     rename hitting a file lock.
+
+## Known dev test state
+
+- All 7 early test photos (ID-00001 through ID-00007) were deleted in
+  prior sessions. Counter `COUNTER#PHOTOID` at 10+ depending on
+  intermediate test uploads.
+- Thomas2 (`thomas.f.madsen@outlook.com`) password may still be
+  `ResetTest99!` from an earlier reset — verify and rotate before
+  real invites.
+- Some test photos may have stale house numbers (1, 2, etc.) from before
+  the non-contiguous fix landed. Readers don't validate; they just
+  display whatever's stored. Edits will force admin to re-pick from the
+  new valid set.
 
 Claude will auto-load `CLAUDE.md` (this file) and the
 `memory/project_*.md` entries at session start, so the full context is
 available without re-briefing.
-
-Add as a new ## Deployment & Verification section near the end of CLAUDE.md\n\n## Deployment & Verification
-- After deploying to a public URL, always provide the URL and a brief smoke-test checklist
-- For auth flows (Cognito SRP, OAuth), note when browser-based verification is required and document manual steps the user must run
-- When git push requires interactive browser auth, stop and hand off to the user with the exact command to run
-Add as a new ## Environment Setup section at the top of CLAUDE.md\n\n## Environment Setup
-- Before running Node/npm commands, verify PATH with `which node` and `node --version`
-- If a newly installed tool isn't found, source shell config or use absolute paths
-- For Python document generation (DOCX/PDF), always validate the output file opens correctly before declaring done
-Add as a new ## Notion Integration section\n\n## Notion Integration
-- When populating Notion pages, reconstruct from local memory/context files first, then write
-- Use the MCP Notion tools (notion-create-pages) rather than manual API calls
-- Confirm page IDs before writing to avoid overwriting wrong pages
