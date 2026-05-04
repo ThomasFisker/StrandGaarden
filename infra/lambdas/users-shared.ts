@@ -40,8 +40,20 @@ export const requireAdmin = (event: APIGatewayProxyEventV2WithJWTAuthorizer): bo
  */
 export const USER_PK_PREFIX = 'USER#';
 export const USER_SK = 'META';
-export const HOUSE_MIN = 1;
-export const HOUSE_MAX = 23;
+
+/** Valid Strandgaarden house numbers — odd-numbered houses 3..17 plus
+ * even-numbered houses 4..32. The set is fixed by the physical layout
+ * of the club; numbers are NOT contiguous (no house 1, 2, 19, 21, etc.).
+ * Order here is the canonical UI display order: odds first, then evens.
+ *
+ * Must stay in sync with `HOUSES` in packages/web/src/types.ts. */
+export const VALID_HOUSES: readonly number[] = [
+  3, 5, 7, 9, 11, 13, 15, 17,
+  4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32,
+];
+const VALID_HOUSE_SET: ReadonlySet<number> = new Set(VALID_HOUSES);
+export const isValidHouse = (n: unknown): n is number =>
+  typeof n === 'number' && Number.isInteger(n) && VALID_HOUSE_SET.has(n);
 
 export const userPk = (sub: string): string => `${USER_PK_PREFIX}${sub}`;
 

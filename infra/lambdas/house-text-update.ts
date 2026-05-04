@@ -3,10 +3,9 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { FREEZE_ERROR_MESSAGE, getConfig, isFrozenForCaller } from './config-shared';
 import {
-  HOUSE_MAX,
-  HOUSE_MIN,
   houseTextPk,
   HOUSETEXT_SK,
+  isValidHouse,
   json,
   parseGroups,
   USER_SK,
@@ -33,8 +32,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
   const houseRaw = event.pathParameters?.house;
   const house = houseRaw === undefined ? NaN : Number(houseRaw);
-  if (!Number.isInteger(house) || house < HOUSE_MIN || house > HOUSE_MAX) {
-    return json(400, { error: `house must be ${HOUSE_MIN}–${HOUSE_MAX}` });
+  if (!isValidHouse(house)) {
+    return json(400, { error: 'house must be a valid Strandgaarden house number' });
   }
 
   let body: { body?: unknown };

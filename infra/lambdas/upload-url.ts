@@ -7,7 +7,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ACTIVITY_SK_PREFIX, ACTIVITYLIST_PK } from './activities-shared';
 import { FREEZE_ERROR_MESSAGE, getConfig, isFrozenForCaller } from './config-shared';
 import { normalizeDisplayName, PERSON_SK_PREFIX, PERSONLIST_PK, slugify } from './persons-shared';
-import { USER_SK, userPk } from './users-shared';
+import { isValidHouse, USER_SK, userPk, VALID_HOUSES } from './users-shared';
 import { ScanCommand } from '@aws-sdk/lib-dynamodb';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
@@ -29,8 +29,6 @@ const URL_TTL_SECONDS = 300;
 const FILENAME_MAX = 255;
 const DESCRIPTION_MAX = 2000;
 const WHO_IN_PHOTO_MAX = 1000;
-const HOUSE_MIN = 1;
-const HOUSE_MAX = 23;
 const YEAR_MIN = 1800;
 
 const json = (statusCode: number, body: unknown) => ({
@@ -172,10 +170,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   } else {
     if (!Array.isArray(houseNumbersRaw) || houseNumbersRaw.length === 0) {
       errors.push('houseNumbers is required — pick at least one');
-    } else if (houseNumbersRaw.length > HOUSE_MAX) {
-      errors.push(`houseNumbers may contain at most ${HOUSE_MAX} entries`);
-    } else if (!houseNumbersRaw.every((n) => Number.isInteger(n) && n >= HOUSE_MIN && n <= HOUSE_MAX)) {
-      errors.push(`every houseNumber must be an integer ${HOUSE_MIN}..${HOUSE_MAX}`);
+    } else if (houseNumbersRaw.length > VALID_HOUSES.length) {
+      errors.push(`houseNumbers may contain at most ${VALID_HOUSES.length} entries`);
+    } else if (!houseNumbersRaw.every((n) => isValidHouse(n))) {
+      errors.push('every houseNumber must be a valid Strandgaarden house number');
     } else {
       houseNumbers = Array.from(new Set(houseNumbersRaw as number[])).sort((a, b) => a - b);
     }

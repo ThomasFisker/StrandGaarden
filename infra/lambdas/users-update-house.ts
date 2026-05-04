@@ -7,8 +7,7 @@ import {
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import {
-  HOUSE_MAX,
-  HOUSE_MIN,
+  isValidHouse,
   json,
   requireAdmin,
   userPk,
@@ -44,8 +43,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     houseNumber = null;
   } else {
     const n = Number(body.houseNumber);
-    if (!Number.isInteger(n) || n < HOUSE_MIN || n > HOUSE_MAX) {
-      return json(400, { error: `houseNumber must be ${HOUSE_MIN}–${HOUSE_MAX} or null` });
+    if (!isValidHouse(n)) {
+      return json(400, { error: 'houseNumber must be a valid Strandgaarden house number, or null to clear' });
     }
     houseNumber = n;
   }

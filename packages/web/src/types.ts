@@ -311,7 +311,16 @@ export const ACCEPTED_MIME: Record<string, string> = {
 };
 
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
-export const HOUSES = Array.from({ length: 23 }, (_, i) => i + 1);
+
+/** Valid Strandgaarden house numbers — odds 3..17, then evens 4..32.
+ * This is the canonical UI display order; the backend's VALID_HOUSES in
+ * infra/lambdas/users-shared.ts must be kept in sync (the two lists are
+ * intentionally duplicated since infra and web are separate workspaces).
+ */
+export const HOUSES: readonly number[] = [
+  3, 5, 7, 9, 11, 13, 15, 17,
+  4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32,
+];
 
 /** Resolution gates — must stay in sync with `MIN_LONG_EDGE` /
  * `BOOK_MIN_LONG_EDGE` in `infra/lambdas/process-image.ts`. The server is
