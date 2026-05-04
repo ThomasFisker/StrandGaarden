@@ -135,6 +135,15 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(photosUpdateFn);
 
+    const photosPriorityFn = new lambdaNodejs.NodejsFunction(this, 'PhotosPriorityFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'photos-priority.ts'),
+      functionName: `strandgaarden-${props.stage}-photos-priority`,
+      description: 'Member-only: swap a photo with its neighbour in the user\'s house priority order',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(photosPriorityFn);
+
     const photosSetHelpWantedFn = new lambdaNodejs.NodejsFunction(this, 'PhotosSetHelpWantedFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'photos-set-help-wanted.ts'),
@@ -586,6 +595,12 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/{id}/help-wanted',
       methods: [apigwv2.HttpMethod.PATCH],
       integration: new apigwIntegrations.HttpLambdaIntegration('PhotosSetHelpWantedIntegration', photosSetHelpWantedFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/photos/{id}/priority',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('PhotosPriorityIntegration', photosPriorityFn),
       authorizer: jwtAuthorizer,
     });
 
