@@ -1,5 +1,4 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { ProfileProvider } from '../profile';
 import { useSession } from '../session';
 import { GdprGate } from './GdprGate';
 
@@ -20,10 +19,8 @@ export const ProtectedRoute = ({ requireGroup }: { requireGroup?: 'admin' | 'mem
   }
 
   return (
-    <ProfileProvider>
-      <GdprGate>
-        <Outlet />
-      </GdprGate>
-    </ProfileProvider>
+    <GdprGate>
+      <Outlet />
+    </GdprGate>
   );
 };

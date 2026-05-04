@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getGallery } from '../api';
+import { useProfile } from '../profile';
 import { useSession } from '../session';
 import { formatShortId, type GalleryItem, type GalleryList } from '../types';
 
 export const GalleryPage = () => {
   const { session } = useSession();
+  const { profile } = useProfile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<GalleryList | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -13,8 +15,11 @@ export const GalleryPage = () => {
   const [house, setHouse] = useState<number | null>(null);
   const [personSlug, setPersonSlug] = useState<string | null>(searchParams.get('person'));
 
+  const isAdmin = profile?.groups.includes('admin') ?? false;
+  const galleryHidden = profile !== null && !isAdmin && profile.stage !== 3;
+
   const load = useCallback(async () => {
-    if (!session) return;
+    if (!session || galleryHidden) return;
     setError(null);
     try {
       const result = await getGallery(session.idToken, { year, house, person: personSlug });
@@ -22,7 +27,7 @@ export const GalleryPage = () => {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kunne ikke hente billeder');
     }
-  }, [session, year, house, personSlug]);
+  }, [session, year, house, personSlug, galleryHidden]);
 
   useEffect(() => {
     load();
@@ -70,6 +75,33 @@ export const GalleryPage = () => {
       {isFeature && p.description && <p className="desc">{p.description}</p>}
     </Link>
   );
+
+  if (galleryHidden) {
+    const stage = profile?.stage ?? 3;
+    return (
+      <main className="content">
+        <p className="eyebrow">{stage === 1 ? 'Fase 1 — Indsamling' : 'Frys'}</p>
+        <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>
+          {stage === 1 ? <>Vi <em>samler</em> billeder</> : <>Galleriet er <em>på pause</em></>}
+        </h1>
+        <p className="lede">
+          {stage === 1
+            ? 'Galleriet åbner først når jubilæumsbogen er klar. Imens samler vi billederne ind — bidrag du har sendt finder du på Mine billeder, og du kan uploade flere via Upload billede.'
+            : 'Udvalget arbejder på den trykte bog. Når vi åbner igen, finder du galleriet her. Imens kan du stadig se det du selv har uploadet.'}
+        </p>
+        <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <Link to="/mine" className="btn-primary">
+            Mine billeder <span className="arrow">→</span>
+          </Link>
+          {stage === 1 && (
+            <Link to="/upload" className="btn-ghost">
+              Upload billede
+            </Link>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <>

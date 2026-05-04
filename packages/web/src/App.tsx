@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ProfileProvider } from './profile';
 import { LoginPage } from './pages/Login';
 import { UploadPage } from './pages/Upload';
 import { MinePage } from './pages/Mine';
@@ -19,29 +20,31 @@ import { AdminHouseTextsPage } from './pages/AdminHouseTexts';
 import { NotFoundPage } from './pages/NotFound';
 
 export const App = () => (
-  <Routes>
-    <Route element={<Layout />}>
-      <Route path="/login" element={<LoginPage />} />
-      <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<Navigate to="/galleri" replace />} />
-        <Route path="/galleri" element={<GalleryPage />} />
-        <Route path="/galleri/:id" element={<GalleryPhotoPage />} />
-        <Route path="/upload" element={<UploadPage />} />
-        <Route path="/mine" element={<MinePage />} />
+  <ProfileProvider>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<Navigate to="/galleri" replace />} />
+          <Route path="/galleri" element={<GalleryPage />} />
+          <Route path="/galleri/:id" element={<GalleryPhotoPage />} />
+          <Route path="/upload" element={<UploadPage />} />
+          <Route path="/mine" element={<MinePage />} />
+        </Route>
+        <Route element={<ProtectedRoute requireGroup="admin" />}>
+          <Route path="/admin" element={<AdminHomePage />} />
+          <Route path="/admin/fase" element={<AdminPhasePage />} />
+          <Route path="/admin/aktiviteter" element={<AdminActivitiesPage />} />
+          <Route path="/admin/hustekster" element={<AdminHouseTextsPage />} />
+          <Route path="/review" element={<ReviewPage />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/personer" element={<AdminPersonsPage />} />
+          <Route path="/admin/kommentarer" element={<AdminCommentsPage />} />
+          <Route path="/admin/fjernelser" element={<AdminRemovalsPage />} />
+          <Route path="/admin/bog" element={<AdminBookPage />} />
+        </Route>
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
-      <Route element={<ProtectedRoute requireGroup="admin" />}>
-        <Route path="/admin" element={<AdminHomePage />} />
-        <Route path="/admin/fase" element={<AdminPhasePage />} />
-        <Route path="/admin/aktiviteter" element={<AdminActivitiesPage />} />
-        <Route path="/admin/hustekster" element={<AdminHouseTextsPage />} />
-        <Route path="/review" element={<ReviewPage />} />
-        <Route path="/admin/users" element={<AdminUsersPage />} />
-        <Route path="/admin/personer" element={<AdminPersonsPage />} />
-        <Route path="/admin/kommentarer" element={<AdminCommentsPage />} />
-        <Route path="/admin/fjernelser" element={<AdminRemovalsPage />} />
-        <Route path="/admin/bog" element={<AdminBookPage />} />
-      </Route>
-      <Route path="*" element={<NotFoundPage />} />
-    </Route>
-  </Routes>
+    </Routes>
+  </ProfileProvider>
 );

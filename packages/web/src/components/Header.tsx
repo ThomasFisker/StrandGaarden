@@ -1,5 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { Claims } from '../auth';
+import { useProfile } from '../profile';
 
 const primaryRole = (groups: string[]): string => {
   if (groups.includes('admin')) return 'Administrator';
@@ -11,8 +12,14 @@ const primaryRole = (groups: string[]): string => {
 export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => void }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { profile } = useProfile();
   const canUpload = claims.groups.some((g) => g === 'admin' || g === 'member');
   const isAdmin = claims.groups.includes('admin');
+  // Gallery stays visible for admins always; for non-admins we hide it in
+  // stages 1+2 where the gallery isn't the audience-facing experience.
+  // While the profile is still loading we keep it visible so the link
+  // doesn't flicker for the (common) Stage-3 case.
+  const showGallery = isAdmin || profile === null || profile.stage === 3;
   const onAdminSection =
     location.pathname === '/admin' ||
     location.pathname === '/review' ||
@@ -24,9 +31,11 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
           Strandgaarden <em>100 år</em>
         </a>
         <nav className="primary">
-          <NavLink to="/galleri" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-            Galleri
-          </NavLink>
+          {showGallery && (
+            <NavLink to="/galleri" className={({ isActive }) => (isActive ? 'active' : undefined)}>
+              Galleri
+            </NavLink>
+          )}
           {canUpload && (
             <NavLink to="/upload" className={({ isActive }) => (isActive ? 'active' : undefined)}>
               Upload billede
