@@ -51,6 +51,7 @@ interface PhotoRow {
   helpWanted: boolean;
   activityKey: string | null;
   activityName: string | null;
+  priority: number | null;
 }
 
 const loadPersonMap = async (): Promise<Map<string, PersonTag>> => {
@@ -137,6 +138,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         activityKey: typeof item.activityKey === 'string' ? item.activityKey : null,
         activityName:
           typeof item.activityKey === 'string' ? activityMap.get(item.activityKey) ?? null : null,
+        priority: typeof item.priority === 'number' ? item.priority : null,
       });
     }
     ExclusiveStartKey = result.LastEvaluatedKey;

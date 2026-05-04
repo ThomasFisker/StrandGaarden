@@ -2,7 +2,7 @@ import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { normalizeDisplayName, PERSON_SK_PREFIX, PERSONLIST_PK, slugify } from './persons-shared';
-import { isValidHouse, VALID_HOUSES } from './users-shared';
+import { isValidHouse, USER_SK, userPk, VALID_HOUSES } from './users-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
@@ -140,24 +140,59 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   }
 
   // Snapshot old values for the audit row so we can see what changed later.
+  const oldHouseNumbers = Array.isArray(existing.Item.houseNumbers)
+    ? existing.Item.houseNumbers.map(Number)
+    : [];
+  const oldPriority =
+    typeof existing.Item.priority === 'number' ? (existing.Item.priority as number) : null;
   const before = {
     description: String(existing.Item.description ?? ''),
     whoInPhoto: String(existing.Item.whoInPhoto ?? ''),
     year: existing.Item.year === null || existing.Item.year === undefined ? null : Number(existing.Item.year),
     yearApprox: existing.Item.yearApprox === true,
-    houseNumbers: Array.isArray(existing.Item.houseNumbers) ? existing.Item.houseNumbers.map(Number) : [],
+    houseNumbers: oldHouseNumbers,
     taggedPersonSlugs: Array.isArray(existing.Item.taggedPersonSlugs)
       ? (existing.Item.taggedPersonSlugs as string[])
       : [],
+    priority: oldPriority,
   };
+
+  // Priority field follows the photo's relationship to its uploader's
+  // own house. If the admin removes the uploader's house from the
+  // photo's tags, the priority is cleared (it's no longer ranked
+  // against that user's house contributions). If the uploader's house
+  // stays, priority is preserved. Admin can NOT set priority directly —
+  // it's a member-only concept.
+  let nextPriority: number | null = oldPriority;
+  if (oldPriority !== null) {
+    const uploaderSub =
+      typeof existing.Item.uploaderSub === 'string' ? (existing.Item.uploaderSub as string) : '';
+    if (uploaderSub) {
+      const u = await ddb.send(
+        new GetCommand({ TableName: tableName, Key: { PK: userPk(uploaderSub), SK: USER_SK } }),
+      );
+      const uploaderHouse =
+        u.Item && typeof u.Item.houseNumber === 'number' ? (u.Item.houseNumber as number) : null;
+      if (uploaderHouse === null || !houseNumbers.includes(uploaderHouse)) {
+        nextPriority = null;
+      }
+    }
+  }
+
+  const baseUpdate =
+    'SET description = :d, whoInPhoto = :w, #y = :y, yearApprox = :ya, houseNumbers = :h, ' +
+    'taggedPersonSlugs = :tps, lastEditedAt = :at, lastEditedBy = :by';
+  // REMOVE priority cleanly when it's being cleared so it's gone from
+  // DDB instead of stored as null (matches the upload-url shape that
+  // omits the field when there's no priority).
+  const priorityClause =
+    oldPriority !== null && nextPriority === null ? ' REMOVE priority' : '';
 
   await ddb.send(
     new UpdateCommand({
       TableName: tableName,
       Key: { PK: `PHOTO#${photoId}`, SK: 'META' },
-      UpdateExpression:
-        'SET description = :d, whoInPhoto = :w, #y = :y, yearApprox = :ya, houseNumbers = :h, ' +
-        'taggedPersonSlugs = :tps, lastEditedAt = :at, lastEditedBy = :by',
+      UpdateExpression: baseUpdate + priorityClause,
       ExpressionAttributeNames: { '#y': 'year' },
       ExpressionAttributeValues: {
         ':d': description,
@@ -191,6 +226,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
             yearApprox,
             houseNumbers,
             taggedPersonSlugs: resolvedSlugs,
+            priority: nextPriority,
           },
         },
       },

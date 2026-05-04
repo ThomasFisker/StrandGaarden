@@ -66,6 +66,63 @@ const countPhotosForHouse = async (house: number): Promise<number> => {
   return count;
 };
 
+/** Total photo count across all houses + activities for a given user.
+ * Backs the soft per-user cap that protects the system from a runaway
+ * uploader regardless of stage or branch. */
+const countUserUploads = async (sub: string): Promise<number> => {
+  let count = 0;
+  let ExclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const r = await ddb.send(
+      new ScanCommand({
+        TableName: tableName,
+        FilterExpression: 'entity = :p AND uploaderSub = :u',
+        ExpressionAttributeValues: { ':p': 'Photo', ':u': sub },
+        ProjectionExpression: 'photoId',
+        ExclusiveStartKey,
+      }),
+    );
+    count += r.Items?.length ?? 0;
+    ExclusiveStartKey = r.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  return count;
+};
+
+/** Next free priority slot 1..max for the uploader's photos in the
+ * given house. Returns null if every slot is taken (the per-house cap
+ * elsewhere should already have caught this — this is defensive). */
+const nextFreePriority = async (
+  sub: string,
+  house: number,
+  max: number,
+): Promise<number | null> => {
+  const used = new Set<number>();
+  let ExclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const r = await ddb.send(
+      new ScanCommand({
+        TableName: tableName,
+        FilterExpression:
+          'entity = :p AND uploaderSub = :u AND contains(houseNumbers, :h) AND attribute_exists(priority)',
+        ExpressionAttributeValues: { ':p': 'Photo', ':u': sub, ':h': house },
+        ProjectionExpression: 'priority',
+        ExclusiveStartKey,
+      }),
+    );
+    for (const it of r.Items ?? []) {
+      if (typeof it.priority === 'number') used.add(it.priority);
+    }
+    ExclusiveStartKey = r.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  for (let n = 1; n <= max; n++) if (!used.has(n)) return n;
+  return null;
+};
+
+/** Soft sanity bound: a single non-admin user can submit at most this
+ * many photos across the whole archive. Catches runaway uploads — the
+ * committee can lift it if anyone hits the wall. */
+const TOTAL_UPLOADS_CAP = 50;
+
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const claims = event.requestContext.authorizer?.jwt?.claims ?? {};
   const groups = parseGroups(claims['cognito:groups']);
@@ -186,6 +243,19 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
   if (errors.length) return json(400, { error: 'Validation failed', details: errors });
 
+  const callerSubForCounts = typeof claims.sub === 'string' ? claims.sub : '';
+
+  // Total-uploads sanity bound — applied to every non-admin upload
+  // regardless of stage or branch.
+  if (!isAdminCaller && callerSubForCounts) {
+    const total = await countUserUploads(callerSubForCounts);
+    if (total >= TOTAL_UPLOADS_CAP) {
+      return json(409, {
+        error: `Du har allerede sendt ${total} billeder. Bed udvalget om hjælp, hvis du har flere du gerne vil bidrage med.`,
+      });
+    }
+  }
+
   // Stage-1 per-house cap: count existing photos tagged with this house and
   // reject if at the configured limit. Skipped on the activity branch — the
   // book has a separate (per-activity) section there.
@@ -194,6 +264,26 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     if (used >= cfg.maxBookSlotsPerHouse) {
       return json(409, {
         error: `Hus ${houseNumbers[0]} har allerede ${used} af ${cfg.maxBookSlotsPerHouse} mulige billeder. Bed udvalget om at fjerne et først, hvis du vil uploade flere.`,
+      });
+    }
+  }
+
+  // Stage-1 + house branch: assign the next free priority slot in the
+  // uploader's house. Activity uploads and Stage-3 uploads don't carry a
+  // priority — null is fine.
+  let resolvedPriority: number | null = null;
+  if (stageOneNonAdmin && houseNumbers.length === 1 && !resolvedActivityKey && callerSubForCounts) {
+    resolvedPriority = await nextFreePriority(
+      callerSubForCounts,
+      houseNumbers[0],
+      cfg.maxBookSlotsPerHouse,
+    );
+    if (resolvedPriority === null) {
+      // Defensive — the per-house cap above should mean every priority
+      // slot is taken at the same point. Refuse explicitly rather than
+      // silently dropping the field.
+      return json(409, {
+        error: `Hus ${houseNumbers[0]} har allerede ${cfg.maxBookSlotsPerHouse} billeder.`,
       });
     }
   }
@@ -302,6 +392,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         GSI1PK: 'STATUS#Uploaded',
         GSI1SK: `${createdAt}#${photoId}`,
         ...(resolvedActivityKey ? { activityKey: resolvedActivityKey } : {}),
+        ...(resolvedPriority !== null ? { priority: resolvedPriority } : {}),
       },
       ConditionExpression: 'attribute_not_exists(PK)',
     }),
