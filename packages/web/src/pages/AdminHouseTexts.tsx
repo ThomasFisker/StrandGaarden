@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
+import DOMPurify from 'dompurify';
 import { listHouseTexts } from '../api';
 import { useSession } from '../session';
 import type { AdminHouseTextRow } from '../types';
+
+const ALLOWED_TAGS = ['p', 'br', 'b', 'strong', 'i', 'em', 'h2'];
+const renderBody = (raw: string): string =>
+  DOMPurify.sanitize(raw, { ALLOWED_TAGS, ALLOWED_ATTR: [] });
 
 const prettyDate = (iso: string | null): string => {
   if (!iso) return '—';
@@ -98,15 +103,11 @@ export const AdminHouseTextsPage = () => {
                   </span>
                 </header>
                 {hasBody && (
-                  <p
-                    style={{
-                      margin: '0.5rem 0 0',
-                      whiteSpace: 'pre-wrap',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {row.body}
-                  </p>
+                  <div
+                    style={{ marginTop: '0.5rem', fontFamily: 'inherit' }}
+                    // eslint-disable-next-line react/no-danger
+                    dangerouslySetInnerHTML={{ __html: renderBody(row.body!) }}
+                  />
                 )}
               </article>
             );

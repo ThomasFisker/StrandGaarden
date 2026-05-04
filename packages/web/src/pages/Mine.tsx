@@ -2,9 +2,22 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getMyPhotos, setHelpWanted, updateHouseText } from '../api';
+import { RichTextEditor } from '../components/RichTextEditor';
 import { useProfile } from '../profile';
 import { useSession } from '../session';
 import { formatShortId, type MyPhoto } from '../types';
+
+/** Roughly count visible characters in an HTML string by stripping tags
+ * and decoding common entities. The server's authoritative validation
+ * uses the same shape (strip-then-count) so the two stay in sync. */
+const visibleLength = (html: string): number =>
+  html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .length;
 
 const STATUS_LABEL: Record<string, string> = {
   Uploaded: 'Afventer gennemgang',
@@ -149,21 +162,20 @@ export const MinePage = () => {
             sendes i tryk.
           </p>
           <form onSubmit={submitHouseText} noValidate>
-            <textarea
-              rows={6}
-              maxLength={profile.maxHouseTextChars}
+            <RichTextEditor
               value={houseText}
-              onChange={(e) => {
-                setHouseText(e.target.value);
+              onChange={(html) => {
+                setHouseText(html);
                 setTextOk(false);
                 setTextError(null);
               }}
               disabled={savingText || frozen}
-              style={{ width: '100%', fontFamily: 'inherit', fontSize: '1rem' }}
               placeholder="Skriv jeres tekst her…"
             />
             <div className="help" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-              <span>{houseText.length}/{profile.maxHouseTextChars} tegn</span>
+              <span>
+                {visibleLength(houseText)}/{profile.maxHouseTextChars} tegn
+              </span>
               {profile.myHouseText !== null && profile.myHouseText !== houseText && (
                 <span style={{ color: 'var(--copper, #b85a2a)' }}>Ikke gemt endnu</span>
               )}

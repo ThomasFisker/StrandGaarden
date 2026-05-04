@@ -49,10 +49,24 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   if (isFrozenForCaller(cfg, isAdminCaller)) {
     return json(423, { error: FREEZE_ERROR_MESSAGE });
   }
-  if (text.length > cfg.maxHouseTextChars) {
+  // The rich-text editor on /mine emits HTML (b/i/h2 + paragraphs). The
+  // length cap is on visible characters, so strip tags and decode the
+  // common entities before counting. Hard cap on raw length too so a
+  // malicious client can't send a 1MB string with empty visible text.
+  const visible = text
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+  if (visible.length > cfg.maxHouseTextChars) {
     return json(400, {
-      error: `Teksten er for lang (maks ${cfg.maxHouseTextChars} tegn). Du har skrevet ${text.length}.`,
+      error: `Teksten er for lang (maks ${cfg.maxHouseTextChars} tegn). Du har skrevet ${visible.length}.`,
     });
+  }
+  const HARD_HTML_LIMIT = cfg.maxHouseTextChars * 8;
+  if (text.length > HARD_HTML_LIMIT) {
+    return json(400, { error: 'Teksten er for stor.' });
   }
 
   // Authorize: admin OK; otherwise caller must be assigned to this house.
