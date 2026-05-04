@@ -57,6 +57,8 @@ Full member → committee → viewer flow plus a multi-stage workflow
 
 ### Authentication & user lifecycle
 
+- **Cognito password policy:** min 8 chars + at least 1 digit. No
+  upper/lower/symbol requirement. (`infra/lib/auth-stack.ts`).
 - **Admin user management** (/admin/users): invite + change role + delete
   + rename login name + reset password + assign house number. Inline
   password reset reads the new password aloud (no email; avoids Cognito
@@ -68,10 +70,21 @@ Full member → committee → viewer flow plus a multi-stage workflow
 - **/samtykke page** — any authed user can re-read the current GDPR text
   and see when they accepted it. Linked from the upload page in place of
   the old per-upload consent checkbox.
+- **First-login password prompt** — `<FirstLoginPrompt>` rendered inside
+  `<GdprGate>` once GDPR is accepted. Voluntary: "Sæt min egen
+  adgangskode" (current/new/confirm form → Cognito `ChangePassword`) or
+  "Behold den jeg fik". Both paths persist `firstLoginAcked: true` on
+  `USER#<sub>/META` via `POST /me/first-login-ack`, so the prompt is
+  shown exactly once.
+- **/glemt-adgangskode** — public route driving Cognito's
+  `ForgotPassword` + `ConfirmForgotPassword`. Two-step page: email →
+  6-digit code from Cognito's default sender → new password. Linked
+  from the Login page (replacing the old "Kontakt udvalget" hint).
+  `accountRecovery: EMAIL_ONLY` is set on the pool.
 - **`<ProfileProvider>`** — single source of truth for /me on the client.
   Wraps the entire route tree in `App.tsx`; consumed by GdprGate,
-  StageBanner, Upload, Mine, GalleryPhoto, Header. One /me round trip per
-  protected page load — no duplicates.
+  FirstLoginPrompt, StageBanner, Upload, Mine, GalleryPhoto, Header. One
+  /me round trip per protected page load — no duplicates.
 
 ### Stage workflow
 
@@ -169,8 +182,9 @@ GDPR textarea + "ny version" toggle).
 |--------|------|------|---------|
 | GET | `/health` | public | Liveness |
 | GET | `/whoami` | authed | Echo claims |
-| GET | `/me` | authed | Profile incl. `stage`, `houseNumber`, `myHouseSlotsUsed`, `myHouseText`, GDPR fields |
+| GET | `/me` | authed | Profile incl. `stage`, `houseNumber`, `myHouseSlotsUsed`, `myHouseText`, `firstLoginAcked`, GDPR fields |
 | POST | `/me/gdpr-accept` | authed | Record GDPR acceptance |
+| POST | `/me/first-login-ack` | authed | Suppress first-login prompt for future logins |
 | GET | `/gdpr-text` | authed | Live GDPR text + version |
 | POST | `/upload-url` | member/admin | Presigned S3 PUT + PHOTO stub (stage-aware) |
 | GET | `/photos/mine` | authed | Caller's own uploads |
@@ -261,11 +275,16 @@ DDB / S3 verification via `aws` CLI from
    browser-tested; approve path (hard-delete) has only been exercised
    via the admin photo-delete button. Upload throwaway, anmod, godkend,
    verify AUDIT row + gone photo.
-3. **Danish help page** "Sådan bruger du siden" — onboarding for
+3. **End-to-end password flow with a real Outlook inbox.** /glemt-
+   adgangskode is wired but unverified against Cognito's default email
+   sender's deliverability. First send to Outlook commonly lands in
+   spam — needs a real run.
+4. **Danish help page** "Sådan bruger du siden" — onboarding for
    elderly members. Could use `horizon-meadow.jpg` as backdrop.
-4. **SES** for password resets / approval notices / committee emails
-   (currently Cognito default sender, low quota).
-5. **Shared viewer credential** for the committee's shared kigge login
+5. **SES** for password resets / approval notices / committee emails
+   (currently Cognito default sender, ~50/day quota; deliverability
+   unverified).
+6. **Shared viewer credential** for the committee's shared kigge login
    (one `AdminCreateUser` via /admin/users).
 
 **Should-have fairly early:**
@@ -285,26 +304,37 @@ tests. Not urgent.
 ## Resuming next session
 
 1. `cd "C:/Users/thoma/OneDrive - Second Epic/ClaudeProjects/Strandgaarden"`
-2. `git status` — expect clean. Last commit `8dc64fe`
-   (`fix: use Strandgaarden's actual non-contiguous house numbers`).
-   This session shipped 14 commits; all pushed; CI green.
+2. `git status` — expect clean. Last commit `1c6bd64`
+   (`fix: client-side empty-field guards on password forms`). All
+   pushed; CI green.
 3. Open https://d2wq22ivboh02d.cloudfront.net/ (hard-refresh). Login as
    `thomas.madsen@secondepic.com` / `Picture1!`. Expected current bundle
-   hash: **`index-BmiyxeHp.js`**.
+   hash: **`index-BrudSdq6.js`**.
 4. Quick visual-state check:
    - Header shows `Thomas1` + Galleri + Upload + Mine + Udvalget links.
    - /admin shows 9 cards with badges.
    - /admin/fase loads the stage editor (radio + thresholds + GDPR
      textarea); current stage is **3**.
    - /upload shows the GDPR reference note (no checkbox); the house
-     selector lists the new non-contiguous house numbers (3,5,7…17,
+     selector lists the non-contiguous house numbers (3,5,7…17,
      4,6…32) in that exact order.
    - /mine shows the rich-text "Tekst til bogen — Hus N" card if your
      user has a house assigned.
-5. **Recommended next task** (per Still-to-do): the committee-member
-   invite. Two testers; manual `AdminCreateUser` from /admin/users; send
-   the Danish draft email. Until they kick the tires, the rest of the
-   list is blocked behind real feedback.
+   - /login shows a "Glemt adgangskode?" link below the button.
+   - The Thomas1 admin already acked the first-login prompt — to test
+     it again, clear `firstLoginAcked` on his USER row (see Known dev
+     test state below).
+5. **Open thread (last thing yesterday):** the user hit a Cognito
+   "previousPassword" regex error on the change-password form. We
+   added empty-field guards (`1c6bd64`). Untested whether the
+   underlying issue was an empty field or something subtler (autofill,
+   curly quotes pasted in). On resume: re-run the flow and confirm.
+   If it errors again with a non-empty field, the input value is
+   somehow being mangled — investigate before going further.
+6. **Recommended next task** (per Still-to-do): real-Outlook
+   verification of /glemt-adgangskode (#3 on the list) — quick
+   confidence boost on the password feature shipped yesterday before
+   moving to bigger items. Then committee-member invite (#1).
 6. If something's broken:
    - API alive: `curl -sk https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com/health`
      (use `-k` on this Windows shell — schannel revocation otherwise fails).
