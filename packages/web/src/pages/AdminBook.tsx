@@ -16,6 +16,42 @@ const fmtYear = (p: BookPhoto): string => {
   return p.yearApprox ? `ca. ${p.year}` : String(p.year);
 };
 
+type ViewMode = 'id' | 'house' | 'activity';
+
+interface Group {
+  key: string;
+  label: string;
+  /** Sort key — numeric for houses, lowercase displayName for activities. */
+  sortKey: number | string;
+  photos: BookPhoto[];
+}
+
+/** Compute the bucket key for a photo under the chosen view mode. The
+ * book editor works house-by-house or activity-by-activity, so we want
+ * each photo to land in exactly one bucket per view. */
+const bucketFor = (p: BookPhoto, mode: ViewMode): { key: string; label: string; sortKey: number | string } => {
+  if (mode === 'house') {
+    if (p.houseNumbers.length > 0) {
+      const primary = p.houseNumbers[0];
+      return { key: `h:${primary}`, label: `Hus ${primary}`, sortKey: primary };
+    }
+    if (p.activityName) {
+      return { key: `a:${p.activityKey ?? p.activityName}`, label: `Aktivitet: ${p.activityName}`, sortKey: 9000 };
+    }
+    return { key: 'unset', label: 'Uden hus eller aktivitet', sortKey: 9999 };
+  }
+  if (mode === 'activity') {
+    if (p.activityKey) {
+      return { key: `a:${p.activityKey}`, label: p.activityName ?? p.activityKey, sortKey: (p.activityName ?? p.activityKey).toLowerCase() };
+    }
+    if (p.houseNumbers.length > 0) {
+      return { key: 'house-only', label: 'Husbidrag (uden aktivitet)', sortKey: 'zzhouse' };
+    }
+    return { key: 'unset', label: 'Uden hus eller aktivitet', sortKey: 'zzunset' };
+  }
+  return { key: 'all', label: '', sortKey: 0 };
+};
+
 export const AdminBookPage = () => {
   const { session } = useSession();
   const [photos, setPhotos] = useState<BookPhoto[] | null>(null);
@@ -25,6 +61,8 @@ export const AdminBookPage = () => {
   const [lastExport, setLastExport] = useState<BookExportResponse | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('id');
+  const [groupFilter, setGroupFilter] = useState<string>('');
 
   useEffect(() => {
     if (!session) return;
@@ -50,6 +88,43 @@ export const AdminBookPage = () => {
     return sum;
   }, [photos, selected]);
 
+  // Group + sort + apply the optional single-bucket filter.
+  const groups: Group[] = useMemo(() => {
+    if (!photos) return [];
+    if (viewMode === 'id') {
+      return [{ key: 'all', label: '', sortKey: 0, photos }];
+    }
+    const map = new Map<string, Group>();
+    for (const p of photos) {
+      const b = bucketFor(p, viewMode);
+      if (!map.has(b.key)) {
+        map.set(b.key, { key: b.key, label: b.label, sortKey: b.sortKey, photos: [] });
+      }
+      map.get(b.key)!.photos.push(p);
+    }
+    const list = Array.from(map.values()).sort((a, b) => {
+      if (typeof a.sortKey === 'number' && typeof b.sortKey === 'number') return a.sortKey - b.sortKey;
+      return String(a.sortKey).localeCompare(String(b.sortKey), 'da');
+    });
+    for (const g of list) {
+      g.photos.sort((a, b) => {
+        const sa = a.shortId ?? 9_999_999;
+        const sb = b.shortId ?? 9_999_999;
+        return sa - sb;
+      });
+    }
+    return groupFilter ? list.filter((g) => g.key === groupFilter) : list;
+  }, [photos, viewMode, groupFilter]);
+
+  // Reset the filter dropdown whenever the view mode changes — its keys
+  // are mode-specific (h:1, a:foo, etc.) so a stale value from another
+  // mode would silently hide everything.
+  useEffect(() => {
+    setGroupFilter('');
+  }, [viewMode]);
+
+  const visiblePhotos = useMemo(() => groups.flatMap((g) => g.photos), [groups]);
+
   const toggle = (photoId: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -61,7 +136,9 @@ export const AdminBookPage = () => {
 
   const selectAll = () => {
     if (!photos) return;
-    setSelected(new Set(photos.filter((p) => p.bookReady).map((p) => p.photoId)));
+    // Respect the active view + filter so "Vælg alle" inside a single
+    // house or activity selects only that group.
+    setSelected(new Set(visiblePhotos.filter((p) => p.bookReady).map((p) => p.photoId)));
   };
 
   const clearAll = () => setSelected(new Set());
@@ -125,10 +202,80 @@ export const AdminBookPage = () => {
 
       {photos && photos.length > 0 && (
         <>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.75rem 1.25rem',
+              alignItems: 'center',
+              margin: '1rem 0 0.75rem',
+            }}
+          >
+            <span className="filter-label">Sortér —</span>
+            <div role="radiogroup" aria-label="Visning" style={{ display: 'inline-flex', gap: '0.5rem' }}>
+              {([
+                ['id', 'Efter ID'],
+                ['house', 'Efter hus'],
+                ['activity', 'Efter aktivitet'],
+              ] as Array<[ViewMode, string]>).map(([mode, label]) => (
+                <label
+                  key={mode}
+                  style={{
+                    padding: '0.25rem 0.7rem',
+                    border:
+                      viewMode === mode
+                        ? '2px solid var(--ink, #1a3548)'
+                        : '1px solid var(--border, #d8cfbc)',
+                    borderRadius: '0.3rem',
+                    cursor: 'pointer',
+                    background:
+                      viewMode === mode ? 'var(--paper-warm, #faf2e6)' : 'transparent',
+                    fontSize: '0.95rem',
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="book-view"
+                    value={mode}
+                    checked={viewMode === mode}
+                    onChange={() => setViewMode(mode)}
+                    style={{ marginRight: '0.4rem' }}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            {viewMode !== 'id' && groups.length > 1 && (
+              <label>
+                Vis kun{' '}
+                <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+                  <option value="">— alle —</option>
+                  {groups
+                    .slice()
+                    .sort((a, b) => {
+                      if (typeof a.sortKey === 'number' && typeof b.sortKey === 'number')
+                        return a.sortKey - b.sortKey;
+                      return String(a.sortKey).localeCompare(String(b.sortKey), 'da');
+                    })
+                    .map((g) => (
+                      <option key={g.key} value={g.key}>
+                        {g.label} ({g.photos.length})
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
+            {(viewMode !== 'id' || groupFilter) && (
+              <span className="subtle" style={{ fontSize: '0.9rem' }}>
+                {visiblePhotos.length} af {photos.length} billeder vist
+              </span>
+            )}
+          </div>
+
           <div className="book-actions">
             <div className="book-actions-row">
               <button type="button" onClick={selectAll} disabled={exporting}>
-                Vælg alle ({photos.filter((p) => p.bookReady).length})
+                Vælg alle ({visiblePhotos.filter((p) => p.bookReady).length})
               </button>
               <button type="button" onClick={clearAll} disabled={exporting || selected.size === 0}>
                 Ryd
@@ -159,12 +306,29 @@ export const AdminBookPage = () => {
             </div>
           )}
 
-          <div className="book-grid">
-            {photos.map((p) => {
-              const isSel = selected.has(p.photoId);
-              return (
-                <article
-                  key={p.photoId}
+          {groups.map((group) => (
+            <section key={group.key} style={{ marginTop: '1.5rem' }}>
+              {group.label && (
+                <h2
+                  style={{
+                    fontSize: '1.15rem',
+                    margin: '0 0 0.5rem',
+                    paddingBottom: '0.25rem',
+                    borderBottom: '1px solid var(--border, #d8cfbc)',
+                  }}
+                >
+                  {group.label}{' '}
+                  <span className="subtle" style={{ fontWeight: 400 }}>
+                    ({group.photos.length})
+                  </span>
+                </h2>
+              )}
+              <div className="book-grid">
+                {group.photos.map((p) => {
+                  const isSel = selected.has(p.photoId);
+                  return (
+                    <article
+                      key={p.photoId}
                   className={`book-card${isSel ? ' selected' : ''}${!p.bookReady ? ' not-ready' : ''}`}
                 >
                   <label className="book-card-check">
@@ -263,7 +427,9 @@ export const AdminBookPage = () => {
                 </article>
               );
             })}
-          </div>
+              </div>
+            </section>
+          ))}
         </>
       )}
     </main>
