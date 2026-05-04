@@ -43,18 +43,21 @@ const parseGroups = (raw: unknown): string[] => {
   return [];
 };
 
-/** Count of PHOTO rows whose houseNumbers list contains the given house.
- * Used by the Stage-1 per-house cap check. Pre-Rejected photos are not
- * filtered out — once an admin sets status=Rejected they typically also
- * delete the row, so they don't accumulate against the cap in practice. */
-const countPhotosForHouse = async (house: number): Promise<number> => {
+/** Count of PHOTO rows that occupy a Stage-1 priority slot in the given
+ * house. The cap is about how many priority-ranked book contributions a
+ * house has, NOT about every historical photo ever tagged with that
+ * house — pre-Stage-1 uploads (and admin-tagged photos that lack a
+ * priority) are deliberately excluded so they don't crowd out the
+ * current round's slots. */
+const countPriorityPhotosForHouse = async (house: number): Promise<number> => {
   let count = 0;
   let ExclusiveStartKey: Record<string, unknown> | undefined;
   do {
     const r = await ddb.send(
       new ScanCommand({
         TableName: tableName,
-        FilterExpression: 'entity = :p AND contains(houseNumbers, :h)',
+        FilterExpression:
+          'entity = :p AND contains(houseNumbers, :h) AND attribute_exists(priority)',
         ExpressionAttributeValues: { ':p': 'Photo', ':h': house },
         ProjectionExpression: 'photoId',
         ExclusiveStartKey,
@@ -256,11 +259,11 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     }
   }
 
-  // Stage-1 per-house cap: count existing photos tagged with this house and
-  // reject if at the configured limit. Skipped on the activity branch — the
-  // book has a separate (per-activity) section there.
+  // Stage-1 per-house cap: count existing Stage-1 priority slots in this
+  // house and reject if at the configured limit. Skipped on the activity
+  // branch — the book has a separate (per-activity) section there.
   if (stageOneNonAdmin && houseNumbers.length === 1) {
-    const used = await countPhotosForHouse(houseNumbers[0]);
+    const used = await countPriorityPhotosForHouse(houseNumbers[0]);
     if (used >= cfg.maxBookSlotsPerHouse) {
       return json(409, {
         error: `Hus ${houseNumbers[0]} har allerede ${used} af ${cfg.maxBookSlotsPerHouse} mulige billeder. Bed udvalget om at fjerne et først, hvis du vil uploade flere.`,

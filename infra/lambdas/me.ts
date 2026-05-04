@@ -53,9 +53,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     if (ht.Item && typeof ht.Item.body === 'string') myHouseText = ht.Item.body;
   }
 
-  // House slot usage — only relevant when the user has a house assigned
-  // and the system might surface the per-house cap (Stage 1). Skipping
-  // the scan in Stage 3 keeps /me cheap on every page load.
+  // House slot usage — count Stage-1 priority slots in the user's house,
+  // NOT every photo ever tagged there. Pre-Stage-1 uploads (no priority
+  // field) don't compete for the current round's slots. Skipped in
+  // Stage 3 to keep /me cheap on every page load.
   let myHouseSlotsUsed: number | null = null;
   if (houseNumber !== null && cfg.stage === 1) {
     let count = 0;
@@ -64,7 +65,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       const r = await ddb.send(
         new ScanCommand({
           TableName: tableName,
-          FilterExpression: 'entity = :p AND contains(houseNumbers, :h)',
+          FilterExpression:
+            'entity = :p AND contains(houseNumbers, :h) AND attribute_exists(priority)',
           ExpressionAttributeValues: { ':p': 'Photo', ':h': houseNumber },
           ProjectionExpression: 'photoId',
           ExclusiveStartKey,
