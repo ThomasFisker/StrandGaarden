@@ -186,12 +186,21 @@ export const decidePhoto = async (
 
 export const getGallery = async (
   idToken: string,
-  filters?: { year?: number | null; house?: number | null; person?: string | null },
+  filters?: {
+    year?: number | null;
+    house?: number | null;
+    person?: string | null;
+    activity?: string | null;
+    /** Admin-only: include Decided photos that aren't visibilityWeb. */
+    all?: boolean;
+  },
 ): Promise<GalleryList> => {
   const qs = new URLSearchParams();
   if (filters?.year != null) qs.set('year', String(filters.year));
   if (filters?.house != null) qs.set('house', String(filters.house));
   if (filters?.person) qs.set('person', filters.person);
+  if (filters?.activity) qs.set('activity', filters.activity);
+  if (filters?.all) qs.set('all', '1');
   const query = qs.toString();
   const url = query ? `${apiBase}/gallery?${query}` : `${apiBase}/gallery`;
   const r = await fetch(url, { headers: bearer(idToken) });

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { deletePhoto, exportBookZip, listBookPhotos } from '../api';
 import { useSession } from '../session';
 import { formatShortId, type BookExportResponse, type BookPhoto } from '../types';
@@ -219,6 +220,9 @@ export const AdminBookPage = () => {
                           Bog-version mangler — billedet skal behandles igen
                         </span>
                       )}
+                      <Link to={`/galleri/${p.photoId}`} className="book-download">
+                        Rediger / se detaljer
+                      </Link>
                       {confirmDelete !== p.photoId && (
                         <button
                           type="button"

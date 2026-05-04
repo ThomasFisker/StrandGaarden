@@ -3,6 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { loadActivityNameMap } from './activities-shared';
 import { PERSON_SK_PREFIX, PERSONLIST_PK } from './persons-shared';
 
 interface PersonTag { slug: string; displayName: string; state: string; }
@@ -21,13 +22,28 @@ const json = (statusCode: number, body: unknown) => ({
   body: JSON.stringify(body),
 });
 
+const parseGroups = (raw: unknown): string[] => {
+  if (Array.isArray(raw)) return raw.map(String);
+  if (typeof raw === 'string') return raw.replace(/^\[|\]$/g, '').split(/[\s,]+/).filter(Boolean);
+  return [];
+};
+
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
+  const claims = event.requestContext.authorizer?.jwt?.claims ?? {};
+  const isAdminCaller = parseGroups(claims['cognito:groups']).includes('admin');
+
   const qs = event.queryStringParameters ?? {};
   const yearParam = qs.year ? Number(qs.year) : NaN;
   const houseParam = qs.house ? Number(qs.house) : NaN;
   const yearFilter = Number.isFinite(yearParam) ? yearParam : null;
   const houseFilter = Number.isFinite(houseParam) ? houseParam : null;
   const personFilter = typeof qs.person === 'string' && qs.person.trim() ? qs.person.trim() : null;
+  const activityFilter =
+    typeof qs.activity === 'string' && qs.activity.trim() ? qs.activity.trim() : null;
+  // Admin-only override: ?all=1 includes Decided photos that aren't yet
+  // visible on the public web (e.g. picked for the book only). Lets the
+  // committee browse + edit photos that members can't reach via /galleri.
+  const showAll = isAdminCaller && qs.all === '1';
 
   const items: Record<string, unknown>[] = [];
   let ExclusiveStartKey: Record<string, unknown> | undefined;
@@ -45,7 +61,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     ExclusiveStartKey = r.LastEvaluatedKey;
   } while (ExclusiveStartKey);
 
-  const visible = items.filter((it) => it.visibilityWeb === true);
+  const visible = showAll ? items : items.filter((it) => it.visibilityWeb === true);
+
+  const activityMap = await loadActivityNameMap(ddb, tableName);
 
   // Load approved persons once so we can render chips + drive the person filter.
   const personMap = new Map<string, PersonTag>();
@@ -71,6 +89,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const years = new Set<number>();
   const houses = new Set<number>();
   const personsWithVisiblePhoto = new Set<string>();
+  const activitiesUsed = new Set<string>();
   for (const it of visible) {
     if (it.year !== null && it.year !== undefined) years.add(Number(it.year));
     const hs = Array.isArray(it.houseNumbers) ? it.houseNumbers : [];
@@ -78,6 +97,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     const ps = Array.isArray(it.taggedPersonSlugs) ? (it.taggedPersonSlugs as string[]) : [];
     for (const slug of ps) {
       if (personMap.has(slug)) personsWithVisiblePhoto.add(slug);
+    }
+    if (typeof it.activityKey === 'string' && it.activityKey) {
+      activitiesUsed.add(it.activityKey);
     }
   }
 
@@ -93,6 +115,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     if (personFilter !== null) {
       const ps = Array.isArray(it.taggedPersonSlugs) ? (it.taggedPersonSlugs as string[]) : [];
       if (!ps.includes(personFilter)) return false;
+    }
+    if (activityFilter !== null) {
+      const ak = typeof it.activityKey === 'string' ? it.activityKey : '';
+      if (ak !== activityFilter) return false;
     }
     return true;
   });
@@ -112,6 +138,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       const thumbnailUrl = thumbKey
         ? await getSignedUrl(s3, new GetObjectCommand({ Bucket: derivedBucket, Key: thumbKey }), { expiresIn: URL_TTL })
         : null;
+      const activityKey = typeof item.activityKey === 'string' ? item.activityKey : null;
       return {
         photoId: String(item.photoId),
         shortId: item.shortId !== null && item.shortId !== undefined ? Number(item.shortId) : null,
@@ -128,6 +155,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         persons: (Array.isArray(item.taggedPersonSlugs) ? (item.taggedPersonSlugs as string[]) : [])
           .map((slug) => personMap.get(slug))
           .filter((p): p is PersonTag => !!p),
+        activityKey,
+        activityName: activityKey ? activityMap.get(activityKey) ?? null : null,
+        visibilityWeb: item.visibilityWeb === true,
+        visibilityBook: item.visibilityBook === true,
       };
     }),
   );
@@ -136,12 +167,18 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     .map((slug) => personMap.get(slug)!)
     .sort((a, b) => a.displayName.localeCompare(b.displayName, 'da'));
 
+  const activityOptions = Array.from(activitiesUsed)
+    .map((key) => ({ key, displayName: activityMap.get(key) ?? key }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, 'da'));
+
   return json(200, {
     items: rows,
     filters: {
       years: Array.from(years).sort((a, b) => a - b),
       houses: Array.from(houses).sort((a, b) => a - b),
       persons: personOptions.map((p) => ({ slug: p.slug, displayName: p.displayName })),
+      activities: activityOptions,
     },
+    showAll,
   });
 };

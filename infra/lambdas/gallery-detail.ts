@@ -3,6 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, BatchGetCommand, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { loadActivityNameMap } from './activities-shared';
 import { PERSON_SK_PREFIX, PERSONLIST_PK } from './persons-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
@@ -24,18 +25,32 @@ const safeFilename = (input: string): string => {
   return noPath.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120) || 'strandgaarden.jpg';
 };
 
+const parseGroups = (raw: unknown): string[] => {
+  if (Array.isArray(raw)) return raw.map(String);
+  if (typeof raw === 'string') return raw.replace(/^\[|\]$/g, '').split(/[\s,]+/).filter(Boolean);
+  return [];
+};
+
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const photoId = event.pathParameters?.id;
   if (!photoId || !/^[0-9a-f-]{36}$/.test(photoId)) {
     return json(400, { error: 'Invalid photo id' });
   }
 
+  const claims = event.requestContext.authorizer?.jwt?.claims ?? {};
+  const isAdminCaller = parseGroups(claims['cognito:groups']).includes('admin');
+
   const r = await ddb.send(
     new GetCommand({ TableName: tableName, Key: { PK: `PHOTO#${photoId}`, SK: 'META' } }),
   );
   const item = r.Item;
-  // Hide unpublished photos behind a 404 so IDs can't be probed.
-  if (!item || item.status !== 'Decided' || item.visibilityWeb !== true) {
+  // Non-admins only see Decided + visibilityWeb photos. Admins can also
+  // open Decided photos that are book-only or web-hidden, so they can
+  // edit metadata for items that aren't reachable via the public gallery.
+  const decidedAndPublic =
+    item && item.status === 'Decided' && item.visibilityWeb === true;
+  const adminVisible = item && isAdminCaller && item.status === 'Decided';
+  if (!decidedAndPublic && !adminVisible) {
     return json(404, { error: 'Billedet findes ikke' });
   }
 
@@ -104,6 +119,13 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
+  const activityKey = typeof item.activityKey === 'string' ? item.activityKey : null;
+  let activityName: string | null = null;
+  if (activityKey) {
+    const activityMap = await loadActivityNameMap(ddb, tableName);
+    activityName = activityMap.get(activityKey) ?? null;
+  }
+
   return json(200, {
     photoId: String(item.photoId),
     shortId: item.shortId !== null && item.shortId !== undefined ? Number(item.shortId) : null,
@@ -115,8 +137,11 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     width: item.width === null || item.width === undefined ? null : Number(item.width),
     height: item.height === null || item.height === undefined ? null : Number(item.height),
     blurhash: typeof item.blurhash === 'string' ? item.blurhash : null,
+    visibilityWeb: item.visibilityWeb === true,
     visibilityBook: item.visibilityBook === true,
     helpWanted: item.helpWanted === true,
+    activityKey,
+    activityName,
     webUrl,
     thumbnailUrl,
     downloadUrl,

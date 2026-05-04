@@ -14,6 +14,8 @@ export const GalleryPage = () => {
   const [year, setYear] = useState<number | null>(null);
   const [house, setHouse] = useState<number | null>(null);
   const [personSlug, setPersonSlug] = useState<string | null>(searchParams.get('person'));
+  const [activityKey, setActivityKey] = useState<string | null>(searchParams.get('activity'));
+  const [showAll, setShowAll] = useState<boolean>(searchParams.get('all') === '1');
 
   const isAdmin = profile?.groups.includes('admin') ?? false;
   const galleryHidden = profile !== null && !isAdmin && profile.stage !== 3;
@@ -22,12 +24,18 @@ export const GalleryPage = () => {
     if (!session || galleryHidden) return;
     setError(null);
     try {
-      const result = await getGallery(session.idToken, { year, house, person: personSlug });
+      const result = await getGallery(session.idToken, {
+        year,
+        house,
+        person: personSlug,
+        activity: activityKey,
+        all: isAdmin && showAll,
+      });
       setData(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kunne ikke hente billeder');
     }
-  }, [session, year, house, personSlug, galleryHidden]);
+  }, [session, year, house, personSlug, activityKey, showAll, isAdmin, galleryHidden]);
 
   useEffect(() => {
     load();
@@ -37,10 +45,15 @@ export const GalleryPage = () => {
     const next = new URLSearchParams(searchParams);
     if (personSlug) next.set('person', personSlug);
     else next.delete('person');
+    if (activityKey) next.set('activity', activityKey);
+    else next.delete('activity');
+    if (isAdmin && showAll) next.set('all', '1');
+    else next.delete('all');
     if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
-  }, [personSlug, searchParams, setSearchParams]);
+  }, [personSlug, activityKey, showAll, isAdmin, searchParams, setSearchParams]);
 
-  const hasFilter = year !== null || house !== null || personSlug !== null;
+  const hasFilter =
+    year !== null || house !== null || personSlug !== null || activityKey !== null;
 
   const yearRange = useMemo(() => {
     if (!data || data.filters.years.length === 0) return '';
@@ -48,33 +61,53 @@ export const GalleryPage = () => {
     return ys.length === 1 ? String(ys[0]) : `${ys[0]}–${ys[ys.length - 1]}`;
   }, [data]);
 
-  const renderTile = (p: GalleryItem, isFeature: boolean) => (
-    <Link
-      key={p.photoId}
-      to={`/galleri/${p.photoId}`}
-      className={`tile${isFeature ? ' feature' : ''}${p.helpWanted ? ' help-wanted' : ''}`}
-    >
-      {p.thumbnailUrl ? (
-        <div className="frame">
-          <img src={p.thumbnailUrl} alt={p.description || 'Strandgaarden billede'} loading="lazy" />
-          {p.helpWanted && <span className="help-wanted-ribbon">Hjælp søges</span>}
-          <span className="tile-short-id">{formatShortId(p.shortId)}</span>
+  const renderTile = (p: GalleryItem, isFeature: boolean) => {
+    const adminOnly = showAll && p.visibilityWeb === false;
+    return (
+      <Link
+        key={p.photoId}
+        to={`/galleri/${p.photoId}`}
+        className={`tile${isFeature ? ' feature' : ''}${p.helpWanted ? ' help-wanted' : ''}`}
+      >
+        {p.thumbnailUrl ? (
+          <div className="frame">
+            <img src={p.thumbnailUrl} alt={p.description || 'Strandgaarden billede'} loading="lazy" />
+            {p.helpWanted && <span className="help-wanted-ribbon">Hjælp søges</span>}
+            {adminOnly && (
+              <span
+                className="help-wanted-ribbon"
+                style={{
+                  background: 'var(--ink, #1a3548)',
+                  color: 'var(--paper, #fafaf5)',
+                  top: 'auto',
+                  bottom: '0.5rem',
+                }}
+              >
+                Kun bog
+              </span>
+            )}
+            <span className="tile-short-id">{formatShortId(p.shortId)}</span>
+          </div>
+        ) : (
+          <div className="thumb-placeholder">Behandles…</div>
+        )}
+        <div className="caption">
+          <span className="year">
+            {p.yearApprox && p.year && <small>ca.</small>}
+            {p.year ?? '—'}
+          </span>
+          <span className="house">
+            {p.houseNumbers.length > 0
+              ? `Hus ${p.houseNumbers.join(' · ')}`
+              : p.activityName
+                ? p.activityName
+                : '—'}
+          </span>
         </div>
-      ) : (
-        <div className="thumb-placeholder">Behandles…</div>
-      )}
-      <div className="caption">
-        <span className="year">
-          {p.yearApprox && p.year && <small>ca.</small>}
-          {p.year ?? '—'}
-        </span>
-        <span className="house">
-          {p.houseNumbers.length > 0 ? `Hus ${p.houseNumbers.join(' · ')}` : '—'}
-        </span>
-      </div>
-      {isFeature && p.description && <p className="desc">{p.description}</p>}
-    </Link>
-  );
+        {isFeature && p.description && <p className="desc">{p.description}</p>}
+      </Link>
+    );
+  };
 
   if (galleryHidden) {
     const stage = profile?.stage ?? 3;
@@ -157,6 +190,22 @@ export const GalleryPage = () => {
               ))}
             </select>
           </label>
+          {data?.filters.activities && data.filters.activities.length > 0 && (
+            <label>
+              Aktivitet
+              <select
+                value={activityKey ?? ''}
+                onChange={(e) => setActivityKey(e.target.value || null)}
+              >
+                <option value="">Alle aktiviteter</option>
+                {data.filters.activities.map((a) => (
+                  <option key={a.key} value={a.key}>
+                    {a.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {hasFilter && (
             <button
               type="button"
@@ -165,12 +214,37 @@ export const GalleryPage = () => {
                 setYear(null);
                 setHouse(null);
                 setPersonSlug(null);
+                setActivityKey(null);
               }}
             >
               Nulstil filter
             </button>
           )}
         </div>
+
+        {isAdmin && (
+          <div
+            style={{
+              margin: '0.5rem 0 0.75rem',
+              padding: '0.6rem 0.85rem',
+              background: 'var(--paper-warm, #faf2e6)',
+              borderLeft: '3px solid var(--ink, #1a3548)',
+              fontSize: '0.95rem',
+            }}
+          >
+            <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={showAll}
+                onChange={(e) => setShowAll(e.target.checked)}
+              />
+              <span>
+                <strong>Vis alle billeder</strong> (også dem udvalgt kun til bogen, som
+                medlemmerne ikke kan se)
+              </span>
+            </label>
+          </div>
+        )}
 
         {error && <div className="error">{error}</div>}
         {data === null && !error && <p className="subtle">Indlæser…</p>}

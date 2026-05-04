@@ -120,6 +120,12 @@ export interface GalleryItem {
   thumbnailUrl: string | null;
   persons: PersonTag[];
   helpWanted: boolean;
+  activityKey: string | null;
+  activityName: string | null;
+  /** Only populated in the admin "show all" listing. Undefined for the
+   * public listing (where every item is web-visible by definition). */
+  visibilityWeb?: boolean;
+  visibilityBook?: boolean;
 }
 
 export interface GalleryPersonOption {
@@ -127,9 +133,20 @@ export interface GalleryPersonOption {
   displayName: string;
 }
 
+export interface GalleryActivityOption {
+  key: string;
+  displayName: string;
+}
+
 export interface GalleryList {
   items: GalleryItem[];
-  filters: { years: number[]; houses: number[]; persons: GalleryPersonOption[] };
+  filters: {
+    years: number[];
+    houses: number[];
+    persons: GalleryPersonOption[];
+    activities: GalleryActivityOption[];
+  };
+  showAll?: boolean;
 }
 
 export interface AttributedAddendum {
@@ -140,6 +157,7 @@ export interface AttributedAddendum {
 }
 
 export interface GalleryDetail extends GalleryItem {
+  visibilityWeb: boolean;
   visibilityBook: boolean;
   webUrl: string | null;
   downloadUrl: string | null;
