@@ -351,6 +351,24 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(configUpdateFn);
 
+    const houseTextsListFn = new lambdaNodejs.NodejsFunction(this, 'HouseTextsListFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'house-texts-list.ts'),
+      functionName: `strandgaarden-${props.stage}-house-texts-list`,
+      description: 'Admin-only: list all 23 house chapter-intro texts',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadData(houseTextsListFn);
+
+    const houseTextUpdateFn = new lambdaNodejs.NodejsFunction(this, 'HouseTextUpdateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'house-text-update.ts'),
+      functionName: `strandgaarden-${props.stage}-house-text-update`,
+      description: 'Member-of-house or admin: write the chapter-intro text for a house',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(houseTextUpdateFn);
+
     const activitiesListFn = new lambdaNodejs.NodejsFunction(this, 'ActivitiesListFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'activities-list.ts'),
@@ -680,6 +698,19 @@ export class ApiStack extends cdk.Stack {
       path: '/config',
       methods: [apigwv2.HttpMethod.PATCH],
       integration: new apigwIntegrations.HttpLambdaIntegration('ConfigUpdateIntegration', configUpdateFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/house-texts',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('HouseTextsListIntegration', houseTextsListFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/house-texts/{house}',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('HouseTextUpdateIntegration', houseTextUpdateFn),
       authorizer: jwtAuthorizer,
     });
 

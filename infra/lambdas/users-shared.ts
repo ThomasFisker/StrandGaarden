@@ -44,3 +44,9 @@ export const HOUSE_MIN = 1;
 export const HOUSE_MAX = 23;
 
 export const userPk = (sub: string): string => `${USER_PK_PREFIX}${sub}`;
+
+/** Per-house text row keys (one short paragraph per house, used as a
+ * chapter intro in the jubilee book). PK = HOUSETEXT#<n>, SK = META. */
+export const HOUSETEXT_PK_PREFIX = 'HOUSETEXT#';
+export const HOUSETEXT_SK = 'META';
+export const houseTextPk = (n: number): string => `${HOUSETEXT_PK_PREFIX}${n}`;

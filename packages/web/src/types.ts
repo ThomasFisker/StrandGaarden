@@ -263,6 +263,20 @@ export interface MyProfile {
    * Computed only when stage=1 and the user has a house — null
    * otherwise (we skip the scan in Stage 3 to keep /me cheap). */
   myHouseSlotsUsed: number | null;
+  /** Char limit for the house-text editor on /mine. */
+  maxHouseTextChars: number;
+  /** Caller's house chapter-intro text. null when the user has no
+   * house assigned, or when the row hasn't been written yet. */
+  myHouseText: string | null;
+}
+
+export interface AdminHouseTextRow {
+  houseNumber: number;
+  body: string | null;
+  lastEditedAt: string | null;
+  lastEditedBy: string | null;
+  lastEditedByLoginName: string | null;
+  lastEditedByEmail: string | null;
 }
 
 export interface GdprText {

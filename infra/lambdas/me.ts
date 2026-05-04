@@ -2,7 +2,14 @@ import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { getConfig } from './config-shared';
-import { json, parseGroups, USER_SK, userPk } from './users-shared';
+import {
+  houseTextPk,
+  HOUSETEXT_SK,
+  json,
+  parseGroups,
+  USER_SK,
+  userPk,
+} from './users-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
@@ -30,6 +37,21 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const gdprAcceptedVersion =
     typeof it.gdprAcceptedVersion === 'string' ? it.gdprAcceptedVersion : null;
   const houseNumber = typeof it.houseNumber === 'number' ? it.houseNumber : null;
+
+  // House text — fetched whenever the user has a house assigned. Cheap
+  // (single Get on a known key); null if the row hasn't been written yet.
+  let myHouseText: string | null = null;
+  if (houseNumber !== null) {
+    const ht = await ddb.send(
+      new GetCommand({
+        TableName: tableName,
+        Key: { PK: houseTextPk(houseNumber), SK: HOUSETEXT_SK },
+        ProjectionExpression: '#b',
+        ExpressionAttributeNames: { '#b': 'body' },
+      }),
+    );
+    if (ht.Item && typeof ht.Item.body === 'string') myHouseText = ht.Item.body;
+  }
 
   // House slot usage — only relevant when the user has a house assigned
   // and the system might surface the per-house cap (Stage 1). Skipping
@@ -67,5 +89,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     stage: cfg.stage,
     maxBookSlotsPerHouse: cfg.maxBookSlotsPerHouse,
     myHouseSlotsUsed,
+    maxHouseTextChars: cfg.maxHouseTextChars,
+    myHouseText,
   });
 };

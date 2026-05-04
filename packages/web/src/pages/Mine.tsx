@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getMyPhotos, setHelpWanted } from '../api';
+import { getMyPhotos, setHelpWanted, updateHouseText } from '../api';
 import { useProfile } from '../profile';
 import { useSession } from '../session';
 import { formatShortId, type MyPhoto } from '../types';
@@ -39,7 +40,7 @@ const prettyDate = (iso: string): string => {
 
 export const MinePage = () => {
   const { session } = useSession();
-  const { profile } = useProfile();
+  const { profile, refresh: refreshProfile } = useProfile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [photos, setPhotos] = useState<MyPhoto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +48,37 @@ export const MinePage = () => {
   const justUploaded = searchParams.get('justUploaded') === '1';
   const isAdmin = profile?.groups.includes('admin') ?? false;
   const frozen = profile?.stage === 2 && !isAdmin;
+
+  // House-text editor state. Initialized from profile.myHouseText once
+  // the profile loads; tracked locally so we can show dirty state.
+  const [houseText, setHouseText] = useState<string>('');
+  const [houseTextLoaded, setHouseTextLoaded] = useState(false);
+  const [savingText, setSavingText] = useState(false);
+  const [textOk, setTextOk] = useState(false);
+  const [textError, setTextError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profile || houseTextLoaded) return;
+    setHouseText(profile.myHouseText ?? '');
+    setHouseTextLoaded(true);
+  }, [profile, houseTextLoaded]);
+
+  const submitHouseText = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!session || !profile || profile.houseNumber === null) return;
+    setSavingText(true);
+    setTextError(null);
+    setTextOk(false);
+    try {
+      await updateHouseText(session.idToken, profile.houseNumber, houseText);
+      await refreshProfile();
+      setTextOk(true);
+    } catch (err) {
+      setTextError(err instanceof Error ? err.message : 'Kunne ikke gemme teksten');
+    } finally {
+      setSavingText(false);
+    }
+  };
 
   const toggleHelpWanted = async (photo: MyPhoto) => {
     if (!session) return;
@@ -97,6 +129,68 @@ export const MinePage = () => {
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>Mine <em>billeder</em></h1>
 
       {justUploaded && <div className="ok">Tak! Billedet er sendt og venter på udvalgets gennemgang.</div>}
+
+      {profile && profile.houseNumber !== null && (
+        <section
+          style={{
+            marginTop: '1.5rem',
+            padding: '1.25rem 1.5rem',
+            background: 'var(--paper-warm, #faf2e6)',
+            borderLeft: '3px solid var(--copper, #b85a2a)',
+          }}
+        >
+          <p className="eyebrow" style={{ marginTop: 0 }}>Tekst til bogen</p>
+          <h2 style={{ marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+            Hus {profile.houseNumber}
+          </h2>
+          <p className="help" style={{ marginTop: 0 }}>
+            En kort tekst som hus {profile.houseNumber} bidrager med til jubilæumsbogen — fx en hilsen,
+            et minde eller et par linjer om huset gennem årene. Du kan rette teksten frem til bogen
+            sendes i tryk.
+          </p>
+          <form onSubmit={submitHouseText} noValidate>
+            <textarea
+              rows={6}
+              maxLength={profile.maxHouseTextChars}
+              value={houseText}
+              onChange={(e) => {
+                setHouseText(e.target.value);
+                setTextOk(false);
+                setTextError(null);
+              }}
+              disabled={savingText || frozen}
+              style={{ width: '100%', fontFamily: 'inherit', fontSize: '1rem' }}
+              placeholder="Skriv jeres tekst her…"
+            />
+            <div className="help" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+              <span>{houseText.length}/{profile.maxHouseTextChars} tegn</span>
+              {profile.myHouseText !== null && profile.myHouseText !== houseText && (
+                <span style={{ color: 'var(--copper, #b85a2a)' }}>Ikke gemt endnu</span>
+              )}
+            </div>
+            {textError && <div className="error" style={{ marginTop: '0.5rem' }}>{textError}</div>}
+            {textOk && (
+              <div className="ok" style={{ marginTop: '0.5rem' }}>
+                Gemt. Tak — udvalget kan se teksten under <strong>Hustekster</strong>.
+              </div>
+            )}
+            <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={savingText || frozen || houseText === (profile.myHouseText ?? '')}
+              >
+                {savingText ? 'Gemmer…' : 'Gem tekst'}
+              </button>
+              {frozen && (
+                <span className="subtle" style={{ alignSelf: 'center' }}>
+                  Låst i frys-fasen
+                </span>
+              )}
+            </div>
+          </form>
+        </section>
+      )}
 
       {error && <div className="error">{error}</div>}
 

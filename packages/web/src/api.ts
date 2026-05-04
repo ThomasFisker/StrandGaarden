@@ -1,6 +1,7 @@
 import type {
   Activity,
   AdminCommentRow,
+  AdminHouseTextRow,
   AdminPerson,
   AdminRemovalRow,
   AdminUser,
@@ -489,4 +490,25 @@ export const deleteActivity = async (idToken: string, key: string): Promise<void
     headers: bearer(idToken),
   });
   if (!r.ok && r.status !== 204) return throwFromResponse(r, `activities/${key} DELETE`);
+};
+
+export const updateHouseText = async (
+  idToken: string,
+  house: number,
+  body: string,
+): Promise<{ houseNumber: number; body: string; lastEditedAt: string }> => {
+  const r = await fetch(`${apiBase}/house-texts/${house}`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ body }),
+  });
+  if (!r.ok) return throwFromResponse(r, `house-texts/${house}`);
+  return r.json();
+};
+
+export const listHouseTexts = async (idToken: string): Promise<AdminHouseTextRow[]> => {
+  const r = await fetch(`${apiBase}/house-texts`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'house-texts');
+  const b = (await r.json()) as { items: AdminHouseTextRow[] };
+  return b.items ?? [];
 };
