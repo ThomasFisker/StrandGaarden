@@ -101,9 +101,15 @@ GDPR textarea + "ny version" toggle).
   - Their own assigned house (locked, capped at `maxBookSlotsPerHouse`)
   - A club-wide activity (Sankt Hans, Generalforsamling, …) — picked from
     /activities list.
-  Server enforces XOR for non-admins; cap is checked by scanning photos
-  whose `houseNumbers` contain the user's house. Admins keep free-form
-  upload behavior.
+  Server enforces XOR for non-admins; cap is checked by counting Stage-1
+  *priority slots* in the user's house (photos with `attribute_exists(priority)`),
+  not every historical photo tagged with that house — pre-Stage-1 uploads
+  don't compete for slots.
+  Each Stage-1 house upload auto-gets the next free `priority` slot
+  1..`maxBookSlotsPerHouse`. Activity uploads carry `priority=null`.
+  A soft per-user **50-total** sanity bound applies across all uploads
+  (admins exempt).
+  Admins keep free-form upload behavior.
 - **Stage 2 — Frys.** Non-admin write endpoints (`upload-url`,
   `comments-create`, `removals-create`, `photos-set-help-wanted`,
   `house-text-update`) reject with 423 Locked. `<StageBanner>` renders
@@ -121,6 +127,26 @@ GDPR textarea + "ny version" toggle).
   `gallery-detail`. Cards display "Aktivitet: X" when no houses are set.
 - Stage-1 activity uploads write `activityKey` to the PHOTO row alongside
   empty `houseNumbers`.
+
+### Mine page — two sections in Stage 1
+
+In Stage 1 for non-admin members, /mine splits into:
+- **Mine Hus Billeder** — house photos sorted by `priority` ascending.
+  Each card has a copper `#N` badge and ↑ ↓ arrows. Up/down call
+  `PATCH /photos/{id}/priority` which TransactWrite-swaps the priority
+  values atomically. Disabled at boundaries and during Stage-2 freeze.
+- **Andre billeder** — activity uploads (and any pre-Stage-1 photos
+  without a priority). Flat list, no badges, no arrows.
+
+In other stages, /mine collapses to a single flat list — no schema
+migration, just the UI partition disappearing. The `priority` field
+stays on the row forever.
+
+Priority is a **member-only** concept: admins can't set or change it
+via the gallery edit pencil. When admin re-tags a photo so it no
+longer carries the uploader's own house, `photos-update` REMOVEs the
+priority field. The photo then surfaces under "Andre billeder" until
+the uploader re-uploads or the admin restores the house.
 
 ### House texts (book chapter intros)
 
@@ -193,6 +219,7 @@ GDPR textarea + "ny version" toggle).
 | DELETE | `/photos/{id}` | admin | Hard delete (S3 + DDB) |
 | PATCH | `/photos/{id}` | admin | Edit metadata |
 | PATCH | `/photos/{id}/help-wanted` | uploader/admin | Toggle flag |
+| PATCH | `/photos/{id}/priority` | uploader only | Swap priority with neighbour (up/down) |
 | POST | `/photos/{id}/comments` | authed | Post comment (pending) |
 | GET | `/comments` | admin | Pending comments queue |
 | POST | `/photos/{p}/comments/{c}/merge` | admin | Apply merge |
@@ -304,37 +331,45 @@ tests. Not urgent.
 ## Resuming next session
 
 1. `cd "C:/Users/thoma/OneDrive - Second Epic/ClaudeProjects/Strandgaarden"`
-2. `git status` — expect clean. Last commit `1c6bd64`
-   (`fix: client-side empty-field guards on password forms`). All
-   pushed; CI green.
+2. `git status` — expect clean. Last commit `c0676d9`
+   (`fix: Stage-1 house cap counts only priority slots, not all-time
+   photos`). All pushed; CI green.
 3. Open https://d2wq22ivboh02d.cloudfront.net/ (hard-refresh). Login as
    `thomas.madsen@secondepic.com` / `Picture1!`. Expected current bundle
-   hash: **`index-BrudSdq6.js`**.
-4. Quick visual-state check:
+   hash: **`index-C1HPs0KL.js`**.
+4. **Open thread #1 — verify the cap fix.** As Thomas2 (member, house
+   9), /upload should show "Til mit hus" enabled with the counter
+   reading **"1 af 7 pladser brugt"** (not 7/7). A new house upload
+   should succeed and become `#2` on /mine in the "Mine Hus Billeder"
+   section. There are 6 pre-Stage-1 photos still tagged with house 9
+   that have no `priority` field — they're visible to admin under
+   /admin/gennemgang and /galleri but no longer block the cap. They
+   live under "Andre billeder" on Thomas2's /mine. Optional cleanup:
+   delete them via /admin/gennemgang or /galleri/:id when convenient.
+5. **Open thread #2 — first-login password change still untested
+   end-to-end.** Self-service /glemt-adgangskode worked. Open thread:
+   does the in-prompt "Sæt min egen" form (FirstLoginPrompt) succeed
+   when given a real current password + valid new one? Last attempt
+   yesterday hit a Cognito "previousPassword" regex error — guards
+   landed in `1c6bd64`. Yet untested with a non-empty current.
+6. **Open thread #3 — real-Outlook deliverability** of /glemt-
+   adgangskode email (Cognito default sender). Was on the to-do list
+   yesterday; still open.
+7. Quick visual-state check:
    - Header shows `Thomas1` + Galleri + Upload + Mine + Udvalget links.
    - /admin shows 9 cards with badges.
-   - /admin/fase loads the stage editor (radio + thresholds + GDPR
-     textarea); current stage is **3**.
+   - /admin/fase loads the stage editor; current stage is **1** (set
+     during the session for testing) — flip to 3 if you want the
+     "everything open" mode back.
    - /upload shows the GDPR reference note (no checkbox); the house
      selector lists the non-contiguous house numbers (3,5,7…17,
-     4,6…32) in that exact order.
-   - /mine shows the rich-text "Tekst til bogen — Hus N" card if your
-     user has a house assigned.
-   - /login shows a "Glemt adgangskode?" link below the button.
-   - The Thomas1 admin already acked the first-login prompt — to test
-     it again, clear `firstLoginAcked` on his USER row (see Known dev
-     test state below).
-5. **Open thread (last thing yesterday):** the user hit a Cognito
-   "previousPassword" regex error on the change-password form. We
-   added empty-field guards (`1c6bd64`). Untested whether the
-   underlying issue was an empty field or something subtler (autofill,
-   curly quotes pasted in). On resume: re-run the flow and confirm.
-   If it errors again with a non-empty field, the input value is
-   somehow being mangled — investigate before going further.
-6. **Recommended next task** (per Still-to-do): real-Outlook
-   verification of /glemt-adgangskode (#3 on the list) — quick
-   confidence boost on the password feature shipped yesterday before
-   moving to bigger items. Then committee-member invite (#1).
+     4,6…32).
+   - /mine for a member in Stage 1 shows two sections (Mine Hus
+     Billeder + Andre billeder) with priority badges + ↑↓ arrows.
+   - /login shows a "Glemt adgangskode?" link.
+8. **Recommended next task** order (after the open threads above):
+   committee-member invite (Danish draft from earlier session) → real
+   user feedback unblocks the rest of the list.
 6. If something's broken:
    - API alive: `curl -sk https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com/health`
      (use `-k` on this Windows shell — schannel revocation otherwise fails).
