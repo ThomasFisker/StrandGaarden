@@ -333,6 +333,15 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(meAcceptGdprFn);
 
+    const meFirstLoginAckFn = new lambdaNodejs.NodejsFunction(this, 'MeFirstLoginAckFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'me-first-login-ack.ts'),
+      functionName: `strandgaarden-${props.stage}-me-first-login-ack`,
+      description: 'Mark that the caller has been offered the first-login password prompt',
+      timeout: cdk.Duration.seconds(5),
+    });
+    props.table.grantReadWriteData(meFirstLoginAckFn);
+
     const configGetFn = new lambdaNodejs.NodejsFunction(this, 'ConfigGetFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'config-get.ts'),
@@ -516,6 +525,12 @@ export class ApiStack extends cdk.Stack {
       path: '/me/gdpr-accept',
       methods: [apigwv2.HttpMethod.POST],
       integration: new apigwIntegrations.HttpLambdaIntegration('MeAcceptGdprIntegration', meAcceptGdprFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/me/first-login-ack',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('MeFirstLoginAckIntegration', meFirstLoginAckFn),
       authorizer: jwtAuthorizer,
     });
     this.httpApi.addRoutes({

@@ -91,5 +91,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     myHouseSlotsUsed,
     maxHouseTextChars: cfg.maxHouseTextChars,
     myHouseText,
+    firstLoginAcked: it.firstLoginAcked === true,
   });
 };
