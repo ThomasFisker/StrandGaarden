@@ -43,7 +43,7 @@ export class AuthStack extends cdk.Stack {
         minLength: 8,
         requireLowercase: false,
         requireUppercase: false,
-        requireDigits: false,
+        requireDigits: true,
         requireSymbols: false,
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
