@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { getConfig } from './config-shared';
 import { json, parseGroups, USER_SK, userPk } from './users-shared';
 
@@ -29,17 +29,43 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
   const gdprAcceptedVersion =
     typeof it.gdprAcceptedVersion === 'string' ? it.gdprAcceptedVersion : null;
+  const houseNumber = typeof it.houseNumber === 'number' ? it.houseNumber : null;
+
+  // House slot usage — only relevant when the user has a house assigned
+  // and the system might surface the per-house cap (Stage 1). Skipping
+  // the scan in Stage 3 keeps /me cheap on every page load.
+  let myHouseSlotsUsed: number | null = null;
+  if (houseNumber !== null && cfg.stage === 1) {
+    let count = 0;
+    let ExclusiveStartKey: Record<string, unknown> | undefined;
+    do {
+      const r = await ddb.send(
+        new ScanCommand({
+          TableName: tableName,
+          FilterExpression: 'entity = :p AND contains(houseNumbers, :h)',
+          ExpressionAttributeValues: { ':p': 'Photo', ':h': houseNumber },
+          ProjectionExpression: 'photoId',
+          ExclusiveStartKey,
+        }),
+      );
+      count += r.Items?.length ?? 0;
+      ExclusiveStartKey = r.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+    myHouseSlotsUsed = count;
+  }
 
   return json(200, {
     sub,
     email: typeof claims.email === 'string' ? claims.email : null,
     loginName: typeof claims.preferred_username === 'string' ? claims.preferred_username : null,
     groups: parseGroups(claims['cognito:groups']),
-    houseNumber: typeof it.houseNumber === 'number' ? it.houseNumber : null,
+    houseNumber,
     gdprAcceptedAt: typeof it.gdprAcceptedAt === 'string' ? it.gdprAcceptedAt : null,
     gdprAcceptedVersion,
     gdprCurrentVersion: cfg.gdprVersion,
     gdprNeedsAcceptance: gdprAcceptedVersion !== cfg.gdprVersion,
     stage: cfg.stage,
+    maxBookSlotsPerHouse: cfg.maxBookSlotsPerHouse,
+    myHouseSlotsUsed,
   });
 };

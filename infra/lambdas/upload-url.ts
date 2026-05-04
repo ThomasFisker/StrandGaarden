@@ -4,8 +4,11 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { ACTIVITY_SK_PREFIX, ACTIVITYLIST_PK } from './activities-shared';
 import { FREEZE_ERROR_MESSAGE, getConfig, isFrozenForCaller } from './config-shared';
 import { normalizeDisplayName, PERSON_SK_PREFIX, PERSONLIST_PK, slugify } from './persons-shared';
+import { USER_SK, userPk } from './users-shared';
+import { ScanCommand } from '@aws-sdk/lib-dynamodb';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
@@ -42,6 +45,29 @@ const parseGroups = (raw: unknown): string[] => {
   return [];
 };
 
+/** Count of PHOTO rows whose houseNumbers list contains the given house.
+ * Used by the Stage-1 per-house cap check. Pre-Rejected photos are not
+ * filtered out — once an admin sets status=Rejected they typically also
+ * delete the row, so they don't accumulate against the cap in practice. */
+const countPhotosForHouse = async (house: number): Promise<number> => {
+  let count = 0;
+  let ExclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const r = await ddb.send(
+      new ScanCommand({
+        TableName: tableName,
+        FilterExpression: 'entity = :p AND contains(houseNumbers, :h)',
+        ExpressionAttributeValues: { ':p': 'Photo', ':h': house },
+        ProjectionExpression: 'photoId',
+        ExclusiveStartKey,
+      }),
+    );
+    count += r.Items?.length ?? 0;
+    ExclusiveStartKey = r.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  return count;
+};
+
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const claims = event.requestContext.authorizer?.jwt?.claims ?? {};
   const groups = parseGroups(claims['cognito:groups']);
@@ -74,6 +100,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const year = yearRaw === null || yearRaw === undefined || yearRaw === '' ? null : Number(yearRaw);
   const yearApprox = body.yearApprox === true;
   const houseNumbersRaw = body.houseNumbers;
+  const activityKeyRaw = body.activityKey;
+  const activityKey =
+    typeof activityKeyRaw === 'string' && activityKeyRaw.trim() ? activityKeyRaw.trim() : null;
   const consent = body.consent === true;
   const helpWanted = body.helpWanted === true;
   const currentYear = new Date().getFullYear();
@@ -94,18 +123,82 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       errors.push(`year must be an integer between ${YEAR_MIN} and ${currentYear}`);
     }
   }
-  if (!Array.isArray(houseNumbersRaw) || houseNumbersRaw.length === 0) {
-    errors.push('houseNumbers is required — pick at least one');
-  } else if (houseNumbersRaw.length > HOUSE_MAX) {
-    errors.push(`houseNumbers may contain at most ${HOUSE_MAX} entries`);
-  } else if (!houseNumbersRaw.every((n) => Number.isInteger(n) && n >= HOUSE_MIN && n <= HOUSE_MAX)) {
-    errors.push(`every houseNumber must be an integer ${HOUSE_MIN}..${HOUSE_MAX}`);
-  }
   if (!consent) errors.push('consent must be true — required by GDPR');
+
+  // Stage-1 routing for non-admins: choose either own-house (locked +
+  // capped) or an activity. Admins keep stage-3 free-form behavior.
+  const stageOneNonAdmin = cfg.stage === 1 && !isAdminCaller;
+  let houseNumbers: number[] = [];
+  let resolvedActivityKey: string | null = null;
+
+  if (stageOneNonAdmin) {
+    const callerSub = typeof claims.sub === 'string' ? claims.sub : '';
+    const userRow = await ddb.send(
+      new GetCommand({ TableName: tableName, Key: { PK: userPk(callerSub), SK: USER_SK } }),
+    );
+    const myHouse =
+      userRow.Item && typeof userRow.Item.houseNumber === 'number'
+        ? (userRow.Item.houseNumber as number)
+        : null;
+
+    if (activityKey) {
+      const ar = await ddb.send(
+        new GetCommand({
+          TableName: tableName,
+          Key: { PK: ACTIVITYLIST_PK, SK: `${ACTIVITY_SK_PREFIX}${activityKey}` },
+          ProjectionExpression: 'displayName',
+        }),
+      );
+      if (!ar.Item) errors.push(`Ukendt aktivitet: ${activityKey}`);
+      else resolvedActivityKey = activityKey;
+      if (Array.isArray(houseNumbersRaw) && houseNumbersRaw.length > 0) {
+        errors.push('I fase 1: vælg enten et hus eller en aktivitet — ikke begge.');
+      }
+    } else {
+      if (myHouse === null) {
+        errors.push(
+          'Du er ikke tildelt et hus. Bed udvalget om at tildele dig et hus, eller vælg en aktivitet.',
+        );
+      } else if (
+        !Array.isArray(houseNumbersRaw) ||
+        houseNumbersRaw.length !== 1 ||
+        Number(houseNumbersRaw[0]) !== myHouse
+      ) {
+        errors.push(`I fase 1 kan du kun uploade til dit eget hus (Hus ${myHouse}).`);
+      } else {
+        houseNumbers = [myHouse];
+      }
+    }
+  } else {
+    if (!Array.isArray(houseNumbersRaw) || houseNumbersRaw.length === 0) {
+      errors.push('houseNumbers is required — pick at least one');
+    } else if (houseNumbersRaw.length > HOUSE_MAX) {
+      errors.push(`houseNumbers may contain at most ${HOUSE_MAX} entries`);
+    } else if (!houseNumbersRaw.every((n) => Number.isInteger(n) && n >= HOUSE_MIN && n <= HOUSE_MAX)) {
+      errors.push(`every houseNumber must be an integer ${HOUSE_MIN}..${HOUSE_MAX}`);
+    } else {
+      houseNumbers = Array.from(new Set(houseNumbersRaw as number[])).sort((a, b) => a - b);
+    }
+    if (activityKey) {
+      // Activities outside Stage 1 are simply ignored to keep the schema
+      // forward-compatible — the form there doesn't surface them.
+      resolvedActivityKey = null;
+    }
+  }
 
   if (errors.length) return json(400, { error: 'Validation failed', details: errors });
 
-  const houseNumbers = Array.from(new Set(houseNumbersRaw as number[])).sort((a, b) => a - b);
+  // Stage-1 per-house cap: count existing photos tagged with this house and
+  // reject if at the configured limit. Skipped on the activity branch — the
+  // book has a separate (per-activity) section there.
+  if (stageOneNonAdmin && houseNumbers.length === 1) {
+    const used = await countPhotosForHouse(houseNumbers[0]);
+    if (used >= cfg.maxBookSlotsPerHouse) {
+      return json(409, {
+        error: `Hus ${houseNumbers[0]} har allerede ${used} af ${cfg.maxBookSlotsPerHouse} mulige billeder. Bed udvalget om at fjerne et først, hvis du vil uploade flere.`,
+      });
+    }
+  }
 
   // Resolve person tags. Each entry is { slug } (already-known person) or
   // { proposedName } (new person to create as pending). Existing slugs must
@@ -210,6 +303,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         createdAt,
         GSI1PK: 'STATUS#Uploaded',
         GSI1SK: `${createdAt}#${photoId}`,
+        ...(resolvedActivityKey ? { activityKey: resolvedActivityKey } : {}),
       },
       ConditionExpression: 'attribute_not_exists(PK)',
     }),

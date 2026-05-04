@@ -3,7 +3,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HouseSelector } from '../components/HouseSelector';
 import { PersonTagInput } from '../components/PersonTagInput';
-import { putToS3, requestUploadUrl } from '../api';
+import { listActivities, putToS3, requestUploadUrl } from '../api';
 import { useProfile } from '../profile';
 import { useSession } from '../session';
 import {
@@ -11,6 +11,7 @@ import {
   BOOK_MIN_LONG_EDGE,
   MAX_UPLOAD_BYTES,
   MIN_LONG_EDGE,
+  type Activity,
   type PersonTagInput as PersonTagValue,
 } from '../types';
 
@@ -41,6 +42,12 @@ export const UploadPage = () => {
   const navigate = useNavigate();
   const isAdmin = profile?.groups.includes('admin') ?? false;
   const frozen = profile?.stage === 2 && !isAdmin;
+  const stageOneNonAdmin = profile?.stage === 1 && !isAdmin;
+  const myHouse = profile?.houseNumber ?? null;
+  const slotsUsed = profile?.myHouseSlotsUsed ?? null;
+  const slotsMax = profile?.maxBookSlotsPerHouse ?? 7;
+  const houseAtCap =
+    stageOneNonAdmin && myHouse !== null && slotsUsed !== null && slotsUsed >= slotsMax;
 
   const [file, setFile] = useState<File | null>(null);
   const [dimensionWarning, setDimensionWarning] = useState<string | null>(null);
@@ -51,12 +58,39 @@ export const UploadPage = () => {
   const [houseNumbers, setHouseNumbers] = useState<number[]>([]);
   const [housesTouched, setHousesTouched] = useState(false);
   const [personTags, setPersonTags] = useState<PersonTagValue[]>([]);
+  const [target, setTarget] = useState<'house' | 'activity'>('house');
+  const [activityKey, setActivityKey] = useState<string>('');
+  const [activities, setActivities] = useState<Activity[] | null>(null);
   const toggleHouse = useCallback((n: number) => {
     setHousesTouched(true);
     setHouseNumbers((prev) =>
       prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n].sort((a, b) => a - b),
     );
   }, []);
+
+  // Stage-1 only: load the activity list once for the "Til en aktivitet"
+  // dropdown. Cheap query — gated so we don't fetch in Stage 3 or for
+  // admins (who keep free-form house choice).
+  useEffect(() => {
+    if (!session || !stageOneNonAdmin) return;
+    let active = true;
+    listActivities(session.idToken)
+      .then((list) => {
+        if (active) setActivities(list);
+      })
+      .catch(() => {
+        if (active) setActivities([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session, stageOneNonAdmin]);
+
+  // If a non-admin in Stage 1 has their own house at cap, default the
+  // target to "activity" so the form is usable out of the gate.
+  useEffect(() => {
+    if (houseAtCap) setTarget('activity');
+  }, [houseAtCap]);
 
   // Prefill house from the user's assigned house (set by admin on
   // /admin/users). Profile comes from ProfileProvider so this fires once
@@ -127,7 +161,16 @@ export const UploadPage = () => {
     if (parsedYear !== null && (Number.isNaN(parsedYear) || parsedYear < 1800 || parsedYear > CURRENT_YEAR)) {
       return `År skal være et helt tal mellem 1800 og ${CURRENT_YEAR} (eller lad feltet være tomt).`;
     }
-    if (houseNumbers.length === 0) return 'Vælg mindst ét hus nr.';
+    if (stageOneNonAdmin) {
+      if (target === 'house') {
+        if (myHouse === null) return 'Du er ikke tildelt et hus. Bed udvalget om at tildele dig et — eller vælg en aktivitet.';
+        if (houseAtCap) return `Hus ${myHouse} er fyldt op (${slotsUsed}/${slotsMax}). Vælg en aktivitet, eller bed udvalget fjerne et billede først.`;
+      } else {
+        if (!activityKey) return 'Vælg en aktivitet.';
+      }
+    } else {
+      if (houseNumbers.length === 0) return 'Vælg mindst ét hus nr.';
+    }
     if (!consent) return 'Du skal bekræfte samtykket før billedet kan sendes.';
     return null;
   };
@@ -144,6 +187,15 @@ export const UploadPage = () => {
     setSubmitting(true);
     setProgress(0);
     try {
+      const useActivity = stageOneNonAdmin && target === 'activity';
+      const payloadHouses =
+        stageOneNonAdmin
+          ? useActivity
+            ? []
+            : myHouse !== null
+              ? [myHouse]
+              : []
+          : houseNumbers;
       const { uploadUrl } = await requestUploadUrl(session.idToken, {
         filename: file!.name,
         contentType: file!.type,
@@ -151,7 +203,8 @@ export const UploadPage = () => {
         whoInPhoto: whoInPhoto.trim(),
         year: parsedYear === null || Number.isNaN(parsedYear) ? null : parsedYear,
         yearApprox,
-        houseNumbers,
+        houseNumbers: payloadHouses,
+        activityKey: useActivity ? activityKey : null,
         consent,
         taggedPersons: personTags,
         helpWanted,
@@ -288,11 +341,84 @@ export const UploadPage = () => {
           </div>
         </div>
 
-        <div className="field">
-          <label>Hus nr.</label>
-          <div className="help" style={{ marginBottom: '0.5rem' }}>Vælg de huse billedet hører til. Mindst ét.</div>
-          <HouseSelector value={houseNumbers} onToggle={toggleHouse} />
-        </div>
+        {stageOneNonAdmin ? (
+          <div className="field">
+            <label>Hvor hører billedet til?</label>
+            <div className="help" style={{ marginBottom: '0.6rem' }}>
+              I fase 1 uploader hvert hus til sin egen del af bogen, og fælles aktiviteter lægges
+              under et nøgleord (Sankt Hans, generalforsamling osv.).
+            </div>
+            <div className="checkbox-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>
+              <label>
+                <input
+                  type="radio"
+                  name="upload-target"
+                  value="house"
+                  checked={target === 'house'}
+                  onChange={() => setTarget('house')}
+                  disabled={myHouse === null || houseAtCap}
+                />{' '}
+                <strong>Til mit hus</strong>
+                {myHouse !== null ? ` (Hus ${myHouse})` : ' — du er ikke tildelt et hus endnu'}
+                {myHouse !== null && slotsUsed !== null && (
+                  <span className="subtle"> · {slotsUsed} af {slotsMax} pladser brugt</span>
+                )}
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="upload-target"
+                  value="activity"
+                  checked={target === 'activity'}
+                  onChange={() => setTarget('activity')}
+                />{' '}
+                <strong>Til en aktivitet</strong>
+                <span className="subtle"> (fælles afsnit i bogen)</span>
+              </label>
+            </div>
+            {target === 'activity' && (
+              <div style={{ marginTop: '0.6rem' }}>
+                <select
+                  value={activityKey}
+                  onChange={(e) => setActivityKey(e.target.value)}
+                  aria-label="Aktivitet"
+                >
+                  <option value="">— Vælg aktivitet —</option>
+                  {(activities ?? []).map((a) => (
+                    <option key={a.key} value={a.key}>
+                      {a.displayName}
+                    </option>
+                  ))}
+                </select>
+                {activities !== null && activities.length === 0 && (
+                  <div className="help" style={{ marginTop: '0.4rem' }}>
+                    Udvalget har ikke oprettet aktiviteter endnu.
+                  </div>
+                )}
+              </div>
+            )}
+            {houseAtCap && (
+              <div
+                style={{
+                  marginTop: '0.6rem',
+                  padding: '0.5rem 0.75rem',
+                  background: 'var(--paper-warm, #faf2e6)',
+                  borderLeft: '3px solid var(--copper, #b85a2a)',
+                  fontSize: '0.95rem',
+                }}
+              >
+                Hus {myHouse} har allerede {slotsUsed} af {slotsMax} mulige billeder. Bed udvalget
+                fjerne et billede først, eller upload til en aktivitet i stedet.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="field">
+            <label>Hus nr.</label>
+            <div className="help" style={{ marginBottom: '0.5rem' }}>Vælg de huse billedet hører til. Mindst ét.</div>
+            <HouseSelector value={houseNumbers} onToggle={toggleHouse} />
+          </div>
+        )}
 
         <div className="field">
           <div className="checkbox-row">

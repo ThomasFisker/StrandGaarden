@@ -27,6 +27,10 @@ export interface UploadMetadata {
   year: number | null;
   yearApprox: boolean;
   houseNumbers: number[];
+  /** Stage-1 alternative to a house: the photo belongs to a club-wide
+   * activity (Sankt Hans, Generalforsamling, …). When set, houseNumbers
+   * is empty. Ignored outside Stage 1. */
+  activityKey?: string | null;
   consent: boolean;
   taggedPersons: PersonTagInput[];
   helpWanted: boolean;
@@ -246,6 +250,13 @@ export interface MyProfile {
   gdprCurrentVersion: string;
   gdprNeedsAcceptance: boolean;
   stage: Stage;
+  /** Per-house cap from CONFIG. Always present so the form can render
+   * "X of Y" copy regardless of stage. */
+  maxBookSlotsPerHouse: number;
+  /** How many photos in the archive carry the user's assigned house.
+   * Computed only when stage=1 and the user has a house — null
+   * otherwise (we skip the scan in Stage 3 to keep /me cheap). */
+  myHouseSlotsUsed: number | null;
 }
 
 export interface GdprText {
