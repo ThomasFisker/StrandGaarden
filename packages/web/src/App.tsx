@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProfileProvider } from './profile';
+import { ForgotPasswordPage } from './pages/ForgotPassword';
 import { LoginPage } from './pages/Login';
 import { UploadPage } from './pages/Upload';
 import { MinePage } from './pages/Mine';
@@ -25,6 +26,7 @@ export const App = () => (
     <Routes>
       <Route element={<Layout />}>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/glemt-adgangskode" element={<ForgotPasswordPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Navigate to="/galleri" replace />} />
           <Route path="/galleri" element={<GalleryPage />} />

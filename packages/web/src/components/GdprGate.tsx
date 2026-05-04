@@ -4,6 +4,7 @@ import { acceptGdpr, getGdprText } from '../api';
 import { useProfile } from '../profile';
 import { useSession } from '../session';
 import type { GdprText } from '../types';
+import { FirstLoginPrompt } from './FirstLoginPrompt';
 import { StageBanner } from './StageBanner';
 
 /** Blocks every protected route until the caller has accepted the
@@ -65,7 +66,7 @@ export const GdprGate = ({ children }: { children: ReactNode }) => {
     return (
       <>
         <StageBanner stage={profile.stage} />
-        {children}
+        <FirstLoginPrompt>{children}</FirstLoginPrompt>
       </>
     );
   }

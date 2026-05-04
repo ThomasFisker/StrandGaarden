@@ -286,6 +286,9 @@ export interface MyProfile {
   /** Caller's house chapter-intro text. null when the user has no
    * house assigned, or when the row hasn't been written yet. */
   myHouseText: string | null;
+  /** Has the user been shown the optional "set your own password" prompt
+   * after first login? Once true, the prompt is suppressed forever. */
+  firstLoginAcked: boolean;
 }
 
 export interface AdminHouseTextRow {

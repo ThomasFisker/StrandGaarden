@@ -25,6 +25,55 @@ export const signOut = (): void => {
   userPool.getCurrentUser()?.signOut();
 };
 
+/** Change the password for the currently signed-in user. Cognito
+ * requires the old password as proof of possession even when there's
+ * an active session. Resolves on Cognito's "SUCCESS"; rejects with
+ * the API error message otherwise. */
+export const changeOwnPassword = (
+  oldPassword: string,
+  newPassword: string,
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const user = userPool.getCurrentUser();
+    if (!user) return reject(new Error('Ikke logget ind'));
+    user.getSession((err: Error | null) => {
+      if (err) return reject(err);
+      user.changePassword(oldPassword, newPassword, (e2) => {
+        if (e2) return reject(e2);
+        resolve();
+      });
+    });
+  });
+
+/** Trigger Cognito's ForgotPassword flow. Sends a 6-digit code to the
+ * user's verified email. Resolves silently — Cognito intentionally
+ * doesn't tell us whether the email exists, to avoid an account-
+ * enumeration leak. */
+export const requestForgotPasswordCode = (email: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const user = new CognitoUser({ Username: email, Pool: userPool });
+    user.forgotPassword({
+      onSuccess: () => resolve(),
+      onFailure: (err) => reject(err),
+      // inputVerificationCode also fires on success; either is fine here.
+      inputVerificationCode: () => resolve(),
+    });
+  });
+
+/** Confirm the ForgotPassword code and set a new password. */
+export const confirmForgotPassword = (
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const user = new CognitoUser({ Username: email, Pool: userPool });
+    user.confirmPassword(code, newPassword, {
+      onSuccess: () => resolve(),
+      onFailure: (err) => reject(err),
+    });
+  });
+
 export const getCurrentSession = (): Promise<CognitoUserSession | null> =>
   new Promise((resolve) => {
     const user = userPool.getCurrentUser();

@@ -74,6 +74,15 @@ export const acceptGdpr = async (
   return r.json();
 };
 
+export const ackFirstLogin = async (idToken: string): Promise<void> => {
+  const r = await fetch(`${apiBase}/me/first-login-ack`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: '{}',
+  });
+  if (!r.ok) return throwFromResponse(r, 'me/first-login-ack');
+};
+
 export const requestUploadUrl = async (
   idToken: string,
   meta: UploadMetadata,

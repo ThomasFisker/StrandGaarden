@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useSession } from '../session';
 
 export const LoginPage = () => {
@@ -89,7 +89,7 @@ export const LoginPage = () => {
             </button>
           </form>
           <p className="reset-hint">
-            Har du glemt din adgangskode? Kontakt udvalget.
+            <Link to="/glemt-adgangskode">Glemt adgangskode?</Link>
           </p>
         </div>
       </section>
