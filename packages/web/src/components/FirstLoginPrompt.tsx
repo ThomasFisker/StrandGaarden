@@ -38,6 +38,10 @@ export const FirstLoginPrompt = ({ children }: { children: ReactNode }) => {
   const onChange = async (e: FormEvent) => {
     e.preventDefault();
     if (!session) return;
+    if (!oldPassword.trim()) {
+      setError('Skriv din nuværende adgangskode først.');
+      return;
+    }
     if (newPassword.length < 8) {
       setError('Den nye adgangskode skal være mindst 8 tegn.');
       return;

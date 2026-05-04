@@ -17,6 +17,10 @@ export const ForgotPasswordPage = () => {
 
   const onRequest = async (e: FormEvent) => {
     e.preventDefault();
+    if (!email.trim()) {
+      setError('Skriv din e-mail.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -31,6 +35,10 @@ export const ForgotPasswordPage = () => {
 
   const onConfirm = async (e: FormEvent) => {
     e.preventDefault();
+    if (!code.trim()) {
+      setError('Skriv den 6-cifrede kode fra e-mailen.');
+      return;
+    }
     if (newPassword.length < 8) {
       setError('Adgangskoden skal være mindst 8 tegn.');
       return;
