@@ -50,6 +50,15 @@ export const DEFAULT_CONFIG: AppConfig = {
 
 const isStage = (n: unknown): n is Stage => n === 1 || n === 2 || n === 3;
 
+/** Standardized error returned when stage=2 (Frys) and a non-admin tries
+ * to write. 423 Locked is the HTTP semantic match. Reused across every
+ * write lambda. */
+export const FREEZE_ERROR_MESSAGE =
+  'Siden er i frys-fase mens udvalget arbejder på bogen. Ingen ændringer er mulige indtil videre.';
+
+export const isFrozenForCaller = (cfg: AppConfig, isAdminCaller: boolean): boolean =>
+  cfg.stage === 2 && !isAdminCaller;
+
 /** Read the singleton config row, falling back to defaults for any missing
  * field. The row may be entirely absent until the first admin save. */
 export const getConfig = async (

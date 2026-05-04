@@ -4,6 +4,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { FREEZE_ERROR_MESSAGE, getConfig, isFrozenForCaller } from './config-shared';
 import { normalizeDisplayName, PERSON_SK_PREFIX, PERSONLIST_PK, slugify } from './persons-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
@@ -46,6 +47,12 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const groups = parseGroups(claims['cognito:groups']);
   if (!groups.some((g) => g === 'admin' || g === 'member')) {
     return json(403, { error: 'Upload is restricted to admin and member roles' });
+  }
+
+  const isAdminCaller = groups.includes('admin');
+  const cfg = await getConfig(ddb, tableName);
+  if (isFrozenForCaller(cfg, isAdminCaller)) {
+    return json(423, { error: FREEZE_ERROR_MESSAGE });
   }
 
   let body: Record<string, unknown>;

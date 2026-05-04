@@ -233,7 +233,8 @@ export interface Activity {
 }
 
 /** The caller's own profile, returned by GET /me. Used to prefill the
- * uploader's assigned house and gate the GDPR consent flow. */
+ * uploader's assigned house, gate the GDPR consent flow, and react to
+ * the current stage (banner + freeze of write forms). */
 export interface MyProfile {
   sub: string;
   email: string | null;
@@ -244,6 +245,7 @@ export interface MyProfile {
   gdprAcceptedVersion: string | null;
   gdprCurrentVersion: string;
   gdprNeedsAcceptance: boolean;
+  stage: Stage;
 }
 
 export interface GdprText {

@@ -1,6 +1,7 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { ConditionalCheckFailedException, DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { FREEZE_ERROR_MESSAGE, getConfig, isFrozenForCaller } from './config-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
@@ -27,6 +28,11 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
   const photoId = event.pathParameters?.id;
   if (!photoId || !/^[0-9a-f-]{36}$/.test(photoId)) return json(400, { error: 'Ugyldigt billede-id' });
+
+  const cfg = await getConfig(ddb, tableName);
+  if (isFrozenForCaller(cfg, isAdmin)) {
+    return json(423, { error: FREEZE_ERROR_MESSAGE });
+  }
 
   let body: Record<string, unknown>;
   try {

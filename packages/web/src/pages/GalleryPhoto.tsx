@@ -8,6 +8,7 @@ import {
   updatePhoto,
 } from '../api';
 import { PersonTagInput as PersonTagInputField } from '../components/PersonTagInput';
+import { useProfile } from '../profile';
 import { useSession } from '../session';
 import {
   formatShortId,
@@ -45,7 +46,9 @@ export const GalleryPhotoPage = () => {
   const [removalSent, setRemovalSent] = useState(false);
   const [removalError, setRemovalError] = useState<string | null>(null);
 
+  const { profile } = useProfile();
   const isAdmin = session?.claims.groups.includes('admin') ?? false;
+  const frozen = profile?.stage === 2 && !isAdmin;
   const [editOpen, setEditOpen] = useState(false);
   const [editDesc, setEditDesc] = useState('');
   const [editWho, setEditWho] = useState('');
@@ -410,7 +413,7 @@ export const GalleryPhotoPage = () => {
                   Hent billedet <span className="arrow">↓</span>
                 </a>
               )}
-              {!removalOpen && !removalSent && (
+              {!frozen && !removalOpen && !removalSent && (
                 <button
                   type="button"
                   className="link-muted"
@@ -430,7 +433,7 @@ export const GalleryPhotoPage = () => {
               </div>
             )}
 
-            {removalOpen && !removalSent && (
+            {!frozen && removalOpen && !removalSent && (
               <form className="removal-form" onSubmit={submitRemoval}>
                 <p className="removal-intro">
                   <strong>Anmod udvalget om at fjerne billedet.</strong> Skriv en kort begrundelse (f.eks.
@@ -473,7 +476,7 @@ export const GalleryPhotoPage = () => {
         </div>
       )}
 
-      {photo && (
+      {photo && !frozen && (
         <section className="comment-card">
           <p className="eyebrow">Del din viden</p>
           <h2 className="comment-heading">

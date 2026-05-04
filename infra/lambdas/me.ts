@@ -40,5 +40,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     gdprAcceptedVersion,
     gdprCurrentVersion: cfg.gdprVersion,
     gdprNeedsAcceptance: gdprAcceptedVersion !== cfg.gdprVersion,
+    stage: cfg.stage,
   });
 };

@@ -1,35 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { acceptGdpr, getGdprText, getMyProfile } from '../api';
+import { acceptGdpr, getGdprText } from '../api';
+import { useProfile } from '../profile';
 import { useSession } from '../session';
-import type { GdprText, MyProfile } from '../types';
+import type { GdprText } from '../types';
+import { StageBanner } from './StageBanner';
 
 /** Blocks every protected route until the caller has accepted the
  * current GDPR version. The text is fetched lazily — only when the
  * consent screen actually needs to render — so the common
- * already-accepted case stays a single /me round trip. */
+ * already-accepted case stays a single /me round trip handled by
+ * ProfileProvider. */
 export const GdprGate = ({ children }: { children: ReactNode }) => {
   const { session } = useSession();
-  const [profile, setProfile] = useState<MyProfile | null>(null);
+  const { profile, error: profileError, refresh } = useProfile();
   const [text, setText] = useState<GdprText | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!session) return;
-    let active = true;
-    setError(null);
-    getMyProfile(session.idToken)
-      .then((p) => {
-        if (active) setProfile(p);
-      })
-      .catch((e) => {
-        if (active) setError(e instanceof Error ? e.message : 'Kunne ikke hente profil');
-      });
-    return () => {
-      active = false;
-    };
-  }, [session]);
 
   useEffect(() => {
     if (!session || !profile?.gdprNeedsAcceptance) return;
@@ -52,19 +39,18 @@ export const GdprGate = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await acceptGdpr(session.idToken, text.version);
-      const updated = await getMyProfile(session.idToken);
-      setProfile(updated);
+      await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kunne ikke gemme samtykke');
     } finally {
       setSubmitting(false);
     }
-  }, [session, text]);
+  }, [session, text, refresh]);
 
-  if (error && !profile) {
+  if (profileError && !profile) {
     return (
       <main className="content">
-        <div className="error">{error}</div>
+        <div className="error">{profileError}</div>
       </main>
     );
   }
@@ -75,7 +61,14 @@ export const GdprGate = ({ children }: { children: ReactNode }) => {
       </main>
     );
   }
-  if (!profile.gdprNeedsAcceptance) return <>{children}</>;
+  if (!profile.gdprNeedsAcceptance) {
+    return (
+      <>
+        <StageBanner stage={profile.stage} />
+        {children}
+      </>
+    );
+  }
   if (!text) {
     return (
       <main className="content">

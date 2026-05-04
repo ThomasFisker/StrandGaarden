@@ -3,7 +3,8 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HouseSelector } from '../components/HouseSelector';
 import { PersonTagInput } from '../components/PersonTagInput';
-import { getMyProfile, putToS3, requestUploadUrl } from '../api';
+import { putToS3, requestUploadUrl } from '../api';
+import { useProfile } from '../profile';
 import { useSession } from '../session';
 import {
   ACCEPTED_MIME,
@@ -36,7 +37,10 @@ const probeDimensions = async (
 
 export const UploadPage = () => {
   const { session } = useSession();
+  const { profile } = useProfile();
   const navigate = useNavigate();
+  const isAdmin = profile?.groups.includes('admin') ?? false;
+  const frozen = profile?.stage === 2 && !isAdmin;
 
   const [file, setFile] = useState<File | null>(null);
   const [dimensionWarning, setDimensionWarning] = useState<string | null>(null);
@@ -55,27 +59,17 @@ export const UploadPage = () => {
   }, []);
 
   // Prefill house from the user's assigned house (set by admin on
-  // /admin/users). Best-effort — only writes if the user hasn't already
-  // touched the selector. Uploads still work without prefill if /me fails.
+  // /admin/users). Profile comes from ProfileProvider so this fires once
+  // when the cached profile arrives. We only write if the user hasn't
+  // already touched the selector.
   useEffect(() => {
-    if (!session) return;
-    let active = true;
-    getMyProfile(session.idToken)
-      .then((p) => {
-        if (!active) return;
-        if (p.houseNumber !== null) {
-          setHouseNumbers((prev) =>
-            !housesTouched && prev.length === 0 ? [p.houseNumber as number] : prev,
-          );
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-    // housesTouched intentionally excluded — fetch runs once on mount.
+    if (!profile || profile.houseNumber === null) return;
+    setHouseNumbers((prev) =>
+      !housesTouched && prev.length === 0 ? [profile.houseNumber as number] : prev,
+    );
+    // housesTouched intentionally excluded — guards against undoing a manual deselect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }, [profile]);
   const [consent, setConsent] = useState(false);
   const [helpWanted, setHelpWanted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -171,6 +165,22 @@ export const UploadPage = () => {
       setProgress(null);
     }
   };
+
+  if (frozen) {
+    return (
+      <main className="content">
+        <p className="eyebrow">Bidrag til arkivet</p>
+        <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>
+          Upload <em>billede</em>
+        </h1>
+        <p className="lede">
+          Siden er i frys-fase mens udvalget arbejder på bogen. Du kan se det du allerede har
+          uploadet på <a href="/mine">Mine billeder</a>, men nye uploads er ikke mulige indtil
+          videre.
+        </p>
+      </main>
+    );
+  }
 
   return (
     <main className="content">

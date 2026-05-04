@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getMyPhotos, setHelpWanted } from '../api';
+import { useProfile } from '../profile';
 import { useSession } from '../session';
 import { formatShortId, type MyPhoto } from '../types';
 
@@ -38,11 +39,14 @@ const prettyDate = (iso: string): string => {
 
 export const MinePage = () => {
   const { session } = useSession();
+  const { profile } = useProfile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [photos, setPhotos] = useState<MyPhoto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingHelp, setSavingHelp] = useState<Record<string, boolean>>({});
   const justUploaded = searchParams.get('justUploaded') === '1';
+  const isAdmin = profile?.groups.includes('admin') ?? false;
+  const frozen = profile?.stage === 2 && !isAdmin;
 
   const toggleHelpWanted = async (photo: MyPhoto) => {
     if (!session) return;
@@ -172,7 +176,7 @@ export const MinePage = () => {
                         <input
                           type="checkbox"
                           checked={p.helpWanted}
-                          disabled={!!savingHelp[p.photoId]}
+                          disabled={!!savingHelp[p.photoId] || frozen}
                           onChange={() => toggleHelpWanted(p)}
                         />
                         <span>
