@@ -18,6 +18,7 @@ import { AdminPhasePage } from './pages/AdminPhase';
 import { AdminActivitiesPage } from './pages/AdminActivities';
 import { AdminHouseTextsPage } from './pages/AdminHouseTexts';
 import { NotFoundPage } from './pages/NotFound';
+import { SamtykkePage } from './pages/Samtykke';
 
 export const App = () => (
   <ProfileProvider>
@@ -30,6 +31,7 @@ export const App = () => (
           <Route path="/galleri/:id" element={<GalleryPhotoPage />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/mine" element={<MinePage />} />
+          <Route path="/samtykke" element={<SamtykkePage />} />
         </Route>
         <Route element={<ProtectedRoute requireGroup="admin" />}>
           <Route path="/admin" element={<AdminHomePage />} />

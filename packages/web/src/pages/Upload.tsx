@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { HouseSelector } from '../components/HouseSelector';
 import { PersonTagInput } from '../components/PersonTagInput';
 import { listActivities, putToS3, requestUploadUrl } from '../api';
@@ -104,7 +104,9 @@ export const UploadPage = () => {
     // housesTouched intentionally excluded — guards against undoing a manual deselect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
-  const [consent, setConsent] = useState(false);
+  // Consent is now an implicit flag: every authed user has accepted the
+  // GDPR text via the GdprGate at first login. The form references that
+  // acceptance (with a link to /samtykke) instead of asking again.
   const [helpWanted, setHelpWanted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
@@ -171,7 +173,6 @@ export const UploadPage = () => {
     } else {
       if (houseNumbers.length === 0) return 'Vælg mindst ét hus nr.';
     }
-    if (!consent) return 'Du skal bekræfte samtykket før billedet kan sendes.';
     return null;
   };
 
@@ -205,7 +206,7 @@ export const UploadPage = () => {
         yearApprox,
         houseNumbers: payloadHouses,
         activityKey: useActivity ? activityKey : null,
-        consent,
+        consent: true,
         taggedPersons: personTags,
         helpWanted,
       });
@@ -439,17 +440,18 @@ export const UploadPage = () => {
         </div>
 
         <div className="field">
-          <div className="checkbox-row">
-            <input
-              id="consent"
-              type="checkbox"
-              required
-              checked={consent}
-              onChange={(e) => setConsent(e.target.checked)}
-            />
-            <label htmlFor="consent">
-              Jeg bekræfter, at billedet må offentliggøres, og at de personer der er på billedet er indforståede med det.
-            </label>
+          <div
+            style={{
+              padding: '0.85rem 1.1rem',
+              background: 'var(--paper-warm, #faf2e6)',
+              borderLeft: '3px solid var(--copper, #b85a2a)',
+              fontSize: '0.97rem',
+            }}
+          >
+            Du har allerede accepteret samtykket ved første login. Ved at sende billedet
+            bekræfter du, at det må offentliggøres på siden og bruges i jubilæumsbogen, og at
+            de personer der er på billedet er indforståede.{' '}
+            <Link to="/samtykke">Læs samtykket igen</Link>.
           </div>
         </div>
 
