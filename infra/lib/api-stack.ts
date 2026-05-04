@@ -306,6 +306,15 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(usersUpdateHouseFn);
 
+    const meFn = new lambdaNodejs.NodejsFunction(this, 'MeFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'me.ts'),
+      functionName: `strandgaarden-${props.stage}-me`,
+      description: 'Returns the caller\'s own profile row (houseNumber, GDPR acceptance, claims)',
+      timeout: cdk.Duration.seconds(5),
+    });
+    props.table.grantReadData(meFn);
+
     const configGetFn = new lambdaNodejs.NodejsFunction(this, 'ConfigGetFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'config-get.ts'),
@@ -458,6 +467,13 @@ export class ApiStack extends cdk.Stack {
       path: '/whoami',
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwIntegrations.HttpLambdaIntegration('WhoamiIntegration', whoamiFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/me',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('MeIntegration', meFn),
       authorizer: jwtAuthorizer,
     });
 

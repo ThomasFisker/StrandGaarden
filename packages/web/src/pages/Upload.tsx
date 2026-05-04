@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HouseSelector } from '../components/HouseSelector';
 import { PersonTagInput } from '../components/PersonTagInput';
-import { putToS3, requestUploadUrl } from '../api';
+import { getMyProfile, putToS3, requestUploadUrl } from '../api';
 import { useSession } from '../session';
 import {
   ACCEPTED_MIME,
@@ -45,12 +45,37 @@ export const UploadPage = () => {
   const [yearText, setYearText] = useState('');
   const [yearApprox, setYearApprox] = useState(false);
   const [houseNumbers, setHouseNumbers] = useState<number[]>([]);
+  const [housesTouched, setHousesTouched] = useState(false);
   const [personTags, setPersonTags] = useState<PersonTagValue[]>([]);
   const toggleHouse = useCallback((n: number) => {
+    setHousesTouched(true);
     setHouseNumbers((prev) =>
       prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n].sort((a, b) => a - b),
     );
   }, []);
+
+  // Prefill house from the user's assigned house (set by admin on
+  // /admin/users). Best-effort — only writes if the user hasn't already
+  // touched the selector. Uploads still work without prefill if /me fails.
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    getMyProfile(session.idToken)
+      .then((p) => {
+        if (!active) return;
+        if (p.houseNumber !== null) {
+          setHouseNumbers((prev) =>
+            !housesTouched && prev.length === 0 ? [p.houseNumber as number] : prev,
+          );
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+    // housesTouched intentionally excluded — fetch runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
   const [consent, setConsent] = useState(false);
   const [helpWanted, setHelpWanted] = useState(false);
   const [submitting, setSubmitting] = useState(false);

@@ -11,6 +11,7 @@ import type {
   GalleryDetail,
   GalleryList,
   MyPhoto,
+  MyProfile,
   PersonTag,
   PersonTagInput,
   ReviewPhoto,
@@ -43,6 +44,12 @@ const throwFromResponse = async (r: Response, scope: string): Promise<never> => 
 export const whoami = async (idToken: string): Promise<unknown> => {
   const r = await fetch(`${apiBase}/whoami`, { headers: bearer(idToken) });
   if (!r.ok) return throwFromResponse(r, 'whoami');
+  return r.json();
+};
+
+export const getMyProfile = async (idToken: string): Promise<MyProfile> => {
+  const r = await fetch(`${apiBase}/me`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'me');
   return r.json();
 };
 

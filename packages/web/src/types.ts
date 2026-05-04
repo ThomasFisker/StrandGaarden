@@ -232,6 +232,18 @@ export interface Activity {
   createdBy: string | null;
 }
 
+/** The caller's own profile, returned by GET /me. Used to prefill the
+ * uploader's assigned house and (later) gate the GDPR consent flow. */
+export interface MyProfile {
+  sub: string;
+  email: string | null;
+  loginName: string | null;
+  groups: string[];
+  houseNumber: number | null;
+  gdprAcceptedAt: string | null;
+  gdprAcceptedVersion: string | null;
+}
+
 export const ACCEPTED_MIME: Record<string, string> = {
   'image/jpeg': 'JPEG',
   'image/png': 'PNG',
