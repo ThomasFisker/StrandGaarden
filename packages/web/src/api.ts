@@ -1,8 +1,10 @@
 import type {
+  Activity,
   AdminCommentRow,
   AdminPerson,
   AdminRemovalRow,
   AdminUser,
+  AppConfig,
   BookExportResponse,
   BookPhoto,
   DecisionResponse,
@@ -386,4 +388,78 @@ export const deletePerson = async (idToken: string, slug: string): Promise<void>
     headers: bearer(idToken),
   });
   if (!r.ok && r.status !== 204) return throwFromResponse(r, `persons/${slug}/delete`);
+};
+
+export const updateUserHouse = async (
+  idToken: string,
+  username: string,
+  houseNumber: number | null,
+): Promise<void> => {
+  const r = await fetch(`${apiBase}/users/${encodeURIComponent(username)}/house`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ houseNumber }),
+  });
+  if (!r.ok) return throwFromResponse(r, `users/${username}/house`);
+};
+
+export const getConfig = async (idToken: string): Promise<AppConfig> => {
+  const r = await fetch(`${apiBase}/config`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'config');
+  return r.json();
+};
+
+export const updateConfig = async (
+  idToken: string,
+  patch: Partial<AppConfig> & { bumpGdprVersion?: boolean },
+): Promise<AppConfig> => {
+  const r = await fetch(`${apiBase}/config`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(patch),
+  });
+  if (!r.ok) return throwFromResponse(r, 'config PATCH');
+  return r.json();
+};
+
+export const listActivities = async (idToken: string): Promise<Activity[]> => {
+  const r = await fetch(`${apiBase}/activities`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'activities');
+  const b = (await r.json()) as { items: Activity[] };
+  return b.items ?? [];
+};
+
+export const createActivity = async (
+  idToken: string,
+  input: { displayName: string; displayOrder?: number },
+): Promise<Activity> => {
+  const r = await fetch(`${apiBase}/activities`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(input),
+  });
+  if (!r.ok) return throwFromResponse(r, 'activities POST');
+  return r.json();
+};
+
+export const updateActivity = async (
+  idToken: string,
+  key: string,
+  patch: { displayName?: string; displayOrder?: number },
+): Promise<Activity> => {
+  const r = await fetch(`${apiBase}/activities/${encodeURIComponent(key)}`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(patch),
+  });
+  if (!r.ok) return throwFromResponse(r, `activities/${key} PATCH`);
+  return r.json();
+};
+
+export const deleteActivity = async (idToken: string, key: string): Promise<void> => {
+  const r = await fetch(`${apiBase}/activities/${encodeURIComponent(key)}`, {
+    method: 'DELETE',
+    headers: bearer(idToken),
+  });
+  if (!r.ok && r.status !== 204) return throwFromResponse(r, `activities/${key} DELETE`);
 };

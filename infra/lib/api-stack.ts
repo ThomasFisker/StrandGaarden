@@ -298,6 +298,68 @@ export class ApiStack extends cdk.Stack {
       description: 'Admin-only: delete a user from the pool (cannot delete self)',
     });
 
+    const usersUpdateHouseFn = new lambdaNodejs.NodejsFunction(this, 'UsersUpdateHouseFn', {
+      ...userMgmtFnProps,
+      entry: path.join(lambdaDir, 'users-update-house.ts'),
+      functionName: `strandgaarden-${props.stage}-users-update-house`,
+      description: 'Admin-only: assign a house number (1–23) to a user, or clear it',
+    });
+    props.table.grantReadWriteData(usersUpdateHouseFn);
+
+    const configGetFn = new lambdaNodejs.NodejsFunction(this, 'ConfigGetFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'config-get.ts'),
+      functionName: `strandgaarden-${props.stage}-config-get`,
+      description: 'Admin-only: read the singleton CONFIG row (stage, GDPR text, thresholds)',
+      timeout: cdk.Duration.seconds(5),
+    });
+    props.table.grantReadData(configGetFn);
+
+    const configUpdateFn = new lambdaNodejs.NodejsFunction(this, 'ConfigUpdateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'config-update.ts'),
+      functionName: `strandgaarden-${props.stage}-config-update`,
+      description: 'Admin-only: update CONFIG (stage / thresholds / GDPR text + version bump)',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(configUpdateFn);
+
+    const activitiesListFn = new lambdaNodejs.NodejsFunction(this, 'ActivitiesListFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'activities-list.ts'),
+      functionName: `strandgaarden-${props.stage}-activities-list`,
+      description: 'Lists activity keywords for upload + admin management',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadData(activitiesListFn);
+
+    const activitiesCreateFn = new lambdaNodejs.NodejsFunction(this, 'ActivitiesCreateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'activities-create.ts'),
+      functionName: `strandgaarden-${props.stage}-activities-create`,
+      description: 'Admin-only: create an activity keyword',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(activitiesCreateFn);
+
+    const activitiesUpdateFn = new lambdaNodejs.NodejsFunction(this, 'ActivitiesUpdateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'activities-update.ts'),
+      functionName: `strandgaarden-${props.stage}-activities-update`,
+      description: 'Admin-only: rename or reorder an activity keyword',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(activitiesUpdateFn);
+
+    const activitiesDeleteFn = new lambdaNodejs.NodejsFunction(this, 'ActivitiesDeleteFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'activities-delete.ts'),
+      functionName: `strandgaarden-${props.stage}-activities-delete`,
+      description: 'Admin-only: delete an activity keyword',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(activitiesDeleteFn);
+
     const personsListFn = new lambdaNodejs.NodejsFunction(this, 'PersonsListFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'persons-list.ts'),
@@ -358,8 +420,13 @@ export class ApiStack extends cdk.Stack {
     usersCreateFn.addToRolePolicy(userPoolAdminActions);
     usersUpdateGroupFn.addToRolePolicy(userPoolAdminActions);
     usersUpdateNameFn.addToRolePolicy(userPoolAdminActions);
+    usersUpdateHouseFn.addToRolePolicy(userPoolAdminActions);
     usersResetPasswordFn.addToRolePolicy(userPoolAdminActions);
     usersDeleteFn.addToRolePolicy(userPoolAdminActions);
+
+    // users-list now joins with USER#<sub>/META rows for houseNumber + GDPR
+    // status, so it needs table read in addition to its Cognito perms.
+    props.table.grantReadData(usersListFn);
 
     const jwtAuthorizer = new apigwAuthz.HttpJwtAuthorizer(
       'CognitoJwtAuthorizer',
@@ -548,6 +615,50 @@ export class ApiStack extends cdk.Stack {
       path: '/users/{username}',
       methods: [apigwv2.HttpMethod.DELETE],
       integration: new apigwIntegrations.HttpLambdaIntegration('UsersDeleteIntegration', usersDeleteFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/users/{username}/house',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('UsersUpdateHouseIntegration', usersUpdateHouseFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/config',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('ConfigGetIntegration', configGetFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/config',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('ConfigUpdateIntegration', configUpdateFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/activities',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('ActivitiesListIntegration', activitiesListFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/activities',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('ActivitiesCreateIntegration', activitiesCreateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/activities/{key}',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('ActivitiesUpdateIntegration', activitiesUpdateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/activities/{key}',
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: new apigwIntegrations.HttpLambdaIntegration('ActivitiesDeleteIntegration', activitiesDeleteFn),
       authorizer: jwtAuthorizer,
     });
 

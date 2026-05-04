@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  getConfig,
   getReviewQueue,
+  listActivities,
   listBookPhotos,
   listPendingComments,
   listPendingRemovals,
   listPersons,
 } from '../api';
 import { useSession } from '../session';
+import type { Stage } from '../types';
 
 interface Counts {
   review: number | null;
@@ -15,6 +18,8 @@ interface Counts {
   removals: number | null;
   book: number | null;
   personsPending: number | null;
+  activities: number | null;
+  stage: Stage | null;
 }
 
 const EMPTY: Counts = {
@@ -23,6 +28,8 @@ const EMPTY: Counts = {
   removals: null,
   book: null,
   personsPending: null,
+  activities: null,
+  stage: null,
 };
 
 interface Card {
@@ -43,12 +50,14 @@ export const AdminHomePage = () => {
     let active = true;
     (async () => {
       try {
-        const [review, comments, removals, book, persons] = await Promise.all([
+        const [review, comments, removals, book, persons, activities, config] = await Promise.all([
           getReviewQueue(session.idToken).catch(() => null),
           listPendingComments(session.idToken).catch(() => null),
           listPendingRemovals(session.idToken).catch(() => null),
           listBookPhotos(session.idToken).catch(() => null),
           listPersons(session.idToken).catch(() => null),
+          listActivities(session.idToken).catch(() => null),
+          getConfig(session.idToken).catch(() => null),
         ]);
         if (!active) return;
         setCounts({
@@ -57,6 +66,8 @@ export const AdminHomePage = () => {
           removals: removals ? removals.length : null,
           book: book ? book.length : null,
           personsPending: persons ? persons.items.filter((p) => p.state === 'pending').length : null,
+          activities: activities ? activities.length : null,
+          stage: config ? config.stage : null,
         });
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : 'Kunne ikke hente tal');
@@ -68,6 +79,13 @@ export const AdminHomePage = () => {
   }, [session]);
 
   const cards: Card[] = [
+    {
+      to: '/admin/fase',
+      title: 'Fase',
+      description: 'Sæt fasen for siden (1: indsamling, 2: frys, 3: offentlig). Rediger GDPR-tekst og tærskler.',
+      badge: counts.stage,
+      badgeLabel: 'aktuel fase',
+    },
     {
       to: '/review',
       title: 'Gennemgang',
@@ -97,6 +115,13 @@ export const AdminHomePage = () => {
       badgeLabel: 'udvalgt',
     },
     {
+      to: '/admin/aktiviteter',
+      title: 'Aktiviteter',
+      description: 'Nøgleord til aktiviteter (Sankt Hans, Vejdag, Generalforsamling …) — bruges i fase 1 til at gruppere billeder uden hus-tilknytning.',
+      badge: counts.activities,
+      badgeLabel: 'i listen',
+    },
+    {
       to: '/admin/personer',
       title: 'Personer',
       description: 'Godkend foreslåede navne, omdøb eller slet personer fra billedarkivet.',
@@ -104,9 +129,16 @@ export const AdminHomePage = () => {
       badgeLabel: 'foreslået',
     },
     {
+      to: '/admin/hustekster',
+      title: 'Hustekster',
+      description: 'Hver hus kan skrive en kort tekst til bogen. Aktiveres i fase 1.',
+      badge: null,
+      badgeLabel: '',
+    },
+    {
       to: '/admin/users',
       title: 'Brugere',
-      description: 'Opret nye medlemmer og administrér adgang, navne og kodeord.',
+      description: 'Opret nye medlemmer, administrér adgang, navne, kodeord og hus-nummer.',
       badge: null,
       badgeLabel: '',
     },

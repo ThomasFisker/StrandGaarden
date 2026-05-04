@@ -207,6 +207,29 @@ export interface AdminUser {
   enabled: boolean;
   createdAt: string | null;
   groups: string[];
+  houseNumber: number | null;
+  gdprAcceptedAt: string | null;
+  gdprAcceptedVersion: string | null;
+}
+
+/** Stage of the public release lifecycle. Driven by the singleton CONFIG row.
+ * 1 = book-collection mode, 2 = freeze, 3 = open gallery (today's behavior). */
+export type Stage = 1 | 2 | 3;
+
+export interface AppConfig {
+  stage: Stage;
+  maxBookSlotsPerHouse: number;
+  maxHouseTextChars: number;
+  gdprText: string;
+  gdprVersion: string;
+}
+
+export interface Activity {
+  key: string;
+  displayName: string;
+  displayOrder: number;
+  createdAt: string | null;
+  createdBy: string | null;
 }
 
 export const ACCEPTED_MIME: Record<string, string> = {
