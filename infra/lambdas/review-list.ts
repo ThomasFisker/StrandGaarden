@@ -3,6 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { loadActivityNameMap } from './activities-shared';
 import { PERSON_SK_PREFIX, PERSONLIST_PK } from './persons-shared';
 
 interface PersonTag { slug: string; displayName: string; state: string; }
@@ -67,6 +68,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     personEsk = p.LastEvaluatedKey;
   } while (personEsk);
 
+  const activityMap = await loadActivityNameMap(ddb, tableName);
+
   const rows = await Promise.all(
     items.map(async (item) => {
       const thumbKey = typeof item.derivedThumbKey === 'string' ? item.derivedThumbKey : null;
@@ -103,6 +106,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
           .map((slug) => personMap.get(slug))
           .filter((p): p is PersonTag => !!p),
         helpWanted: item.helpWanted === true,
+        activityKey: typeof item.activityKey === 'string' ? item.activityKey : null,
+        activityName:
+          typeof item.activityKey === 'string' ? activityMap.get(item.activityKey) ?? null : null,
       };
     }),
   );

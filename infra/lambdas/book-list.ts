@@ -3,6 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { loadActivityNameMap } from './activities-shared';
 import { PERSON_SK_PREFIX, PERSONLIST_PK } from './persons-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
@@ -73,6 +74,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     personEsk = p.LastEvaluatedKey;
   } while (personEsk);
 
+  const activityMap = await loadActivityNameMap(ddb, tableName);
+
   selected.sort((a, b) => {
     const sa = a.shortId === null || a.shortId === undefined ? 9_999_999 : Number(a.shortId);
     const sb = b.shortId === null || b.shortId === undefined ? 9_999_999 : Number(b.shortId);
@@ -114,6 +117,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
           .map((slug) => personMap.get(slug))
           .filter((p): p is PersonTag => !!p)
           .map((p) => ({ slug: p.slug, displayName: p.displayName, state: p.state })),
+        activityKey: typeof item.activityKey === 'string' ? item.activityKey : null,
+        activityName:
+          typeof item.activityKey === 'string' ? activityMap.get(item.activityKey) ?? null : null,
       };
     }),
   );

@@ -67,6 +67,8 @@ export interface MyPhoto {
   qualityWarning: string | null;
   persons: PersonTag[];
   helpWanted: boolean;
+  activityKey: string | null;
+  activityName: string | null;
 }
 
 export interface ReviewPhoto {
@@ -91,6 +93,8 @@ export interface ReviewPhoto {
   qualityWarning: string | null;
   persons: PersonTag[];
   helpWanted: boolean;
+  activityKey: string | null;
+  activityName: string | null;
 }
 
 export interface DecisionResponse {
@@ -190,6 +194,8 @@ export interface BookPhoto {
   thumbnailUrl: string | null;
   bookUrl: string | null;
   persons: PersonTag[];
+  activityKey: string | null;
+  activityName: string | null;
 }
 
 export interface BookExportResponse {

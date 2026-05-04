@@ -188,7 +188,11 @@ export const AdminBookPage = () => {
                       {p.description || <em>(ingen beskrivelse)</em>}
                     </p>
                     <p className="meta">
-                      {p.houseNumbers.length > 0 ? `Hus ${p.houseNumbers.join(' · ')} · ` : ''}
+                      {p.houseNumbers.length > 0
+                        ? `Hus ${p.houseNumbers.join(' · ')} · `
+                        : p.activityName
+                          ? `Aktivitet: ${p.activityName} · `
+                          : ''}
                       {fmtBytes(p.bookBytes)}
                     </p>
                     {p.persons.length > 0 && (

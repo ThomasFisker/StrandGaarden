@@ -133,7 +133,11 @@ export const MinePage = () => {
                     <span className={`status${p.status === 'Decided' ? ' decided' : ''}`}>{prettyStatus(p)}</span>
                     <span className="meta">
                       {p.year ? `${p.yearApprox ? 'ca. ' : ''}${p.year} · ` : ''}
-                      Hus {p.houseNumbers.join(', ')}
+                      {p.houseNumbers.length > 0
+                        ? `Hus ${p.houseNumbers.join(', ')}`
+                        : p.activityName
+                          ? `Aktivitet: ${p.activityName}`
+                          : 'Hus ukendt'}
                     </span>
                   </div>
                   {p.whoInPhoto && <p className="meta">{p.whoInPhoto}</p>}

@@ -3,6 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { loadActivityNameMap } from './activities-shared';
 import { PERSON_SK_PREFIX, PERSONLIST_PK } from './persons-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
@@ -48,6 +49,8 @@ interface PhotoRow {
   qualityWarning: string | null;
   persons: PersonTag[];
   helpWanted: boolean;
+  activityKey: string | null;
+  activityName: string | null;
 }
 
 const loadPersonMap = async (): Promise<Map<string, PersonTag>> => {
@@ -81,7 +84,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const sub = typeof claims.sub === 'string' ? claims.sub : null;
   if (!sub) return json(401, { error: 'Missing subject claim' });
 
-  const personMap = await loadPersonMap();
+  const [personMap, activityMap] = await Promise.all([
+    loadPersonMap(),
+    loadActivityNameMap(ddb, tableName),
+  ]);
 
   const rows: PhotoRow[] = [];
   let ExclusiveStartKey: Record<string, unknown> | undefined;
@@ -128,6 +134,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
           .map((slug) => personMap.get(slug))
           .filter((p): p is PersonTag => !!p),
         helpWanted: item.helpWanted === true,
+        activityKey: typeof item.activityKey === 'string' ? item.activityKey : null,
+        activityName:
+          typeof item.activityKey === 'string' ? activityMap.get(item.activityKey) ?? null : null,
       });
     }
     ExclusiveStartKey = result.LastEvaluatedKey;
