@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getMyPhotos, setHelpWanted, swapPhotoPriority, updateHouseText } from '../api';
+import { getMyPhotos, movePhotoSection, swapPhotoPriority, updateHouseText } from '../api';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { useProfile } from '../profile';
 import { useSession } from '../session';
@@ -57,12 +57,17 @@ export const MinePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [photos, setPhotos] = useState<MyPhoto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [savingHelp, setSavingHelp] = useState<Record<string, boolean>>({});
   const justUploaded = searchParams.get('justUploaded') === '1';
   const isAdmin = profile?.groups.includes('admin') ?? false;
   const frozen = profile?.stage === 2 && !isAdmin;
   const stageOneMember = profile?.stage === 1 && !isAdmin;
+  const myHouse = profile?.houseNumber ?? null;
+  const slotsUsed = profile?.myHouseSlotsUsed ?? null;
+  const slotsMax = profile?.maxBookSlotsPerHouse ?? 7;
+  const houseAtCap =
+    stageOneMember && myHouse !== null && slotsUsed !== null && slotsUsed >= slotsMax;
   const [swapping, setSwapping] = useState<string | null>(null);
+  const [moving, setMoving] = useState<string | null>(null);
 
   const swapPriority = async (photo: MyPhoto, direction: 'up' | 'down') => {
     if (!session || swapping) return;
@@ -76,6 +81,36 @@ export const MinePage = () => {
       setError(e instanceof Error ? e.message : 'Kunne ikke ændre rækkefølgen');
     } finally {
       setSwapping(null);
+    }
+  };
+
+  const moveToHouse = async (photo: MyPhoto) => {
+    if (!session || moving) return;
+    setMoving(photo.photoId);
+    setError(null);
+    try {
+      await movePhotoSection(session.idToken, photo.photoId, { target: 'house' });
+      const [items] = await Promise.all([getMyPhotos(session.idToken), refreshProfile()]);
+      setPhotos(items);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Kunne ikke flytte billedet');
+    } finally {
+      setMoving(null);
+    }
+  };
+
+  const moveToOther = async (photo: MyPhoto) => {
+    if (!session || moving) return;
+    setMoving(photo.photoId);
+    setError(null);
+    try {
+      await movePhotoSection(session.idToken, photo.photoId, { target: 'other' });
+      const [items] = await Promise.all([getMyPhotos(session.idToken), refreshProfile()]);
+      setPhotos(items);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Kunne ikke flytte billedet');
+    } finally {
+      setMoving(null);
     }
   };
 
@@ -107,26 +142,6 @@ export const MinePage = () => {
       setTextError(err instanceof Error ? err.message : 'Kunne ikke gemme teksten');
     } finally {
       setSavingText(false);
-    }
-  };
-
-  const toggleHelpWanted = async (photo: MyPhoto) => {
-    if (!session) return;
-    const next = !photo.helpWanted;
-    setPhotos((prev) => prev?.map((p) => (p.photoId === photo.photoId ? { ...p, helpWanted: next } : p)) ?? prev);
-    setSavingHelp((prev) => ({ ...prev, [photo.photoId]: true }));
-    try {
-      await setHelpWanted(session.idToken, photo.photoId, next);
-    } catch (e) {
-      // roll back
-      setPhotos((prev) => prev?.map((p) => (p.photoId === photo.photoId ? { ...p, helpWanted: !next } : p)) ?? prev);
-      setError(e instanceof Error ? e.message : 'Kunne ikke opdatere flag');
-    } finally {
-      setSavingHelp((prev) => {
-        const copy = { ...prev };
-        delete copy[photo.photoId];
-        return copy;
-      });
     }
   };
 
@@ -170,141 +185,213 @@ export const MinePage = () => {
     return { housePhotos: h, otherPhotos: o };
   }, [photos, stageOneMember]);
 
-  const renderCard = (p: MyPhoto, opts: { showArrows?: { canUp: boolean; canDown: boolean } } = {}) => (
-    <article
-      key={p.photoId}
-      className="photo-card"
-      style={
-        opts.showArrows
-          ? { borderLeft: '3px solid var(--copper, #b85a2a)' }
-          : undefined
-      }
-    >
-      {opts.showArrows && p.priority !== null && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.4rem 0.75rem',
-            background: 'var(--paper-warm, #faf2e6)',
-            borderBottom: '1px solid var(--border, #d8cfbc)',
-          }}
-        >
-          <strong
+  const renderCard = (
+    p: MyPhoto,
+    opts: { showArrows?: { canUp: boolean; canDown: boolean }; section?: 'house' | 'other' } = {},
+  ) => {
+    const detailHref = `/galleri/${encodeURIComponent(p.photoId)}`;
+    const isHouseSection = opts.section === 'house';
+    const isOtherSection = opts.section === 'other';
+    const moveBusy = moving === p.photoId;
+    const showMoveToOther = !frozen && stageOneMember && isHouseSection;
+    const showMoveToHouse =
+      !frozen && stageOneMember && isOtherSection && myHouse !== null;
+    const moveToHouseDisabled = !!houseAtCap || moveBusy;
+    return (
+      <article
+        key={p.photoId}
+        className="photo-card"
+        style={
+          opts.showArrows
+            ? { borderLeft: '3px solid var(--copper, #b85a2a)' }
+            : undefined
+        }
+      >
+        {opts.showArrows && p.priority !== null && (
+          <div
             style={{
-              display: 'inline-block',
-              minWidth: '1.5rem',
-              textAlign: 'center',
-              color: 'var(--copper, #b85a2a)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.4rem 0.75rem',
+              background: 'var(--paper-warm, #faf2e6)',
+              borderBottom: '1px solid var(--border, #d8cfbc)',
             }}
           >
-            #{p.priority}
-          </strong>
-          <span className="subtle" style={{ flex: 1, fontSize: '0.9rem' }}>
-            Rækkefølge i bogens hus-afsnit
-          </span>
-          <button
-            type="button"
-            aria-label="Flyt op"
-            disabled={!opts.showArrows.canUp || !!swapping || frozen}
-            onClick={() => swapPriority(p, 'up')}
-            style={{ minWidth: '2.5rem', padding: '0.25rem 0.5rem', fontSize: '1.2rem' }}
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            aria-label="Flyt ned"
-            disabled={!opts.showArrows.canDown || !!swapping || frozen}
-            onClick={() => swapPriority(p, 'down')}
-            style={{ minWidth: '2.5rem', padding: '0.25rem 0.5rem', fontSize: '1.2rem' }}
-          >
-            ↓
-          </button>
-        </div>
-      )}
-      <div className="photo-card-row">
-        <div className="thumb-wrap">
-          {p.thumbnailUrl ? (
-            <img
-              src={p.thumbnailUrl}
-              alt={p.description || p.originalFilename}
-              className="thumb"
-              loading="lazy"
-            />
-          ) : (
-            <div className="thumb thumb-placeholder">
-              {p.status === 'Rejected' ? 'Afvist' : p.processingError ? 'Fejl' : 'Behandles…'}
-            </div>
-          )}
-        </div>
-        <div className="photo-card-body">
-          <h3>{p.description || <em>(ingen beskrivelse)</em>}</h3>
-          <div>
-            <span className={`status${p.status === 'Decided' ? ' decided' : ''}`}>{prettyStatus(p)}</span>
-            <span className="meta">
-              {p.year ? `${p.yearApprox ? 'ca. ' : ''}${p.year} · ` : ''}
-              {p.houseNumbers.length > 0
-                ? `Hus ${p.houseNumbers.join(', ')}`
-                : p.activityName
-                  ? `Aktivitet: ${p.activityName}`
-                  : 'Hus ukendt'}
+            <strong
+              style={{
+                display: 'inline-block',
+                minWidth: '1.5rem',
+                textAlign: 'center',
+                color: 'var(--copper, #b85a2a)',
+              }}
+            >
+              #{p.priority}
+            </strong>
+            <span className="subtle" style={{ flex: 1, fontSize: '0.9rem' }}>
+              Rækkefølge i bogens hus-afsnit
             </span>
+            <button
+              type="button"
+              aria-label="Flyt op"
+              disabled={!opts.showArrows.canUp || !!swapping || frozen}
+              onClick={() => swapPriority(p, 'up')}
+              style={{ minWidth: '2.5rem', padding: '0.25rem 0.5rem', fontSize: '1.2rem' }}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              aria-label="Flyt ned"
+              disabled={!opts.showArrows.canDown || !!swapping || frozen}
+              onClick={() => swapPriority(p, 'down')}
+              style={{ minWidth: '2.5rem', padding: '0.25rem 0.5rem', fontSize: '1.2rem' }}
+            >
+              ↓
+            </button>
           </div>
-          {p.whoInPhoto && <p className="meta">{p.whoInPhoto}</p>}
-          {p.persons.length > 0 && (
-            <div className="person-chips">
-              {p.persons.map((person) => (
+        )}
+        <div className="photo-card-row">
+          <Link
+            to={detailHref}
+            className="thumb-wrap"
+            aria-label={`Se detaljer for ${p.description || p.originalFilename}`}
+            style={{ display: 'block' }}
+          >
+            {p.thumbnailUrl ? (
+              <img
+                src={p.thumbnailUrl}
+                alt={p.description || p.originalFilename}
+                className="thumb"
+                loading="lazy"
+              />
+            ) : (
+              <div className="thumb thumb-placeholder">
+                {p.status === 'Rejected' ? 'Afvist' : p.processingError ? 'Fejl' : 'Behandles…'}
+              </div>
+            )}
+          </Link>
+          <div className="photo-card-body">
+            <h3>
+              <Link
+                to={detailHref}
+                style={{ color: 'inherit', textDecoration: 'none' }}
+              >
+                {p.description || <em>(ingen beskrivelse)</em>}
+              </Link>
+            </h3>
+            <div>
+              <span className={`status${p.status === 'Decided' ? ' decided' : ''}`}>{prettyStatus(p)}</span>
+              <span className="meta">
+                {p.year ? `${p.yearApprox ? 'ca. ' : ''}${p.year} · ` : ''}
+                {p.houseNumbers.length > 0
+                  ? `Hus ${p.houseNumbers.join(', ')}`
+                  : p.activityName
+                    ? `Aktivitet: ${p.activityName}`
+                    : 'Hus ukendt'}
+              </span>
+              {p.helpWanted && (
                 <span
-                  key={person.slug}
-                  className={`person-chip${person.state === 'pending' ? ' pending' : ''}`}
-                  title={person.state === 'pending' ? 'Afventer udvalgets godkendelse' : undefined}
+                  className="meta"
+                  style={{
+                    display: 'inline-block',
+                    marginLeft: '0.4rem',
+                    padding: '0.1rem 0.5rem',
+                    background: 'var(--paper-warm, #faf2e6)',
+                    color: 'var(--copper, #b85a2a)',
+                    borderRadius: '999px',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                  }}
+                  title="Du har bedt andre om hjælp til at identificere personerne"
                 >
-                  {person.displayName}
+                  Hjælp søges
                 </span>
-              ))}
+              )}
             </div>
-          )}
-          <p className="meta">
-            <span className="short-id">{formatShortId(p.shortId)}</span> · Fil: {p.originalFilename} · sendt {prettyDate(p.createdAt)}
-          </p>
-          {p.status === 'Rejected' && p.processingError && (
-            <p className="meta" style={{ color: 'var(--danger)' }}>
-              <strong>Billedet kunne ikke bruges:</strong> {p.processingError}
+            {p.whoInPhoto && <p className="meta">{p.whoInPhoto}</p>}
+            {p.persons.length > 0 && (
+              <div className="person-chips">
+                {p.persons.map((person) => (
+                  <span
+                    key={person.slug}
+                    className={`person-chip${person.state === 'pending' ? ' pending' : ''}`}
+                    title={person.state === 'pending' ? 'Afventer udvalgets godkendelse' : undefined}
+                  >
+                    {person.displayName}
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="meta">
+              <span className="short-id">{formatShortId(p.shortId)}</span> · Fil: {p.originalFilename} · sendt {prettyDate(p.createdAt)}
             </p>
-          )}
-          {p.status !== 'Rejected' && p.processingError && (
-            <p className="meta" style={{ color: 'var(--danger)' }}>
-              Fejl ved billedbehandling: {p.processingError}
-            </p>
-          )}
-          {p.qualityWarning === 'low-resolution-for-book' && p.status !== 'Rejected' && (
-            <p className="meta" style={{ color: 'var(--copper, #b85a2a)' }}>
-              <strong>Bemærk:</strong> billedet er lidt småt — det kan vises på siden, men er
-              muligvis ikke skarpt nok til den trykte bog. Hvis du har en større original, så
-              upload den gerne.
-            </p>
-          )}
-          {p.status !== 'Rejected' && (
-            <div className="help-wanted-toggle">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={p.helpWanted}
-                  disabled={!!savingHelp[p.photoId] || frozen}
-                  onChange={() => toggleHelpWanted(p)}
-                />
-                <span>
-                  <strong>Hjælp søges</strong> — bed andre om hjælp til at identificere personerne
-                </span>
-              </label>
+            {p.status === 'Rejected' && p.processingError && (
+              <p className="meta" style={{ color: 'var(--danger)' }}>
+                <strong>Billedet kunne ikke bruges:</strong> {p.processingError}
+              </p>
+            )}
+            {p.status !== 'Rejected' && p.processingError && (
+              <p className="meta" style={{ color: 'var(--danger)' }}>
+                Fejl ved billedbehandling: {p.processingError}
+              </p>
+            )}
+            {p.qualityWarning === 'low-resolution-for-book' && p.status !== 'Rejected' && (
+              <p className="meta" style={{ color: 'var(--copper, #b85a2a)' }}>
+                <strong>Bemærk:</strong> billedet er lidt småt — det kan vises på siden, men er
+                muligvis ikke skarpt nok til den trykte bog. Hvis du har en større original, så
+                upload den gerne.
+              </p>
+            )}
+            <div
+              style={{
+                marginTop: '0.75rem',
+                display: 'flex',
+                gap: '0.6rem',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+              }}
+            >
+              <Link to={detailHref} className="link-muted" style={{ fontWeight: 600 }}>
+                Se detaljer / rediger →
+              </Link>
+              {showMoveToOther && (
+                <button
+                  type="button"
+                  onClick={() => moveToOther(p)}
+                  disabled={moveBusy}
+                  style={{ padding: '0.3rem 0.7rem', fontSize: '0.9rem' }}
+                  title="Flyt billedet ud af dine hus-pladser, så det havner i Andre billeder"
+                >
+                  {moveBusy ? 'Flytter…' : 'Flyt til Andre billeder'}
+                </button>
+              )}
+              {showMoveToHouse && (
+                <button
+                  type="button"
+                  onClick={() => moveToHouse(p)}
+                  disabled={moveToHouseDisabled}
+                  style={{ padding: '0.3rem 0.7rem', fontSize: '0.9rem' }}
+                  title={
+                    houseAtCap
+                      ? `Hus ${myHouse} har allerede ${slotsUsed} af ${slotsMax} mulige billeder.`
+                      : `Flyt billedet til Mine Hus Billeder (Hus ${myHouse})`
+                  }
+                >
+                  {moveBusy ? 'Flytter…' : `Flyt til Hus ${myHouse}`}
+                  {houseAtCap && (
+                    <span className="subtle" style={{ marginLeft: '0.4rem' }}>
+                      ({slotsUsed}/{slotsMax})
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
-    </article>
-  );
+      </article>
+    );
+  };
 
   return (
     <main className="content">
@@ -386,40 +473,79 @@ export const MinePage = () => {
 
       {photos && photos.length > 0 && stageOneMember && (
         <>
-          <section style={{ marginTop: '2rem' }}>
+          <section style={{ marginTop: '2.5rem' }}>
+            <div
+              style={{
+                height: '4px',
+                background: 'var(--copper, #b85a2a)',
+                marginBottom: '0.6rem',
+                borderRadius: '2px',
+              }}
+              aria-hidden="true"
+            />
             <h2 style={{ marginBottom: '0.25rem' }}>Mine Hus Billeder</h2>
             <p className="help" style={{ marginTop: 0 }}>
-              {profile && profile.houseNumber !== null
-                ? `Hus ${profile.houseNumber} kan have op til ${profile.maxBookSlotsPerHouse} billeder med i bogen. Du har sendt ${housePhotos.length}. Brug pilene til at flytte de vigtigste billeder øverst — udvalget skærer fra bunden, hvis der ikke er plads til alle.`
-                : 'Du er ikke tildelt et hus endnu. Bed udvalget tildele dig et hus før du uploader til denne sektion.'}
+              {profile && profile.houseNumber !== null ? (
+                <>
+                  Hus {profile.houseNumber} kan have op til {profile.maxBookSlotsPerHouse} billeder
+                  med i bogen. Du har sendt {housePhotos.length}. Brug pilene til at flytte de
+                  vigtigste billeder øverst — udvalget skærer fra bunden, hvis der ikke er plads til
+                  alle.{' '}
+                  {!frozen && (
+                    <Link to="/upload?target=house" style={{ fontWeight: 600 }}>
+                      Upload billede →
+                    </Link>
+                  )}
+                </>
+              ) : (
+                'Du er ikke tildelt et hus endnu. Bed udvalget tildele dig et hus før du uploader til denne sektion.'
+              )}
             </p>
             {housePhotos.length === 0 ? (
               <p className="subtle" style={{ margin: '0.5rem 0' }}>
-                Ingen hus-billeder endnu. <Link to="/upload">Upload til dit hus</Link>.
+                Ingen hus-billeder endnu. <Link to="/upload?target=house">Upload til dit hus</Link>.
               </p>
             ) : (
               <div className="photo-grid">
                 {housePhotos.map((p, i) =>
                   renderCard(p, {
                     showArrows: { canUp: i > 0, canDown: i < housePhotos.length - 1 },
+                    section: 'house',
                   }),
                 )}
               </div>
             )}
           </section>
 
-          <section style={{ marginTop: '2rem' }}>
+          <section style={{ marginTop: '2.5rem' }}>
+            <div
+              style={{
+                height: '4px',
+                background: 'var(--sage, #7b8a6b)',
+                marginBottom: '0.6rem',
+                borderRadius: '2px',
+              }}
+              aria-hidden="true"
+            />
             <h2 style={{ marginBottom: '0.25rem' }}>Andre billeder</h2>
             <p className="help" style={{ marginTop: 0 }}>
               Aktivitetsbilleder og fælles oplevelser. Ingen rækkefølge — udvalget vælger
-              selv, hvad der kommer med i bogens fællesafsnit.
+              selv, hvad der kommer med i bogens fællesafsnit.{' '}
+              {!frozen && (
+                <Link to="/upload?target=activity" style={{ fontWeight: 600 }}>
+                  Upload billede →
+                </Link>
+              )}
             </p>
             {otherPhotos.length === 0 ? (
               <p className="subtle" style={{ margin: '0.5rem 0' }}>
-                Ingen andre billeder endnu. <Link to="/upload">Upload til en aktivitet</Link>.
+                Ingen andre billeder endnu.{' '}
+                <Link to="/upload?target=activity">Upload til en aktivitet</Link>.
               </p>
             ) : (
-              <div className="photo-grid">{otherPhotos.map((p) => renderCard(p))}</div>
+              <div className="photo-grid">
+                {otherPhotos.map((p) => renderCard(p, { section: 'other' }))}
+              </div>
             )}
           </section>
         </>

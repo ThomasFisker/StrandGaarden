@@ -153,6 +153,15 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(photosSetHelpWantedFn);
 
+    const photosSectionFn = new lambdaNodejs.NodejsFunction(this, 'PhotosSectionFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'photos-section.ts'),
+      functionName: `strandgaarden-${props.stage}-photos-section`,
+      description: 'Member-only: move a photo between Stage-1 house slot and Other section',
+      timeout: cdk.Duration.seconds(15),
+    });
+    props.table.grantReadWriteData(photosSectionFn);
+
     const commentsCreateFn = new lambdaNodejs.NodejsFunction(this, 'CommentsCreateFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'comments-create.ts'),
@@ -601,6 +610,12 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/{id}/priority',
       methods: [apigwv2.HttpMethod.PATCH],
       integration: new apigwIntegrations.HttpLambdaIntegration('PhotosPriorityIntegration', photosPriorityFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/photos/{id}/section',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('PhotosSectionIntegration', photosSectionFn),
       authorizer: jwtAuthorizer,
     });
 

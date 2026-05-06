@@ -179,6 +179,24 @@ export const swapPhotoPriority = async (
   if (!r.ok) return throwFromResponse(r, `photos/${photoId}/priority`);
 };
 
+export type SectionMoveBody =
+  | { target: 'house' }
+  | { target: 'activity'; activityKey: string }
+  | { target: 'other' };
+
+export const movePhotoSection = async (
+  idToken: string,
+  photoId: string,
+  body: SectionMoveBody,
+): Promise<void> => {
+  const r = await fetch(`${apiBase}/photos/${encodeURIComponent(photoId)}/section`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return throwFromResponse(r, `photos/${photoId}/section`);
+};
+
 export const setHelpWanted = async (
   idToken: string,
   photoId: string,

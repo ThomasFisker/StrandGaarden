@@ -166,6 +166,14 @@ export interface GalleryDetail extends GalleryItem {
   webUrl: string | null;
   downloadUrl: string | null;
   approvedComments: AttributedAddendum[];
+  /** Photo lifecycle status — included so the uploader-self view can
+   * label a photo that's still in review. Empty string for older items
+   * served by deployments that didn't include this field. */
+  status?: string;
+  /** Cognito sub of the uploader. Used by the detail page to decide
+   * whether the caller can self-edit / view their own non-Decided
+   * photo. Null if not provided by the deployment. */
+  uploaderSub?: string | null;
 }
 
 export interface AdminRemovalRow {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HouseSelector } from '../components/HouseSelector';
 import { PersonTagInput } from '../components/PersonTagInput';
 import { listActivities, putToS3, requestUploadUrl } from '../api';
@@ -40,6 +40,7 @@ export const UploadPage = () => {
   const { session } = useSession();
   const { profile } = useProfile();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isAdmin = profile?.groups.includes('admin') ?? false;
   const frozen = profile?.stage === 2 && !isAdmin;
   const stageOneNonAdmin = profile?.stage === 1 && !isAdmin;
@@ -48,6 +49,7 @@ export const UploadPage = () => {
   const slotsMax = profile?.maxBookSlotsPerHouse ?? 7;
   const houseAtCap =
     stageOneNonAdmin && myHouse !== null && slotsUsed !== null && slotsUsed >= slotsMax;
+  const targetParam = searchParams.get('target');
 
   const [file, setFile] = useState<File | null>(null);
   const [dimensionWarning, setDimensionWarning] = useState<string | null>(null);
@@ -91,6 +93,14 @@ export const UploadPage = () => {
   useEffect(() => {
     if (houseAtCap) setTarget('activity');
   }, [houseAtCap]);
+
+  // ?target=house|activity preselects the radio when the user came from
+  // the inline link on /mine. Only honored in Stage-1 non-admin context.
+  useEffect(() => {
+    if (!stageOneNonAdmin) return;
+    if (targetParam === 'activity') setTarget('activity');
+    else if (targetParam === 'house' && !houseAtCap && myHouse !== null) setTarget('house');
+  }, [stageOneNonAdmin, targetParam, houseAtCap, myHouse]);
 
   // Prefill house from the user's assigned house (set by admin on
   // /admin/users). Profile comes from ProfileProvider so this fires once

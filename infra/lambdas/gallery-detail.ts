@@ -39,6 +39,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
 
   const claims = event.requestContext.authorizer?.jwt?.claims ?? {};
   const isAdminCaller = parseGroups(claims['cognito:groups']).includes('admin');
+  const callerSub = typeof claims.sub === 'string' ? claims.sub : '';
 
   const r = await ddb.send(
     new GetCommand({ TableName: tableName, Key: { PK: `PHOTO#${photoId}`, SK: 'META' } }),
@@ -47,10 +48,14 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   // Non-admins only see Decided + visibilityWeb photos. Admins can also
   // open Decided photos that are book-only or web-hidden, so they can
   // edit metadata for items that aren't reachable via the public gallery.
+  // Uploaders can always view their own photos (any status) so /mine can
+  // route to this detail page for editing and removal requests.
   const decidedAndPublic =
     item && item.status === 'Decided' && item.visibilityWeb === true;
   const adminVisible = item && isAdminCaller && item.status === 'Decided';
-  if (!decidedAndPublic && !adminVisible) {
+  const uploaderSelf =
+    item && callerSub && item.uploaderSub === callerSub;
+  if (!decidedAndPublic && !adminVisible && !uploaderSelf) {
     return json(404, { error: 'Billedet findes ikke' });
   }
 
@@ -129,6 +134,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   return json(200, {
     photoId: String(item.photoId),
     shortId: item.shortId !== null && item.shortId !== undefined ? Number(item.shortId) : null,
+    status: typeof item.status === 'string' ? item.status : '',
+    uploaderSub: typeof item.uploaderSub === 'string' ? (item.uploaderSub as string) : null,
     description: String(item.description ?? ''),
     whoInPhoto: String(item.whoInPhoto ?? ''),
     year: item.year === null || item.year === undefined ? null : Number(item.year),

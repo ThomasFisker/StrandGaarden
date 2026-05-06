@@ -1,6 +1,7 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { FREEZE_ERROR_MESSAGE, getConfig, isFrozenForCaller } from './config-shared';
 import { normalizeDisplayName, PERSON_SK_PREFIX, PERSONLIST_PK, slugify } from './persons-shared';
 import { isValidHouse, USER_SK, userPk, VALID_HOUSES } from './users-shared';
 
@@ -26,9 +27,18 @@ const parseGroups = (raw: unknown): string[] => {
 };
 
 /**
- * Admin-only edit of the static fields on a photo: description, whoInPhoto,
- * year, yearApprox, houseNumbers, taggedPersons. visibilityWeb/visibilityBook
+ * Edit the static fields on a photo: description, whoInPhoto, year,
+ * yearApprox, houseNumbers, taggedPersons. visibilityWeb/visibilityBook
  * are handled by /photos/{id}/decision. helpWanted by /photos/{id}/help-wanted.
+ *
+ * Auth:
+ * - Admin: full snapshot edit; can change houseNumbers (priority is
+ *   adjusted when the uploader's own house is added/removed).
+ * - Uploader (non-admin): can edit description / whoInPhoto / year /
+ *   yearApprox / taggedPersons on their own photo. houseNumbers sent
+ *   in the body are ignored — the existing values are preserved
+ *   (re-sectioning goes through PATCH /photos/{id}/section).
+ *   Stage-2 freeze applies.
  *
  * Body matches the editable subset of UploadMetadata — all fields required
  * in the request so the caller always sends a full snapshot.
@@ -36,10 +46,29 @@ const parseGroups = (raw: unknown): string[] => {
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const claims = event.requestContext.authorizer?.jwt?.claims ?? {};
   const groups = parseGroups(claims['cognito:groups']);
-  if (!groups.includes('admin')) return json(403, { error: 'Redigering er kun for administratorer' });
+  const isAdmin = groups.includes('admin');
+  const callerSub = typeof claims.sub === 'string' ? claims.sub : '';
 
   const photoId = event.pathParameters?.id;
   if (!photoId || !/^[0-9a-f-]{36}$/.test(photoId)) return json(400, { error: 'Ugyldigt billede-id' });
+
+  // Confirm the photo exists and resolve auth before validating fields —
+  // for non-admin members we need the existing houseNumbers to substitute
+  // in (members aren't allowed to change houseNumbers via this endpoint).
+  const existing = await ddb.send(
+    new GetCommand({ TableName: tableName, Key: { PK: `PHOTO#${photoId}`, SK: 'META' } }),
+  );
+  if (!existing.Item) return json(404, { error: 'Billedet findes ikke' });
+
+  if (!isAdmin) {
+    if (!callerSub || existing.Item.uploaderSub !== callerSub) {
+      return json(403, { error: 'Du kan kun redigere dine egne billeder.' });
+    }
+    const cfg = await getConfig(ddb, tableName);
+    if (isFrozenForCaller(cfg, isAdmin)) {
+      return json(423, { error: FREEZE_ERROR_MESSAGE });
+    }
+  }
 
   let body: Record<string, unknown>;
   try {
@@ -54,7 +83,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const yearRaw = body.year;
   const year = yearRaw === null || yearRaw === undefined || yearRaw === '' ? null : Number(yearRaw);
   const yearApprox = body.yearApprox === true;
-  const houseNumbersRaw = body.houseNumbers;
   const currentYear = new Date().getFullYear();
 
   if (!description) errors.push('description is required');
@@ -65,22 +93,31 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       errors.push(`year must be an integer between ${YEAR_MIN} and ${currentYear}`);
     }
   }
-  if (!Array.isArray(houseNumbersRaw) || houseNumbersRaw.length === 0) {
-    errors.push('houseNumbers is required — pick at least one');
-  } else if (houseNumbersRaw.length > VALID_HOUSES.length) {
-    errors.push(`houseNumbers may contain at most ${VALID_HOUSES.length} entries`);
-  } else if (!houseNumbersRaw.every((n) => isValidHouse(n))) {
-    errors.push('every houseNumber must be a valid Strandgaarden house number');
+
+  // houseNumbers: admin can change them; uploader cannot (re-sectioning
+  // goes through PATCH /photos/{id}/section). For uploader callers we
+  // ignore the body field and reuse the existing value.
+  let houseNumbers: number[];
+  if (isAdmin) {
+    const houseNumbersRaw = body.houseNumbers;
+    if (!Array.isArray(houseNumbersRaw) || houseNumbersRaw.length === 0) {
+      errors.push('houseNumbers is required — pick at least one');
+      houseNumbers = [];
+    } else if (houseNumbersRaw.length > VALID_HOUSES.length) {
+      errors.push(`houseNumbers may contain at most ${VALID_HOUSES.length} entries`);
+      houseNumbers = [];
+    } else if (!houseNumbersRaw.every((n) => isValidHouse(n))) {
+      errors.push('every houseNumber must be a valid Strandgaarden house number');
+      houseNumbers = [];
+    } else {
+      houseNumbers = Array.from(new Set(houseNumbersRaw as number[])).sort((a, b) => a - b);
+    }
+  } else {
+    houseNumbers = Array.isArray(existing.Item.houseNumbers)
+      ? (existing.Item.houseNumbers as unknown[]).map(Number).filter((n) => Number.isFinite(n))
+      : [];
   }
   if (errors.length) return json(400, { error: 'Validation failed', details: errors });
-
-  const houseNumbers = Array.from(new Set(houseNumbersRaw as number[])).sort((a, b) => a - b);
-
-  // Confirm the photo exists before doing person work.
-  const existing = await ddb.send(
-    new GetCommand({ TableName: tableName, Key: { PK: `PHOTO#${photoId}`, SK: 'META' } }),
-  );
-  if (!existing.Item) return json(404, { error: 'Billedet findes ikke' });
 
   // Resolve person tags — same flow as upload-url: existing slugs must
   // exist; proposedName entries are upserted as pending.

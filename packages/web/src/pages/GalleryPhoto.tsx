@@ -5,6 +5,7 @@ import {
   getGalleryPhoto,
   postComment,
   postRemovalRequest,
+  setHelpWanted,
   updatePhoto,
 } from '../api';
 import { PersonTagInput as PersonTagInputField } from '../components/PersonTagInput';
@@ -48,6 +49,10 @@ export const GalleryPhotoPage = () => {
 
   const { profile } = useProfile();
   const isAdmin = session?.claims.groups.includes('admin') ?? false;
+  const callerSub = session?.claims.sub ?? null;
+  const isUploader =
+    !!callerSub && photo !== null && photo.uploaderSub === callerSub;
+  const canEdit = isAdmin || isUploader;
   const frozen = profile?.stage === 2 && !isAdmin;
   const [editOpen, setEditOpen] = useState(false);
   const [editDesc, setEditDesc] = useState('');
@@ -60,6 +65,8 @@ export const GalleryPhotoPage = () => {
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [helpSaving, setHelpSaving] = useState(false);
+  const [helpError, setHelpError] = useState<string | null>(null);
 
   const openEdit = () => {
     if (!photo) return;
@@ -85,7 +92,9 @@ export const GalleryPhotoPage = () => {
       setEditError('Beskrivelse må ikke være tom.');
       return;
     }
-    if (editHouses.length === 0) {
+    // House chips are only editable by admins. Members keep whatever the
+    // photo already had — the server ignores the field for non-admins.
+    if (isAdmin && editHouses.length === 0) {
       setEditError('Vælg mindst ét hus.');
       return;
     }
@@ -98,7 +107,7 @@ export const GalleryPhotoPage = () => {
         whoInPhoto: editWho.trim(),
         year: yearNum,
         yearApprox: editYearApprox,
-        houseNumbers: editHouses,
+        houseNumbers: isAdmin ? editHouses : photo.houseNumbers,
         taggedPersons: editPersons,
       });
       // Refetch so the rendered meta column reflects server-resolved persons.
@@ -109,6 +118,23 @@ export const GalleryPhotoPage = () => {
       setEditError(err instanceof Error ? err.message : 'Kunne ikke gemme ændringerne');
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const toggleHelpWanted = async () => {
+    if (!session || !photo || helpSaving) return;
+    const next = !photo.helpWanted;
+    setHelpSaving(true);
+    setHelpError(null);
+    setPhoto({ ...photo, helpWanted: next });
+    try {
+      await setHelpWanted(session.idToken, photo.photoId, next);
+    } catch (err) {
+      // roll back on failure
+      setPhoto((prev) => (prev ? { ...prev, helpWanted: !next } : prev));
+      setHelpError(err instanceof Error ? err.message : 'Kunne ikke opdatere flag');
+    } finally {
+      setHelpSaving(false);
     }
   };
 
@@ -229,7 +255,7 @@ export const GalleryPhotoPage = () => {
           <aside className="photo-meta">
             <p className="eyebrow">
               Strandgaardens arkiv <span className="short-id">· {formatShortId(photo.shortId)}</span>
-              {isAdmin && !editOpen && (
+              {canEdit && !editOpen && !frozen && (
                 <button
                   type="button"
                   className="edit-pencil"
@@ -297,25 +323,40 @@ export const GalleryPhotoPage = () => {
                     <span>ca.</span>
                   </label>
                 </div>
-                <div className="field">
-                  <label>Hus</label>
-                  <div className="house-chips">
-                    {HOUSES.map((h) => (
-                      <label
-                        key={h}
-                        className={`house-chip${editHouses.includes(h) ? ' selected' : ''}`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={editHouses.includes(h)}
-                          onChange={() => toggleEditHouse(h)}
-                          disabled={editSaving}
-                        />
-                        <span>{h}</span>
-                      </label>
-                    ))}
+                {isAdmin ? (
+                  <div className="field">
+                    <label>Hus</label>
+                    <div className="house-chips">
+                      {HOUSES.map((h) => (
+                        <label
+                          key={h}
+                          className={`house-chip${editHouses.includes(h) ? ' selected' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={editHouses.includes(h)}
+                            onChange={() => toggleEditHouse(h)}
+                            disabled={editSaving}
+                          />
+                          <span>{h}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="field">
+                    <label>Hus</label>
+                    <p className="help" style={{ marginTop: 0 }}>
+                      {photo.houseNumbers.length > 0
+                        ? `Hus ${photo.houseNumbers.join(', ')}`
+                        : photo.activityName
+                          ? `Aktivitet: ${photo.activityName}`
+                          : 'Ingen hus-tag'}{' '}
+                      — brug knapperne på <Link to="/mine">Mine billeder</Link> for at flytte billedet
+                      mellem dit hus og Andre billeder.
+                    </p>
+                  </div>
+                )}
                 <div className="field">
                   <label>Personer på billedet</label>
                   <PersonTagInputField value={editPersons} onChange={setEditPersons} disabled={editSaving} />
@@ -332,7 +373,7 @@ export const GalleryPhotoPage = () => {
                   >
                     Fortryd
                   </button>
-                  {!confirmDelete ? (
+                  {isAdmin && (!confirmDelete ? (
                     <button
                       type="button"
                       className="link-danger"
@@ -356,7 +397,7 @@ export const GalleryPhotoPage = () => {
                         Nej
                       </button>
                     </span>
-                  )}
+                  ))}
                 </div>
               </form>
             ) : (
@@ -404,6 +445,38 @@ export const GalleryPhotoPage = () => {
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {canEdit && !frozen && (
+              <div className="photo-section">
+                <p className="photo-section-title">Hjælp søges</p>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.5rem',
+                    cursor: helpSaving ? 'wait' : 'pointer',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={photo.helpWanted}
+                    disabled={helpSaving}
+                    onChange={toggleHelpWanted}
+                    style={{ marginTop: '0.25rem' }}
+                  />
+                  <span style={{ fontSize: '0.95rem' }}>
+                    <strong>Hjælp søges</strong> — bed andre om hjælp til at identificere personerne.
+                    Et lille mærke vises på billedet, og besøgende kan sende en kommentar til
+                    udvalget.
+                  </span>
+                </label>
+                {helpError && (
+                  <div className="error" style={{ marginTop: '0.5rem' }}>
+                    {helpError}
+                  </div>
+                )}
               </div>
             )}
 
