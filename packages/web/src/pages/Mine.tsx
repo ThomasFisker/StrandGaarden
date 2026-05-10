@@ -34,7 +34,7 @@ const prettyStatus = (p: MyPhoto): string => {
   return STATUS_LABEL[p.status] ?? p.status;
 };
 
-type Tab = 'hus' | 'kategori';
+type Tab = 'hus' | 'kategori' | 'tekst';
 
 export const MinePage = () => {
   const { session } = useSession();
@@ -55,13 +55,27 @@ export const MinePage = () => {
     stageOneMember && myHouse !== null && slotsUsed !== null && slotsUsed >= slotsMax;
   const [swapping, setSwapping] = useState<string | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
-  const activeTab: Tab = location.pathname === '/mine/kategori' ? 'kategori' : 'hus';
+  const activeTab: Tab =
+    location.pathname === '/mine/kategori'
+      ? 'kategori'
+      : location.pathname === '/mine/tekst'
+        ? 'tekst'
+        : 'hus';
 
-  // /mine/kategori only makes sense in Stage-1 member context. For other
-  // callers we collapse back to /mine where the page renders a flat list.
+  // The /mine/kategori and /mine/tekst sub-routes only make sense in
+  // Stage-1 member context. For other callers we collapse back to
+  // /mine where the page renders a flat list. /mine/tekst also
+  // requires the user to be assigned a house — otherwise there's
+  // nothing to edit.
   useEffect(() => {
     if (!profile) return;
-    if (location.pathname === '/mine/kategori' && !stageOneMember) {
+    const isSubroute =
+      location.pathname === '/mine/kategori' || location.pathname === '/mine/tekst';
+    if (isSubroute && !stageOneMember) {
+      navigate('/mine', { replace: true });
+      return;
+    }
+    if (location.pathname === '/mine/tekst' && profile.houseNumber === null) {
       navigate('/mine', { replace: true });
     }
   }, [location.pathname, stageOneMember, profile, navigate]);
@@ -382,7 +396,7 @@ export const MinePage = () => {
   );
 
   const tabStrip = stageOneMember && (
-    <nav className="mine-tabs" aria-label="Skift mellem hus og kategori billeder">
+    <nav className="mine-tabs" aria-label="Skift mellem hus, kategori og tekst">
       <NavLink
         to="/mine"
         end
@@ -402,6 +416,14 @@ export const MinePage = () => {
           <span className="mine-tab-count">{otherPhotos.length}</span>
         )}
       </NavLink>
+      {profile && profile.houseNumber !== null && (
+        <NavLink
+          to="/mine/tekst"
+          className={({ isActive }) => `mine-tab${isActive ? ' active' : ''}`}
+        >
+          Min Hus Tekst
+        </NavLink>
+      )}
     </nav>
   );
 
@@ -447,32 +469,41 @@ export const MinePage = () => {
         {error && <div className="error">{error}</div>}
         {photos === null && !error && <p>Indlæser…</p>}
 
-        <div className="mine-twocol">
-          {houseTextEditor && <div className="mine-twocol-left">{houseTextEditor}</div>}
-          <div className="mine-twocol-right">
-            {photos && photos.length === 0 && (
-              <p className="subtle">
-                Du har ikke sendt nogen billeder endnu.{' '}
-                <Link to="/upload?target=house">Upload dit første billede</Link>.
-              </p>
-            )}
-            {photos && photos.length > 0 && housePhotos.length === 0 && (
-              <p className="subtle">
-                Ingen hus-billeder endnu. Brug knappen ovenfor til at uploade dit første hus-billede.
-              </p>
-            )}
-            {housePhotos.length > 0 && (
-              <div className="photo-grid">
-                {housePhotos.map((p, i) =>
-                  renderCard(p, {
-                    showArrows: { canUp: i > 0, canDown: i < housePhotos.length - 1 },
-                    section: 'house',
-                  }),
-                )}
-              </div>
+        {photos && photos.length === 0 && (
+          <p className="subtle">
+            Du har ikke sendt nogen billeder endnu.{' '}
+            <Link to="/upload?target=house">Upload dit første billede</Link>.
+          </p>
+        )}
+        {photos && photos.length > 0 && housePhotos.length === 0 && (
+          <p className="subtle">
+            Ingen hus-billeder endnu. Brug knappen ovenfor til at uploade dit første hus-billede.
+          </p>
+        )}
+        {housePhotos.length > 0 && (
+          <div className="photo-grid">
+            {housePhotos.map((p, i) =>
+              renderCard(p, {
+                showArrows: { canUp: i > 0, canDown: i < housePhotos.length - 1 },
+                section: 'house',
+              }),
             )}
           </div>
-        </div>
+        )}
+      </main>
+    );
+  }
+
+  // ——— Stage-1 member: Min Hus Tekst tab ———
+  if (stageOneMember && activeTab === 'tekst') {
+    return (
+      <main className="content">
+        <p className="eyebrow">Bidrag til bogen</p>
+        <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>
+          Min Hus <em>Tekst</em>
+        </h1>
+        {tabStrip}
+        {houseTextEditor}
       </main>
     );
   }
