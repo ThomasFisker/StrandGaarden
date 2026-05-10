@@ -174,6 +174,11 @@ export interface GalleryDetail extends GalleryItem {
    * whether the caller can self-edit / view their own non-Decided
    * photo. Null if not provided by the deployment. */
   uploaderSub?: string | null;
+  /** Stage-1 priority slot in the uploader's house, or null when the
+   * photo is in the kategori section. Drives whether the uploader's
+   * edit form shows a category dropdown (kategori only) or a
+   * read-only house label. */
+  priority?: number | null;
 }
 
 export interface AdminRemovalRow {

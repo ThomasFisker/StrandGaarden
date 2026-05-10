@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   deletePhoto,
   getGalleryPhoto,
+  listActivities,
+  movePhotoSection,
   postComment,
   postRemovalRequest,
   setHelpWanted,
@@ -14,6 +16,7 @@ import { useSession } from '../session';
 import {
   formatShortId,
   HOUSES,
+  type Activity,
   type GalleryDetail,
   type PersonTagInput,
 } from '../types';
@@ -61,12 +64,35 @@ export const GalleryPhotoPage = () => {
   const [editYearApprox, setEditYearApprox] = useState(false);
   const [editHouses, setEditHouses] = useState<number[]>([]);
   const [editPersons, setEditPersons] = useState<PersonTagInput[]>([]);
+  const [editActivityKey, setEditActivityKey] = useState<string>('');
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [helpSaving, setHelpSaving] = useState(false);
   const [helpError, setHelpError] = useState<string | null>(null);
+  const [activities, setActivities] = useState<Activity[] | null>(null);
+
+  // Members editing a kategori-photo (priority null) get a category
+  // dropdown in the edit form. Fetch the activity list once when that
+  // condition first holds so the form has options ready.
+  const photoIsKategori =
+    photo !== null && (photo.priority ?? null) === null;
+  const memberKategoriEdit = isUploader && !isAdmin && photoIsKategori;
+  useEffect(() => {
+    if (!session || activities !== null || !memberKategoriEdit) return;
+    let active = true;
+    listActivities(session.idToken)
+      .then((list) => {
+        if (active) setActivities(list);
+      })
+      .catch(() => {
+        if (active) setActivities([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session, activities, memberKategoriEdit]);
 
   const openEdit = () => {
     if (!photo) return;
@@ -76,6 +102,7 @@ export const GalleryPhotoPage = () => {
     setEditYearApprox(photo.yearApprox);
     setEditHouses(photo.houseNumbers.slice());
     setEditPersons(photo.persons.map((p) => ({ slug: p.slug })));
+    setEditActivityKey(photo.activityKey ?? '');
     setEditError(null);
     setEditOpen(true);
   };
@@ -99,9 +126,23 @@ export const GalleryPhotoPage = () => {
       return;
     }
     const yearNum = editYear.trim() ? Number(editYear) : null;
+    // Category change for kategori-photo uploaders: if they picked a
+    // different activity than the photo currently has, run the section
+    // move first so the activityKey is in place before the metadata
+    // patch refetches.
+    const categoryChanged =
+      memberKategoriEdit &&
+      editActivityKey !== '' &&
+      editActivityKey !== (photo.activityKey ?? '');
     setEditSaving(true);
     setEditError(null);
     try {
+      if (categoryChanged) {
+        await movePhotoSection(session.idToken, photo.photoId, {
+          target: 'activity',
+          activityKey: editActivityKey,
+        });
+      }
       await updatePhoto(session.idToken, photo.photoId, {
         description: desc,
         whoInPhoto: editWho.trim(),
@@ -343,6 +384,29 @@ export const GalleryPhotoPage = () => {
                       ))}
                     </div>
                   </div>
+                ) : memberKategoriEdit ? (
+                  <div className="field">
+                    <label htmlFor="edit-category">Kategori</label>
+                    <select
+                      id="edit-category"
+                      value={editActivityKey}
+                      onChange={(e) => setEditActivityKey(e.target.value)}
+                      disabled={editSaving || activities === null}
+                    >
+                      <option value="">— Vælg kategori —</option>
+                      {(activities ?? []).map((a) => (
+                        <option key={a.key} value={a.key}>
+                          {a.displayName}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="help" style={{ marginTop: '0.4rem' }}>
+                      Vælg hvilken kategori billedet hører til (Sct. Hans, vejdag, …).
+                      Hører billedet til dit hus i stedet, så gå til{' '}
+                      <Link to="/mine">Mine Hus Billeder</Link> og brug{' '}
+                      <em>Flyt til Hus</em>-knappen.
+                    </p>
+                  </div>
                 ) : (
                   <div className="field">
                     <label>Hus</label>
@@ -350,10 +414,10 @@ export const GalleryPhotoPage = () => {
                       {photo.houseNumbers.length > 0
                         ? `Hus ${photo.houseNumbers.join(', ')}`
                         : photo.activityName
-                          ? `Aktivitet: ${photo.activityName}`
-                          : 'Ingen hus-tag'}{' '}
+                          ? `Kategori: ${photo.activityName}`
+                          : 'Ingen tag'}{' '}
                       — brug knapperne på <Link to="/mine">Mine billeder</Link> for at flytte billedet
-                      mellem dit hus og Andre billeder.
+                      mellem dit hus og Mine Kategori Billeder.
                     </p>
                   </div>
                 )}
