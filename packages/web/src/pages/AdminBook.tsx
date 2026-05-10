@@ -36,18 +36,18 @@ const bucketFor = (p: BookPhoto, mode: ViewMode): { key: string; label: string; 
       return { key: `h:${primary}`, label: `Hus ${primary}`, sortKey: primary };
     }
     if (p.activityName) {
-      return { key: `a:${p.activityKey ?? p.activityName}`, label: `Aktivitet: ${p.activityName}`, sortKey: 9000 };
+      return { key: `a:${p.activityKey ?? p.activityName}`, label: `Kategori: ${p.activityName}`, sortKey: 9000 };
     }
-    return { key: 'unset', label: 'Uden hus eller aktivitet', sortKey: 9999 };
+    return { key: 'unset', label: 'Uden hus eller kategori', sortKey: 9999 };
   }
   if (mode === 'activity') {
     if (p.activityKey) {
       return { key: `a:${p.activityKey}`, label: p.activityName ?? p.activityKey, sortKey: (p.activityName ?? p.activityKey).toLowerCase() };
     }
     if (p.houseNumbers.length > 0) {
-      return { key: 'house-only', label: 'Husbidrag (uden aktivitet)', sortKey: 'zzhouse' };
+      return { key: 'house-only', label: 'Husbidrag (uden kategori)', sortKey: 'zzhouse' };
     }
-    return { key: 'unset', label: 'Uden hus eller aktivitet', sortKey: 'zzunset' };
+    return { key: 'unset', label: 'Uden hus eller kategori', sortKey: 'zzunset' };
   }
   return { key: 'all', label: '', sortKey: 0 };
 };
@@ -216,7 +216,7 @@ export const AdminBookPage = () => {
               {([
                 ['id', 'Efter ID'],
                 ['house', 'Efter hus'],
-                ['activity', 'Efter aktivitet'],
+                ['activity', 'Efter kategori'],
               ] as Array<[ViewMode, string]>).map(([mode, label]) => (
                 <label
                   key={mode}
@@ -356,7 +356,7 @@ export const AdminBookPage = () => {
                       {p.houseNumbers.length > 0
                         ? `Hus ${p.houseNumbers.join(' · ')} · `
                         : p.activityName
-                          ? `Aktivitet: ${p.activityName} · `
+                          ? `Kategori: ${p.activityName} · `
                           : ''}
                       {fmtBytes(p.bookBytes)}
                     </p>

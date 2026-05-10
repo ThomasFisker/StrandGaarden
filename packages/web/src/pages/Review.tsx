@@ -191,7 +191,7 @@ export const ReviewPage = () => {
                         {p.houseNumbers.length > 0
                           ? `Hus ${p.houseNumbers.join(', ')}`
                           : p.activityName
-                            ? `Aktivitet: ${p.activityName}`
+                            ? `Kategori: ${p.activityName}`
                             : 'Hus ukendt'}
                       </span>
                     </div>

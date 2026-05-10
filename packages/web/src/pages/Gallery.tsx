@@ -192,12 +192,12 @@ export const GalleryPage = () => {
           </label>
           {data?.filters.activities && data.filters.activities.length > 0 && (
             <label>
-              Aktivitet
+              Kategori
               <select
                 value={activityKey ?? ''}
                 onChange={(e) => setActivityKey(e.target.value || null)}
               >
-                <option value="">Alle aktiviteter</option>
+                <option value="">Alle kategorier</option>
                 {data.filters.activities.map((a) => (
                   <option key={a.key} value={a.key}>
                     {a.displayName}

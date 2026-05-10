@@ -116,8 +116,8 @@ export const AdminHomePage = () => {
     },
     {
       to: '/admin/aktiviteter',
-      title: 'Aktiviteter',
-      description: 'Nøgleord til aktiviteter (Sankt Hans, Vejdag, Generalforsamling …) — bruges i fase 1 til at gruppere billeder uden hus-tilknytning.',
+      title: 'Kategorier',
+      description: 'Nøgleord til kategorier (Sct. Hans, Vejdag & skovdag, Fællesskabet …) — bruges i fase 1 til at gruppere billeder uden hus-tilknytning.',
       badge: counts.activities,
       badgeLabel: 'i listen',
     },

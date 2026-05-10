@@ -25,7 +25,7 @@ export const AdminActivitiesPage = () => {
       const list = await listActivities(session.idToken);
       setItems(list);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke hente aktiviteter');
+      setError(e instanceof Error ? e.message : 'Kunne ikke hente kategorier');
     }
   }, [session]);
 
@@ -47,7 +47,7 @@ export const AdminActivitiesPage = () => {
       setNewOrder('');
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke oprette aktivitet');
+      setError(e instanceof Error ? e.message : 'Kunne ikke oprette kategori');
     } finally {
       setCreating(false);
     }
@@ -86,13 +86,13 @@ export const AdminActivitiesPage = () => {
 
   const onDelete = async (a: Activity) => {
     if (!session) return;
-    if (!confirm(`Slet aktiviteten "${a.displayName}"? Dette kan ikke fortrydes.`)) return;
+    if (!confirm(`Slet kategorien "${a.displayName}"? Dette kan ikke fortrydes.`)) return;
     setPending((p) => ({ ...p, [a.key]: 'Sletter…' }));
     try {
       await deleteActivity(session.idToken, a.key);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunne ikke slette aktivitet');
+      setError(e instanceof Error ? e.message : 'Kunne ikke slette kategori');
     } finally {
       setPending((p) => {
         const next = { ...p };
@@ -106,15 +106,15 @@ export const AdminActivitiesPage = () => {
     <main className="content">
       <p className="eyebrow">Administration</p>
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>
-        Aktiviteter
+        Kategorier
       </h1>
       <p className="lede">
-        Nøgleord til aktiviteter (Sankt Hans, Vejdag, Generalforsamling …) — bruges i fase 1, når
+        Nøgleord til kategorier (Sct. Hans, Vejdag & skovdag, Fællesskabet …) — bruges i fase 1, når
         medlemmer uploader billeder til bogens almene afsnit. Sortering: lavest tal først.
       </p>
 
       <section className="admin-invite">
-        <h2>Opret ny aktivitet</h2>
+        <h2>Opret ny kategori</h2>
         <form onSubmit={onCreate} noValidate>
           <div className="field">
             <label htmlFor="new-name">Navn</label>
@@ -125,7 +125,7 @@ export const AdminActivitiesPage = () => {
               maxLength={80}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="F.eks. Sankt Hans"
+              placeholder="F.eks. Sct. Hans"
             />
           </div>
           <div className="field">
@@ -145,10 +145,10 @@ export const AdminActivitiesPage = () => {
       </section>
 
       <section style={{ marginTop: '2rem' }}>
-        <h2>Eksisterende aktiviteter</h2>
+        <h2>Eksisterende kategorier</h2>
         {error && <div className="error">{error}</div>}
         {items === null && !error && <p>Indlæser…</p>}
-        {items && items.length === 0 && <p>Ingen aktiviteter endnu.</p>}
+        {items && items.length === 0 && <p>Ingen kategorier endnu.</p>}
         {items && items.length > 0 && (
           <table className="user-table">
             <thead>

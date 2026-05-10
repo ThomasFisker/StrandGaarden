@@ -11,7 +11,7 @@ const STAGE_LABEL: Record<Stage, string> = {
 };
 
 const STAGE_DESC: Record<Stage, string> = {
-  1: 'Medlemmer kan uploade billeder til deres hus eller en aktivitet. Galleriet er ikke synligt. Sektion A er begrænset til 7 billeder pr. hus.',
+  1: 'Medlemmer kan uploade billeder til deres hus eller en kategori. Galleriet er ikke synligt. Sektion A er begrænset til 7 billeder pr. hus.',
   2: 'Ingen uploads, ingen ændringer. Udvalget arbejder på bogen. Medlemmer ser en informationsside.',
   3: 'Galleriet er åbent for alle. Uploads tilladt uden bog-relateret valg. Dette svarer til den tidligere drift.',
 };

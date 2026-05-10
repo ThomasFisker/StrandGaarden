@@ -268,7 +268,7 @@ export const MinePage = () => {
               {p.houseNumbers.length > 0
                 ? `Hus ${p.houseNumbers.join(', ')}`
                 : p.activityName
-                  ? `Aktivitet: ${p.activityName}`
+                  ? `Kategori: ${p.activityName}`
                   : 'Hus ukendt'}
             </p>
             {p.whoInPhoto && <p className="mine-card-meta">{p.whoInPhoto}</p>}
@@ -523,9 +523,9 @@ export const MinePage = () => {
 
         <div className="mine-section-intro">
           <p className="lede" style={{ margin: 0 }}>
-            Billeder fra fælles aktiviteter — Sankt Hans, vejdag, generalforsamling og andre
-            begivenheder — kommer med i bogens fællesafsnit. Ingen rækkefølge: udvalget vælger
-            selv, hvad der kommer med.
+            Billeder fra fælles kategorier — Sct. Hans, Vejdag & skovdag, Fællesskabet og andre
+            — kommer med i bogens fællesafsnit. Ingen rækkefølge: udvalget vælger selv, hvad der
+            kommer med.
           </p>
           {!frozen && (
             <Link to="/upload?target=activity" className="btn-primary mine-upload-btn">

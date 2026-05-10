@@ -175,10 +175,10 @@ export const UploadPage = () => {
     }
     if (stageOneNonAdmin) {
       if (target === 'house') {
-        if (myHouse === null) return 'Du er ikke tildelt et hus. Bed udvalget om at tildele dig et — eller vælg en aktivitet.';
-        if (houseAtCap) return `Hus ${myHouse} er fyldt op (${slotsUsed}/${slotsMax}). Vælg en aktivitet, eller bed udvalget fjerne et billede først.`;
+        if (myHouse === null) return 'Du er ikke tildelt et hus. Bed udvalget om at tildele dig et — eller vælg en kategori.';
+        if (houseAtCap) return `Hus ${myHouse} er fyldt op (${slotsUsed}/${slotsMax}). Vælg en kategori, eller bed udvalget fjerne et billede først.`;
       } else {
-        if (!activityKey) return 'Vælg en aktivitet.';
+        if (!activityKey) return 'Vælg en kategori.';
       }
     } else {
       if (houseNumbers.length === 0) return 'Vælg mindst ét hus nr.';
@@ -356,8 +356,8 @@ export const UploadPage = () => {
           <div className="field">
             <label>Hvor hører billedet til?</label>
             <div className="help" style={{ marginBottom: '0.6rem' }}>
-              I fase 1 uploader hvert hus til sin egen del af bogen, og fælles aktiviteter lægges
-              under et nøgleord (Sankt Hans, generalforsamling osv.).
+              I fase 1 uploader hvert hus til sin egen del af bogen, og fælles billeder lægges
+              under en kategori (Sct. Hans, Vejdag & skovdag, Fællesskabet osv.).
             </div>
             <div className="checkbox-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>
               <label>
@@ -383,7 +383,7 @@ export const UploadPage = () => {
                   checked={target === 'activity'}
                   onChange={() => setTarget('activity')}
                 />{' '}
-                <strong>Til en aktivitet</strong>
+                <strong>Til en kategori</strong>
                 <span className="subtle"> (fælles afsnit i bogen)</span>
               </label>
             </div>
@@ -392,9 +392,9 @@ export const UploadPage = () => {
                 <select
                   value={activityKey}
                   onChange={(e) => setActivityKey(e.target.value)}
-                  aria-label="Aktivitet"
+                  aria-label="Kategori"
                 >
-                  <option value="">— Vælg aktivitet —</option>
+                  <option value="">— Vælg kategori —</option>
                   {(activities ?? []).map((a) => (
                     <option key={a.key} value={a.key}>
                       {a.displayName}
@@ -403,7 +403,7 @@ export const UploadPage = () => {
                 </select>
                 {activities !== null && activities.length === 0 && (
                   <div className="help" style={{ marginTop: '0.4rem' }}>
-                    Udvalget har ikke oprettet aktiviteter endnu.
+                    Udvalget har ikke oprettet kategorier endnu.
                   </div>
                 )}
               </div>
@@ -419,7 +419,7 @@ export const UploadPage = () => {
                 }}
               >
                 Hus {myHouse} har allerede {slotsUsed} af {slotsMax} mulige billeder. Bed udvalget
-                fjerne et billede først, eller upload til en aktivitet i stedet.
+                fjerne et billede først, eller upload til en kategori i stedet.
               </div>
             )}
           </div>

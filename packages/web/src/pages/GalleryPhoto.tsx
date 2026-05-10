@@ -258,12 +258,17 @@ export const GalleryPhotoPage = () => {
           <>
             <span className="sep">/</span>
             {photo.year ? (photo.yearApprox ? `ca. ${photo.year}` : photo.year) : 'Uden år'}
-            {photo.houseNumbers.length > 0 && (
+            {photo.houseNumbers.length > 0 ? (
               <>
                 <span className="sep">/</span>
                 Hus {photo.houseNumbers.join(' · ')}
               </>
-            )}
+            ) : photo.activityName ? (
+              <>
+                <span className="sep">/</span>
+                {photo.activityName}
+              </>
+            ) : null}
           </>
         )}
       </p>
@@ -313,7 +318,11 @@ export const GalleryPhotoPage = () => {
               {photo.year ?? '—'}
             </p>
             <p className="photo-meta-line">
-              {photo.houseNumbers.length > 0 ? `Hus ${photo.houseNumbers.join(' · ')}` : 'Hus ukendt'}
+              {photo.houseNumbers.length > 0
+                ? `Hus ${photo.houseNumbers.join(' · ')}`
+                : photo.activityName
+                  ? `Kategori: ${photo.activityName}`
+                  : 'Hus ukendt'}
               {photo.width && photo.height ? ` — ${photo.width}×${photo.height}px` : ''}
             </p>
 
