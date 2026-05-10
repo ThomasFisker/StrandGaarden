@@ -99,8 +99,8 @@ GDPR textarea + "ny version" toggle).
 
 - **Stage 1 — Indsamling.** Members upload to either:
   - Their own assigned house (locked, capped at `maxBookSlotsPerHouse`)
-  - A club-wide activity (Sankt Hans, Generalforsamling, …) — picked from
-    /activities list.
+  - A club-wide kategori (Sct. Hans, Vejdag & skovdag, Fællesskabet, …) —
+    picked from /activities list.
   Server enforces XOR for non-admins; cap is checked by counting Stage-1
   *priority slots* in the user's house (photos with `attribute_exists(priority)`),
   not every historical photo tagged with that house — pre-Stage-1 uploads
@@ -118,35 +118,92 @@ GDPR textarea + "ny version" toggle).
   removal). Admins are exempt — they keep full access during freeze.
 - **Stage 3 — Offentlig.** Today's behavior: free upload, gallery open.
 
-### Activities
+### Categories (activity keywords)
 
-- /admin/aktiviteter — full CRUD on activity keywords (key, displayName,
-  displayOrder).
+- /admin/aktiviteter — admin-only CRUD on category keywords (key,
+  displayName, displayOrder). Page title reads "Kategorier" but the
+  URL is kept for back-compat. Internal field names everywhere
+  (`activityKey`, `activityName`, `loadActivityNameMap`) keep the
+  legacy "activity" wording — only the user-facing copy says
+  "kategori". Don't rename the schema.
+- Current category list (DDB-only, not in code; admin manages via UI):
+  Vejdag & skovdag (10), Skoven & Stranden (smukke billeder) (20),
+  Sct. Hans (30), Fællesskabet (sammenkomster & fællesspisning) (40),
+  Strandliv og Fiskeri (50), Historiske billeder (60),
+  Projekter (kloark, nordsøsti) (70), Efterår & vinter (80).
 - `loadActivityNameMap` helper joins `activityKey` → displayName at read
   time in `mine`, `review-list`, `book-list`, `gallery-list`,
-  `gallery-detail`. Cards display "Aktivitet: X" when no houses are set.
-- Stage-1 activity uploads write `activityKey` to the PHOTO row alongside
+  `gallery-detail`. Cards display "Kategori: X" when no houses are set.
+- Stage-1 kategori uploads write `activityKey` to the PHOTO row alongside
   empty `houseNumbers`.
 
-### Mine page — two sections in Stage 1
+### Mine page — three tabs in Stage 1
 
-In Stage 1 for non-admin members, /mine splits into:
-- **Mine Hus Billeder** — house photos sorted by `priority` ascending.
-  Each card has a copper `#N` badge and ↑ ↓ arrows. Up/down call
-  `PATCH /photos/{id}/priority` which TransactWrite-swaps the priority
-  values atomically. Disabled at boundaries and during Stage-2 freeze.
-- **Andre billeder** — activity uploads (and any pre-Stage-1 photos
-  without a priority). Flat list, no badges, no arrows.
+In Stage 1 for non-admin members, /mine renders a single
+`Mine billeder` header link (in the top nav) that hosts a tab strip
+with up to three tabs:
+- **Mine Hus Billeder** (`/mine`) — house photos sorted by `priority`
+  ascending. Each card has a copper `#N` badge and ↑↓ arrows. Up/down
+  call `PATCH /photos/{id}/priority` which TransactWrite-swaps the
+  priority values atomically.
+- **Mine Kategori Billeder** (`/mine/kategori`) — kategori uploads
+  (and any pre-Stage-1 photos without a priority). Flat list, no
+  badges, no arrows. Member can change the category by clicking a
+  card → `/galleri/:id` → ✎ Rediger → Kategori dropdown (saves via
+  `PATCH /photos/{id}/section` with `target='activity'`).
+- **Min Hus Tekst** (`/mine/tekst`) — only rendered when the user is
+  assigned a house; full-page Tiptap editor for the house's
+  jubilee-book chapter intro.
 
-In other stages, /mine collapses to a single flat list — no schema
-migration, just the UI partition disappearing. The `priority` field
-stays on the row forever.
+Each tab has a prominent copper `Upload billede` button at the top
+(targets `?target=house` / `?target=activity` so the upload form
+pre-selects the radio). Cards have:
+- Thumbnail link → `/galleri/:id`
+- ID-XXXXX caption directly below the thumb
+- Title + status pill on its own row + year/house-or-kategori meta
+- Bottom action bar with `Se detaljer / rediger` (copper-bordered
+  primary `.btn-card-primary`) + `Flyt til Hus N` / `Flyt til Kategori`
+  (paper-warm secondary `.btn-card`)
+- Hjælp søges is **not** shown on the card — toggle lives on the
+  detail page only.
+
+In Stage 3 / admin, /mine collapses to a single flat list — no tab
+strip. The `/mine/kategori` and `/mine/tekst` routes auto-redirect to
+`/mine` for callers outside Stage-1-member context. The `priority`
+field stays on the row forever; only the UI partitions disappear.
 
 Priority is a **member-only** concept: admins can't set or change it
 via the gallery edit pencil. When admin re-tags a photo so it no
 longer carries the uploader's own house, `photos-update` REMOVEs the
-priority field. The photo then surfaces under "Andre billeder" until
-the uploader re-uploads or the admin restores the house.
+priority field. The photo then surfaces under "Mine Kategori Billeder"
+until the uploader re-uploads or the admin restores the house.
+
+### Cross-section moves
+
+- `PATCH /photos/{id}/section` — uploader-only. Targets:
+  - `house`: assigns next free priority slot in the caller's house
+    (cap-checked), sets `houseNumbers=[myHouse]`, clears `activityKey`.
+  - `activity`: requires `activityKey`; clears priority + houseNumbers.
+  - `other`: clears priority only, leaves houseNumbers/activityKey.
+- Stage-2 freeze applies. Audit row written.
+- /mine cards expose `Flyt til Hus N` (Andre→Hus, cap-aware) and
+  `Flyt til Kategori` (Hus→Andre) buttons that call this endpoint.
+- /galleri/:id member edit form Kategori dropdown calls it with
+  `target='activity'` for in-section category changes.
+
+### Member self-edit on /galleri/:id
+
+`gallery-detail` allows the uploader to view their own photo at any
+status (not just Decided + visibilityWeb). It returns `priority`,
+`status`, `uploaderSub` so the SPA can branch on caller identity.
+
+`PATCH /photos/{id}` (photos-update) accepts uploader self-edits and
+ignores the `houseNumbers` field for non-admin callers — re-tagging
+goes via `/photos/{id}/section` instead. Editable for uploader:
+description, whoInPhoto, year, yearApprox, taggedPersons, plus the
+Kategori dropdown when the photo is in the kategori section. Helpwanted
+toggle is its own `PATCH /photos/{id}/help-wanted` endpoint, also
+exposed on the detail page meta panel.
 
 ### House texts (book chapter intros)
 
@@ -220,6 +277,7 @@ the uploader re-uploads or the admin restores the house.
 | PATCH | `/photos/{id}` | admin | Edit metadata |
 | PATCH | `/photos/{id}/help-wanted` | uploader/admin | Toggle flag |
 | PATCH | `/photos/{id}/priority` | uploader only | Swap priority with neighbour (up/down) |
+| PATCH | `/photos/{id}/section` | uploader only | Move between Hus / Kategori / Andre with cap+priority handling |
 | POST | `/photos/{id}/comments` | authed | Post comment (pending) |
 | GET | `/comments` | admin | Pending comments queue |
 | POST | `/photos/{p}/comments/{c}/merge` | admin | Apply merge |
@@ -284,6 +342,16 @@ DDB / S3 verification via `aws` CLI from
 `/c/Program Files/Amazon/AWSCLIV2/aws.exe` with
 `AWS_PROFILE=strandgaarden` and `MSYS_NO_PATHCONV=1` for path args.
 
+**Danish characters in DDB writes:** the Windows `aws.exe` CLI
+double-encodes non-ASCII bytes when reading `--item file://...` — UTF-8
+input gets stored as `Ã¦`/`Ã¸`/`Ã¥` instead of `æ`/`ø`/`å`. Use the
+Node SDK directly via `node -e` from `infra/` (which has
+`@aws-sdk/lib-dynamodb` installed) for any write that contains
+non-ASCII. The Node SDK round-trips Unicode cleanly. Verify by reading
+back via Node + `Buffer.from(s, 'utf8').toString('hex')` — the AWS CLI
+on the Windows console can mask the issue with codepage transcoding,
+so xxd of CLI output is unreliable.
+
 ## Verification convention
 
 - After a deploy, share the URL + a brief smoke-test checklist (the
@@ -322,8 +390,8 @@ DDB / S3 verification via `aws` CLI from
 
 **Nice-to-have:** audit log viewer (top-level `PK=AUDIT` items exist),
 PWA manifest, blurhash LQIP placeholder render, server-side upload size
-limit via `createPresignedPost`, member self-edit of own uploads,
-narrow-viewport header overflow, `horizon-meadow.jpg` decoration.
+limit via `createPresignedPost`, narrow-viewport header overflow,
+`horizon-meadow.jpg` decoration.
 
 **Ops:** prod stage stacks (`-Prod-*`), CloudWatch alarms, automated
 tests. Not urgent.
@@ -331,45 +399,61 @@ tests. Not urgent.
 ## Resuming next session
 
 1. `cd "C:/Users/thoma/OneDrive - Second Epic/ClaudeProjects/Strandgaarden"`
-2. `git status` — expect clean. Last commit `c0676d9`
-   (`fix: Stage-1 house cap counts only priority slots, not all-time
-   photos`). All pushed; CI green.
+2. `git status` — expect clean. Last commit `d968008`
+   (`feat: show category on /galleri/:id; rename Aktivitet → Kategori
+   across UI`). All pushed; CI green.
 3. Open https://d2wq22ivboh02d.cloudfront.net/ (hard-refresh). Login as
    `thomas.madsen@secondepic.com` / `Picture1!`. Expected current bundle
-   hash: **`index-C1HPs0KL.js`**.
-4. **Open thread #1 — verify the cap fix.** As Thomas2 (member, house
-   9), /upload should show "Til mit hus" enabled with the counter
-   reading **"1 af 7 pladser brugt"** (not 7/7). A new house upload
-   should succeed and become `#2` on /mine in the "Mine Hus Billeder"
-   section. There are 6 pre-Stage-1 photos still tagged with house 9
-   that have no `priority` field — they're visible to admin under
-   /admin/gennemgang and /galleri but no longer block the cap. They
-   live under "Andre billeder" on Thomas2's /mine. Optional cleanup:
-   delete them via /admin/gennemgang or /galleri/:id when convenient.
-5. **Open thread #2 — first-login password change still untested
-   end-to-end.** Self-service /glemt-adgangskode worked. Open thread:
-   does the in-prompt "Sæt min egen" form (FirstLoginPrompt) succeed
-   when given a real current password + valid new one? Last attempt
-   yesterday hit a Cognito "previousPassword" regex error — guards
-   landed in `1c6bd64`. Yet untested with a non-empty current.
-6. **Open thread #3 — real-Outlook deliverability** of /glemt-
-   adgangskode email (Cognito default sender). Was on the to-do list
-   yesterday; still open.
-7. Quick visual-state check:
-   - Header shows `Thomas1` + Galleri + Upload + Mine + Udvalget links.
-   - /admin shows 9 cards with badges.
-   - /admin/fase loads the stage editor; current stage is **1** (set
-     during the session for testing) — flip to 3 if you want the
-     "everything open" mode back.
-   - /upload shows the GDPR reference note (no checkbox); the house
-     selector lists the non-contiguous house numbers (3,5,7…17,
-     4,6…32).
-   - /mine for a member in Stage 1 shows two sections (Mine Hus
-     Billeder + Andre billeder) with priority badges + ↑↓ arrows.
-   - /login shows a "Glemt adgangskode?" link.
-8. **Recommended next task** order (after the open threads above):
-   committee-member invite (Danish draft from earlier session) → real
-   user feedback unblocks the rest of the list.
+   hash: **`index-B7OYznWZ.js`**.
+4. Quick visual-state check (Stage 1 member context, e.g. Thomas2):
+   - Header shows `Galleri` (hidden in Stage 1/2 for non-admin) +
+     `Upload billede` + `Mine billeder` + `Udvalget` links.
+   - /admin shows 9 cards with badges; the Kategorier tile is named
+     "Kategorier" (was "Aktiviteter").
+   - /admin/fase Stage 1 description reads "...deres hus eller en
+     kategori..."
+   - /admin/aktiviteter renders heading "Kategorier" with body copy
+     in kategori-language. URL kept as /admin/aktiviteter for
+     back-compat.
+   - /upload "Til en kategori" radio + "Vælg kategori" dropdown shows
+     the 8 categories (Vejdag & skovdag, Skoven & Stranden, Sct. Hans,
+     Fællesskabet, Strandliv og Fiskeri, Historiske billeder, Projekter,
+     Efterår & vinter). All Danish letters render correctly.
+   - /mine in Stage 1 shows tab strip with three tabs: Mine Hus Billeder
+     (selected by default, /mine), Mine Kategori Billeder
+     (/mine/kategori), Min Hus Tekst (/mine/tekst, only shown when
+     user has a house). Each tab has a big copper "Upload billede"
+     button at the top.
+   - /mine cards: thumbnail-as-link, ID badge under thumb, status pill
+     on its own row, copper "Se detaljer / rediger" + paper-warm
+     "Flyt til Hus N" / "Flyt til Kategori" buttons in a bottom action
+     bar. No Hjælp søges toggle on the card.
+   - /galleri/:id: clicking ✎ Rediger on a kategori-photo shows a
+     Kategori dropdown; saving with a different category re-tags via
+     /photos/{id}/section. Hjælp søges toggle is in the meta panel.
+     Breadcrumb + meta line show "Kategori: X" when no houses tagged.
+5. **Open thread — old test photos lose their tag.** Photos uploaded
+   before today's category overwrite still have orphan activityKey
+   values like `sankt-hans`, `vejdag`, `faellesspisning`. Their cards
+   show "Hus ukendt" because the join can't find the activity. Cleanup
+   either via /mine/kategori → click → edit pencil → pick new category,
+   or /admin/gennemgang admin re-tag, or /galleri/:id delete. User said
+   they don't care since it's all test data.
+6. **Open thread — `kloark` typo** in "Projekter (kloark, nordsøsti)" —
+   user wrote it that way; Danish would be `kloak`. Fix via
+   /admin/aktiviteter → click row → rename to `Projekter (kloak,
+   nordsøsti)`. Renaming preserves the slug, so any tagged photos
+   keep their link.
+7. **Pre-existing open threads** (still applicable):
+   - First-login password change end-to-end via FirstLoginPrompt
+     ("Sæt min egen") still untested with a real non-empty current
+     password. Guards in commit `1c6bd64`.
+   - Real-Outlook deliverability of /glemt-adgangskode email (Cognito
+     default sender) untested.
+   - Two committee members test-drive the system (Danish invite draft
+     in earlier session transcript).
+8. **Recommended next task** order: committee-member invite → real user
+   feedback unblocks the rest of the list.
 6. If something's broken:
    - API alive: `curl -sk https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com/health`
      (use `-k` on this Windows shell — schannel revocation otherwise fails).
