@@ -33,6 +33,7 @@ export const App = () => (
           <Route path="/galleri/:id" element={<GalleryPhotoPage />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/mine" element={<MinePage />} />
+          <Route path="/mine/kategori" element={<MinePage />} />
           <Route path="/samtykke" element={<SamtykkePage />} />
         </Route>
         <Route element={<ProtectedRoute requireGroup="admin" />}>

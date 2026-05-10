@@ -1992,3 +1992,271 @@ button.link-muted:hover { color: var(--copper-deep); }
   text-transform: uppercase;
   font-weight: 600;
 }
+
+/* ——— /mine page: tab strip, two-column layout, refreshed cards ——— */
+.mine-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin: 1.5rem 0 1rem;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.mine-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.4rem;
+  min-height: var(--touch);
+  background: transparent;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  margin-bottom: -1px;
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+.mine-tab:hover {
+  background: var(--paper-warm);
+  color: var(--copper-deep);
+  text-decoration: none;
+}
+.mine-tab.active {
+  background: var(--paper-lifted);
+  color: var(--ink);
+  border-color: var(--line);
+  border-bottom-color: var(--paper-lifted);
+}
+.mine-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  padding: 0 0.4rem;
+  height: 1.4rem;
+  background: var(--paper-warm);
+  color: var(--copper-deep);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.mine-tab.active .mine-tab-count {
+  background: var(--copper);
+  color: var(--paper);
+}
+@media (max-width: 600px) {
+  .mine-tabs { gap: 0.2rem; }
+  .mine-tab {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0.85rem 0.6rem;
+    font-size: 0.95rem;
+    text-align: center;
+  }
+}
+
+.mine-section-intro {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.2rem;
+  background: var(--paper-warm);
+  border-left: 3px solid var(--copper);
+}
+.mine-section-intro .lede {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.mine-upload-btn {
+  margin-top: 1rem;
+  display: inline-flex;
+}
+@media (max-width: 600px) {
+  .mine-upload-btn {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.mine-twocol {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 1.75rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .mine-twocol {
+    grid-template-columns: 1fr;
+  }
+}
+.mine-housetext {
+  padding: 1.1rem 1.25rem;
+  background: var(--paper-warm);
+  border-left: 3px solid var(--copper);
+}
+
+/* ——— Card: thumbnail + body + ID under thumbnail ——— */
+.mine-card {
+  background: var(--paper-lifted);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+.mine-card-house { border-left: 3px solid var(--copper); }
+
+.mine-card-priority {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  background: var(--paper-warm);
+  border-bottom: 1px solid var(--line);
+}
+.mine-card-priority-num {
+  display: inline-block;
+  min-width: 1.6rem;
+  text-align: center;
+  color: var(--copper);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.mine-card-priority-label {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+.mine-card-arrow {
+  min-width: 2.6rem;
+  min-height: 2.4rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 1.3rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.mine-card-row {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  padding: 1.1rem 1.25rem;
+}
+.mine-card-thumb {
+  flex: 0 0 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+.mine-card-thumb a {
+  display: block;
+  text-decoration: none;
+}
+.mine-card-thumb a:hover { opacity: 0.92; }
+.mine-card-id {
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 0.8rem;
+  color: var(--copper-deep);
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+
+.mine-card-body {
+  flex: 1;
+  min-width: 0;
+}
+.mine-card-title {
+  margin: 0 0 0.35rem;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+  font-variation-settings: 'opsz' 144;
+  color: var(--sea-deep);
+  line-height: 1.25;
+}
+.mine-card-title a {
+  color: inherit;
+  text-decoration: none;
+}
+.mine-card-title a:hover { color: var(--copper-deep); }
+.mine-card-status {
+  margin: 0 0 0.4rem;
+}
+.mine-card-meta {
+  margin: 0.15rem 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
+/* ——— Card actions: a clear button row at the bottom ——— */
+.mine-card-actions {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--line-soft);
+  background: var(--paper);
+  flex-wrap: wrap;
+}
+.btn-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch);
+  padding: 0.55rem 1.1rem;
+  background: var(--paper-warm);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms, color 150ms;
+}
+.btn-card:hover:not(:disabled) {
+  background: var(--paper-lifted);
+  border-color: var(--copper);
+  color: var(--copper-deep);
+  text-decoration: none;
+}
+.btn-card:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-card-primary {
+  background: var(--paper-lifted);
+  border-color: var(--copper);
+  color: var(--copper-deep);
+  font-weight: 600;
+}
+.btn-card-primary:hover:not(:disabled) {
+  background: var(--copper);
+  color: var(--paper);
+  border-color: var(--copper);
+}
+
+@media (max-width: 600px) {
+  .mine-card-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mine-card-thumb {
+    flex: none;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.9rem;
+  }
+  .mine-card-thumb .thumb,
+  .mine-card-thumb .thumb-placeholder {
+    width: 110px;
+    height: 110px;
+  }
+  .mine-card-actions { flex-direction: column; }
+  .btn-card { width: 100%; }
+}
+

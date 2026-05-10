@@ -42,7 +42,14 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
             </NavLink>
           )}
           {canUpload && (
-            <NavLink to="/mine" className={({ isActive }) => (isActive ? 'active' : undefined)}>
+            <NavLink
+              to="/mine"
+              className={() =>
+                location.pathname === '/mine' || location.pathname.startsWith('/mine/')
+                  ? 'active'
+                  : undefined
+              }
+            >
               Mine billeder
             </NavLink>
           )}
