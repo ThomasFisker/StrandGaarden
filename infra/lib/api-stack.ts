@@ -469,6 +469,92 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(personsDeleteFn);
 
+    // --- Meetings + Documents (bestyrelse / board scope) ---
+    const meetingsListFn = new lambdaNodejs.NodejsFunction(this, 'MeetingsListFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'meetings-list.ts'),
+      functionName: `strandgaarden-${props.stage}-meetings-list`,
+      description: 'List board meetings + general assemblies (medlem+)',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadData(meetingsListFn);
+
+    const meetingsCreateFn = new lambdaNodejs.NodejsFunction(this, 'MeetingsCreateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'meetings-create.ts'),
+      functionName: `strandgaarden-${props.stage}-meetings-create`,
+      description: 'Bestyrelse+: create a board meeting or general assembly',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(meetingsCreateFn);
+
+    const meetingsUpdateFn = new lambdaNodejs.NodejsFunction(this, 'MeetingsUpdateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'meetings-update.ts'),
+      functionName: `strandgaarden-${props.stage}-meetings-update`,
+      description: 'Bestyrelse+: edit a meeting (kind, date, title, description)',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(meetingsUpdateFn);
+
+    const meetingsDeleteFn = new lambdaNodejs.NodejsFunction(this, 'MeetingsDeleteFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'meetings-delete.ts'),
+      functionName: `strandgaarden-${props.stage}-meetings-delete`,
+      description: 'Bestyrelse+: delete a meeting (attached docs become orphaned, not deleted)',
+      timeout: cdk.Duration.seconds(30),
+    });
+    props.table.grantReadWriteData(meetingsDeleteFn);
+
+    const documentsListFn = new lambdaNodejs.NodejsFunction(this, 'DocumentsListFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'documents-list.ts'),
+      functionName: `strandgaarden-${props.stage}-documents-list`,
+      description: 'List documents with year/category/meeting/search filters (medlem+)',
+      timeout: cdk.Duration.seconds(15),
+    });
+    props.table.grantReadData(documentsListFn);
+
+    const documentsDetailFn = new lambdaNodejs.NodejsFunction(this, 'DocumentsDetailFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'documents-detail.ts'),
+      functionName: `strandgaarden-${props.stage}-documents-detail`,
+      description: 'Document detail + presigned download URL (medlem+)',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadData(documentsDetailFn);
+    props.originalsBucket.grantRead(documentsDetailFn);
+
+    const documentsUploadUrlFn = new lambdaNodejs.NodejsFunction(this, 'DocumentsUploadUrlFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'documents-upload-url.ts'),
+      functionName: `strandgaarden-${props.stage}-documents-upload-url`,
+      description: 'Bestyrelse+: presigned PUT URL + DDB stub for a new document',
+      timeout: cdk.Duration.seconds(15),
+    });
+    props.table.grantReadWriteData(documentsUploadUrlFn);
+    props.originalsBucket.grantPut(documentsUploadUrlFn);
+
+    const documentsUpdateFn = new lambdaNodejs.NodejsFunction(this, 'DocumentsUpdateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'documents-update.ts'),
+      functionName: `strandgaarden-${props.stage}-documents-update`,
+      description: 'Bestyrelse+: edit document metadata (title, meeting, category, year, tags, note)',
+      timeout: cdk.Duration.seconds(15),
+    });
+    props.table.grantReadWriteData(documentsUpdateFn);
+
+    const documentsDeleteFn = new lambdaNodejs.NodejsFunction(this, 'DocumentsDeleteFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'documents-delete.ts'),
+      functionName: `strandgaarden-${props.stage}-documents-delete`,
+      description: 'Bestyrelse+: hard-delete a document (S3 + DDB rows + top-level AUDIT)',
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+    });
+    props.table.grantReadWriteData(documentsDeleteFn);
+    props.originalsBucket.grantDelete(documentsDeleteFn);
+
     // Upload-url Lambda also needs to read and write PERSON items (to verify
     // known slugs and upsert pending proposals). Its existing grantWriteData
     // covers the write side; add read for the GetCommand guard.
@@ -806,6 +892,62 @@ export class ApiStack extends cdk.Stack {
       path: '/persons/{slug}',
       methods: [apigwv2.HttpMethod.DELETE],
       integration: new apigwIntegrations.HttpLambdaIntegration('PersonsDeleteIntegration', personsDeleteFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/meetings',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('MeetingsListIntegration', meetingsListFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/meetings',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('MeetingsCreateIntegration', meetingsCreateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/meetings/{id}',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('MeetingsUpdateIntegration', meetingsUpdateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/meetings/{id}',
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: new apigwIntegrations.HttpLambdaIntegration('MeetingsDeleteIntegration', meetingsDeleteFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/documents',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('DocumentsListIntegration', documentsListFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/documents/{id}',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('DocumentsDetailIntegration', documentsDetailFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/documents/upload-url',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('DocumentsUploadUrlIntegration', documentsUploadUrlFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/documents/{id}',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('DocumentsUpdateIntegration', documentsUpdateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/documents/{id}',
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: new apigwIntegrations.HttpLambdaIntegration('DocumentsDeleteIntegration', documentsDeleteFn),
       authorizer: jwtAuthorizer,
     });
 
