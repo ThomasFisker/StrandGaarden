@@ -189,6 +189,10 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
 
       {loadError && <div className="error">{loadError}</div>}
 
+      <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '0.2rem', fontFamily: 'monospace' }}>
+        debug: focus={String(focus)} cat={catalog.length} sel={selectedSlugs.size} rows={dropdownRows.length} input="{input}"
+      </div>
+
       {focus && dropdownRows.length > 0 && (
         <ul className="tag-dropdown" role="listbox">
           {dropdownRows.map((row, idx) => {
