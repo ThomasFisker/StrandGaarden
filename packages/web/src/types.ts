@@ -355,6 +355,7 @@ export type MeetingKind = 'board' | 'assembly';
 export const DOC_CATEGORIES = [
   'Mødeindkaldelse',
   'Referat',
+  'Formandens Beretning',
   'Årsregnskab',
   'Budget',
   'Bilag',

@@ -38,6 +38,7 @@ export const isMeetingKind = (s: unknown): s is MeetingKind =>
 export const DOC_CATEGORIES = [
   'Mødeindkaldelse',
   'Referat',
+  'Formandens Beretning',
   'Årsregnskab',
   'Budget',
   'Bilag',
