@@ -35,15 +35,32 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const s3Key = String(it.s3Key ?? '');
   if (!s3Key) return json(500, { error: 'Document has no s3Key' });
 
-  const downloadUrl = await getSignedUrl(
-    s3,
-    new GetObjectCommand({
-      Bucket: originalsBucket,
-      Key: s3Key,
-      ResponseContentDisposition: `attachment; filename="${originalFilename.replace(/"/g, '')}"`,
-    }),
-    { expiresIn: DOC_URL_TTL_SECONDS },
-  );
+  const dispositionFilename = originalFilename.replace(/"/g, '');
+  const contentType = String(it.contentType ?? '');
+  const [downloadUrl, viewUrl] = await Promise.all([
+    getSignedUrl(
+      s3,
+      new GetObjectCommand({
+        Bucket: originalsBucket,
+        Key: s3Key,
+        ResponseContentDisposition: `attachment; filename="${dispositionFilename}"`,
+      }),
+      { expiresIn: DOC_URL_TTL_SECONDS },
+    ),
+    // Inline-disposition URL drives in-browser PDF rendering via <iframe>
+    // on /dokumenter/:id. The S3 response also overrides Content-Type so
+    // Safari/Firefox don't second-guess the stored value.
+    getSignedUrl(
+      s3,
+      new GetObjectCommand({
+        Bucket: originalsBucket,
+        Key: s3Key,
+        ResponseContentDisposition: `inline; filename="${dispositionFilename}"`,
+        ResponseContentType: contentType || undefined,
+      }),
+      { expiresIn: DOC_URL_TTL_SECONDS },
+    ),
+  ]);
 
   // If linked to a meeting, fetch the meeting metadata too — saves the
   // SPA a follow-up call.
@@ -71,11 +88,12 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     year: typeof it.year === 'number' ? it.year : null,
     tags: Array.isArray(it.tags) ? (it.tags as unknown[]).map(String) : [],
     note: typeof it.note === 'string' ? it.note : null,
-    contentType: String(it.contentType ?? ''),
+    contentType,
     originalFilename,
     uploadedAt: String(it.uploadedAt ?? ''),
     uploadedByEmail: typeof it.uploadedByEmail === 'string' ? it.uploadedByEmail : null,
     downloadUrl,
+    viewUrl,
     downloadExpiresIn: DOC_URL_TTL_SECONDS,
   });
 };

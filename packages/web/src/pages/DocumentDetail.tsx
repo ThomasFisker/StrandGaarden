@@ -115,6 +115,25 @@ export const DocumentDetailPage = () => {
           Linket er gyldigt i {Math.round(doc.downloadExpiresIn / 60)} minutter. Genindlæs siden hvis det udløber.
         </p>
       </div>
+
+      {doc.contentType === 'application/pdf' && (
+        <div className="doc-viewer" style={{ marginTop: '1.5rem' }}>
+          <iframe
+            src={doc.viewUrl}
+            title={doc.title}
+            style={{
+              width: '100%',
+              height: '75vh',
+              minHeight: '500px',
+              border: '1px solid var(--line)',
+              background: 'var(--paper-lifted)',
+            }}
+          />
+          <p className="help" style={{ marginTop: '0.5rem' }}>
+            Vises dokumentet ikke? Brug <em>Hent dokument</em>-knappen ovenfor.
+          </p>
+        </div>
+      )}
     </main>
   );
 };

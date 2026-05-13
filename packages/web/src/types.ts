@@ -395,6 +395,10 @@ export interface DocumentList {
 export interface DocumentDetail extends DocumentListItem {
   meeting: { meetingId: string; kind: string; date: string; title: string } | null;
   downloadUrl: string;
+  /** Same S3 object as downloadUrl but with Content-Disposition: inline,
+   * so an <iframe> renders the PDF in-place instead of triggering a
+   * download. Only useful when contentType === 'application/pdf'. */
+  viewUrl: string;
   downloadExpiresIn: number;
 }
 
