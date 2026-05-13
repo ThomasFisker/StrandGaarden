@@ -24,7 +24,6 @@ import {
 const COMMENT_MAX = 2000;
 const REMOVAL_REASON_MAX = 1000;
 const DESCRIPTION_MAX = 2000;
-const WHO_IN_PHOTO_MAX = 1000;
 
 const prettyMonth = (iso: string): string => {
   try {
@@ -59,7 +58,6 @@ export const GalleryPhotoPage = () => {
   const frozen = profile?.stage === 2 && !isAdmin;
   const [editOpen, setEditOpen] = useState(false);
   const [editDesc, setEditDesc] = useState('');
-  const [editWho, setEditWho] = useState('');
   const [editYear, setEditYear] = useState<string>('');
   const [editYearApprox, setEditYearApprox] = useState(false);
   const [editHouses, setEditHouses] = useState<number[]>([]);
@@ -97,7 +95,6 @@ export const GalleryPhotoPage = () => {
   const openEdit = () => {
     if (!photo) return;
     setEditDesc(photo.description);
-    setEditWho(photo.whoInPhoto);
     setEditYear(photo.year === null ? '' : String(photo.year));
     setEditYearApprox(photo.yearApprox);
     setEditHouses(photo.houseNumbers.slice());
@@ -145,7 +142,6 @@ export const GalleryPhotoPage = () => {
       }
       await updatePhoto(session.idToken, photo.photoId, {
         description: desc,
-        whoInPhoto: editWho.trim(),
         year: yearNum,
         yearApprox: editYearApprox,
         houseNumbers: isAdmin ? editHouses : photo.houseNumbers,
@@ -340,17 +336,6 @@ export const GalleryPhotoPage = () => {
                   />
                   <div className="help">{editDesc.length}/{DESCRIPTION_MAX} tegn</div>
                 </div>
-                <div className="field">
-                  <label htmlFor="edit-who">Hvem er på billedet (fritekst)</label>
-                  <textarea
-                    id="edit-who"
-                    rows={2}
-                    maxLength={WHO_IN_PHOTO_MAX}
-                    value={editWho}
-                    onChange={(e) => setEditWho(e.target.value)}
-                    disabled={editSaving}
-                  />
-                </div>
                 <div className="field-row">
                   <div className="field">
                     <label htmlFor="edit-year">År</label>
@@ -476,13 +461,6 @@ export const GalleryPhotoPage = () => {
             ) : (
               <>
                 {photo.description && <p className="photo-desc">{photo.description}</p>}
-
-                {photo.whoInPhoto && (
-                  <div className="photo-section">
-                    <p className="photo-section-title">Hvem er på billedet</p>
-                    <p style={{ margin: 0, color: 'var(--ink-soft)' }}>{photo.whoInPhoto}</p>
-                  </div>
-                )}
 
                 {photo.persons.length > 0 && (
                   <div className="photo-section">

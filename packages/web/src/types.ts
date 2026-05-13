@@ -23,7 +23,6 @@ export interface UploadMetadata {
   filename: string;
   contentType: string;
   description: string;
-  whoInPhoto: string;
   year: number | null;
   yearApprox: boolean;
   houseNumbers: number[];
@@ -53,7 +52,6 @@ export interface MyPhoto {
   originalFilename: string;
   contentType: string;
   description: string;
-  whoInPhoto: string;
   year: number | null;
   yearApprox: boolean;
   houseNumbers: number[];
@@ -83,7 +81,6 @@ export interface ReviewPhoto {
   processedAt: string | null;
   originalFilename: string;
   description: string;
-  whoInPhoto: string;
   year: number | null;
   yearApprox: boolean;
   houseNumbers: number[];
@@ -114,7 +111,6 @@ export interface GalleryItem {
   photoId: string;
   shortId: number | null;
   description: string;
-  whoInPhoto: string;
   year: number | null;
   yearApprox: boolean;
   houseNumbers: number[];
@@ -219,7 +215,6 @@ export interface BookPhoto {
   photoId: string;
   shortId: number | null;
   description: string;
-  whoInPhoto: string;
   year: number | null;
   yearApprox: boolean;
   houseNumbers: number[];

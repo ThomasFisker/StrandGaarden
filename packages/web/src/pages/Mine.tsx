@@ -271,7 +271,6 @@ export const MinePage = () => {
                   ? `Kategori: ${p.activityName}`
                   : 'Hus ukendt'}
             </p>
-            {p.whoInPhoto && <p className="mine-card-meta">{p.whoInPhoto}</p>}
             {p.persons.length > 0 && (
               <div className="person-chips">
                 {p.persons.map((person) => (

@@ -54,7 +54,6 @@ export const UploadPage = () => {
   const [file, setFile] = useState<File | null>(null);
   const [dimensionWarning, setDimensionWarning] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [whoInPhoto, setWhoInPhoto] = useState('');
   const [yearText, setYearText] = useState('');
   const [yearApprox, setYearApprox] = useState(false);
   const [houseNumbers, setHouseNumbers] = useState<number[]>([]);
@@ -211,7 +210,6 @@ export const UploadPage = () => {
         filename: file!.name,
         contentType: file!.type,
         description: description.trim(),
-        whoInPhoto: whoInPhoto.trim(),
         year: parsedYear === null || Number.isNaN(parsedYear) ? null : parsedYear,
         yearApprox,
         houseNumbers: payloadHouses,
@@ -304,20 +302,11 @@ export const UploadPage = () => {
             maxLength={2000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Hvad viser billedet?"
+            placeholder="F.eks.: Sct. Hans bål på stranden. Fra venstre: Hans, Else og Edvard."
           />
-        </div>
-
-        <div className="field">
-          <label htmlFor="who">Hvem er på billedet?</label>
-          <textarea
-            id="who"
-            maxLength={1000}
-            value={whoInPhoto}
-            onChange={(e) => setWhoInPhoto(e.target.value)}
-            placeholder="F.eks.: Fra venstre: Hans Jensen, Ida Jensen"
-          />
-          <div className="help">Valgfrit. Skriv fra venstre mod højre.</div>
+          <div className="help">
+            Fortæl historien om billedet — hvor, hvornår, hvem og hvad der sker.
+          </div>
         </div>
 
         <div className="field">
@@ -347,8 +336,8 @@ export const UploadPage = () => {
           <label>Tag personer på billedet</label>
           <PersonTagInput value={personTags} onChange={setPersonTags} disabled={submitting} />
           <div className="help">
-            Valgfrit. Tags gør det nemmere at finde billedet senere. Vælg fra listen, eller skriv et nyt navn
-            og klik <em>Foreslå</em>; udvalget godkender nye navne.
+            Personer her gør billedet søgbart. Vælg fra listen, eller skriv et nyt navn og klik <em>Foreslå</em>;
+            udvalget godkender nye navne.
           </div>
         </div>
 

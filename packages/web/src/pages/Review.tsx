@@ -195,7 +195,6 @@ export const ReviewPage = () => {
                             : 'Hus ukendt'}
                       </span>
                     </div>
-                    {p.whoInPhoto && <p className="meta">{p.whoInPhoto}</p>}
                     {p.persons.length > 0 && (
                       <div className="person-chips">
                         {p.persons.map((person) => (

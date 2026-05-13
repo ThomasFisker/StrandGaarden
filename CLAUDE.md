@@ -200,7 +200,7 @@ status (not just Decided + visibilityWeb). It returns `priority`,
 `PATCH /photos/{id}` (photos-update) accepts uploader self-edits and
 ignores the `houseNumbers` field for non-admin callers — re-tagging
 goes via `/photos/{id}/section` instead. Editable for uploader:
-description, whoInPhoto, year, yearApprox, taggedPersons, plus the
+description, year, yearApprox, taggedPersons, plus the
 Kategori dropdown when the photo is in the kategori section. Helpwanted
 toggle is its own `PATCH /photos/{id}/help-wanted` endpoint, also
 exposed on the detail page meta panel.

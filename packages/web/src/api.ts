@@ -146,7 +146,6 @@ export const deletePhoto = async (idToken: string, photoId: string): Promise<voi
 
 export interface PhotoEditPatch {
   description: string;
-  whoInPhoto: string;
   year: number | null;
   yearApprox: boolean;
   houseNumbers: number[];
