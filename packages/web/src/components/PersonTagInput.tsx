@@ -38,6 +38,13 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
   const [activeIdx, setActiveIdx] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const blurTimeoutRef = useRef<number | null>(null);
+  const cancelPendingBlur = () => {
+    if (blurTimeoutRef.current !== null) {
+      window.clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+  };
 
   useEffect(() => {
     if (!session) return;
@@ -93,27 +100,19 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
     setActiveIdx(0);
   }, [dropdownRows.length]);
 
-  // Close dropdown on outside click
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (!containerRef.current) return;
-      const target = e.target as Node | null;
-      const inside = !!target && containerRef.current.contains(target);
-      const tagName = target && 'tagName' in target ? (target as Element).tagName : 'TEXT';
-      setLastSetReason(`doc-md:tgt=${tagName}:inside=${inside}`);
-      if (!inside) setFocus(false, 'doc-md-outside');
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    return () => cancelPendingBlur();
   }, []);
 
   const addExisting = (person: PersonTag) => {
+    cancelPendingBlur();
     onChange([...value, { slug: person.slug }]);
     setInput('');
     setFocus(true, 'addExisting');
     inputRef.current?.focus();
   };
   const addProposal = (displayName: string) => {
+    cancelPendingBlur();
     onChange([...value, { proposedName: displayName }]);
     setInput('');
     setFocus(true, 'addProposal');
@@ -188,8 +187,21 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
           type="text"
           value={input}
           disabled={disabled}
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
           onChange={(e) => setInput(e.target.value)}
-          onFocus={() => setFocus(true, 'onFocus')}
+          onFocus={() => {
+            cancelPendingBlur();
+            setFocus(true, 'onFocus');
+          }}
+          onBlur={() => {
+            cancelPendingBlur();
+            blurTimeoutRef.current = window.setTimeout(() => {
+              setFocus(false, 'blur-timeout');
+              blurTimeoutRef.current = null;
+            }, 150);
+          }}
           onKeyDown={onKeyDown}
           placeholder={value.length === 0 ? 'Skriv et navn…' : ''}
           className="chip-input"
