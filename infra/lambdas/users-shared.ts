@@ -1,6 +1,6 @@
-import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { ALL_GROUPS, isUdvalg, parseGroups } from './permissions';
 
-export const ALLOWED_GROUPS = ['admin', 'member', 'viewer'] as const;
+export const ALLOWED_GROUPS = ALL_GROUPS;
 export type AllowedGroup = (typeof ALLOWED_GROUPS)[number];
 
 export const json = (statusCode: number, body: unknown) => ({
@@ -15,17 +15,14 @@ export const jsonNoContent = (statusCode: number) => ({
   body: '',
 });
 
-export const parseGroups = (raw: unknown): string[] => {
-  if (Array.isArray(raw)) return raw.map(String);
-  if (typeof raw === 'string') return raw.replace(/^\[|\]$/g, '').split(/[\s,]+/).filter(Boolean);
-  return [];
-};
+export { parseGroups };
 
-export const requireAdmin = (event: APIGatewayProxyEventV2WithJWTAuthorizer): boolean => {
-  const claims = event.requestContext.authorizer?.jwt?.claims ?? {};
-  const groups = parseGroups(claims['cognito:groups']);
-  return groups.includes('admin');
-};
+/**
+ * @deprecated prefer the capability predicates in `./permissions`
+ * (e.g. `canManageUsers`). Kept for callers built before the role
+ * split; today it's equivalent to `isUdvalg` (Cognito group `admin`).
+ */
+export const requireAdmin = isUdvalg;
 
 /** Per-user metadata row in the single DynamoDB table.
  *

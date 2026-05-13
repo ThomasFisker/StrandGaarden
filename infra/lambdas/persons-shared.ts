@@ -1,4 +1,4 @@
-import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
+import { callerGroups, isAdmin } from './permissions';
 
 export const json = (statusCode: number, body: unknown) => ({
   statusCode,
@@ -12,17 +12,7 @@ export const jsonNoContent = (statusCode: number) => ({
   body: '',
 });
 
-const parseGroups = (raw: unknown): string[] => {
-  if (Array.isArray(raw)) return raw.map(String);
-  if (typeof raw === 'string') return raw.replace(/^\[|\]$/g, '').split(/[\s,]+/).filter(Boolean);
-  return [];
-};
-
-export const callerGroups = (event: APIGatewayProxyEventV2WithJWTAuthorizer): string[] =>
-  parseGroups(event.requestContext.authorizer?.jwt?.claims?.['cognito:groups']);
-
-export const isAdmin = (event: APIGatewayProxyEventV2WithJWTAuthorizer): boolean =>
-  callerGroups(event).includes('admin');
+export { callerGroups, isAdmin };
 
 const DANISH_MAP: Record<string, string> = {
   æ: 'ae', ø: 'oe', å: 'aa',

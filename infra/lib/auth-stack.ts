@@ -52,7 +52,17 @@ export class AuthStack extends cdk.Stack {
       removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
-    for (const groupName of ['admin', 'member', 'viewer']) {
+    // Cognito group names are the SOURCE OF TRUTH for the 5 logical
+    // roles. UI labels in Danish ("Kikker", "Medlem", "Udvalg",
+    // "Bestyrelse", "Administrator") map to these strings; see
+    // infra/lambdas/permissions.ts and packages/web/src/permissions.ts
+    // for the canonical mapping.
+    //
+    // `admin` retains its name (kept since it predates the split) but
+    // semantically represents Udvalg (photo committee). Renaming the
+    // group would require a destructive Cognito migration that's not
+    // worth the cost.
+    for (const groupName of ['admin', 'member', 'viewer', 'board', 'administrator']) {
       new cognito.CfnUserPoolGroup(this, `Group-${groupName}`, {
         userPoolId: this.userPool.userPoolId,
         groupName,

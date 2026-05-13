@@ -235,8 +235,11 @@ export interface BookExportResponse {
   expiresInSeconds: number;
 }
 
-export type UserRole = 'admin' | 'member' | 'viewer';
-export const USER_ROLES: UserRole[] = ['admin', 'member', 'viewer'];
+export type UserRole = 'administrator' | 'board' | 'admin' | 'member' | 'viewer';
+/** UI display order — highest privilege first. The Cognito group
+ * `admin` semantically represents "Udvalg" (photo committee) after the
+ * role split; see packages/web/src/permissions.ts. */
+export const USER_ROLES: UserRole[] = ['administrator', 'board', 'admin', 'member', 'viewer'];
 
 export interface AdminUser {
   username: string;

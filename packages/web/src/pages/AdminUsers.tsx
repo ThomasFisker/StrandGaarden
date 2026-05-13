@@ -10,13 +10,10 @@ import {
   updateUserLoginName,
 } from '../api';
 import { useSession } from '../session';
+import { effectiveRole, ROLE_LABEL } from '../permissions';
 import { HOUSES, USER_ROLES, type AdminUser, type UserRole } from '../types';
 
-const roleLabel: Record<UserRole, string> = {
-  admin: 'Administrator',
-  member: 'Medlem',
-  viewer: 'Kigger',
-};
+const roleLabel: Record<UserRole, string> = ROLE_LABEL;
 
 const statusLabel = (u: AdminUser): string => {
   if (!u.enabled) return 'Deaktiveret';
@@ -25,12 +22,8 @@ const statusLabel = (u: AdminUser): string => {
   return u.status;
 };
 
-const primaryGroup = (groups: string[]): UserRole | '—' => {
-  if (groups.includes('admin')) return 'admin';
-  if (groups.includes('member')) return 'member';
-  if (groups.includes('viewer')) return 'viewer';
-  return '—';
-};
+const primaryGroup = (groups: string[]): UserRole | '—' =>
+  (effectiveRole(groups) as UserRole | null) ?? '—';
 
 export const AdminUsersPage = () => {
   const { session } = useSession();
