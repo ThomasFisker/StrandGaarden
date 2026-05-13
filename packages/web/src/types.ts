@@ -348,6 +348,70 @@ export const HOUSES: readonly number[] = [
 export const MIN_LONG_EDGE = 800;
 export const BOOK_MIN_LONG_EDGE = 1500;
 
+/** Document feature ----------------------------------------------------- */
+
+export type MeetingKind = 'board' | 'assembly';
+
+export const DOC_CATEGORIES = [
+  'Mødeindkaldelse',
+  'Referat',
+  'Årsregnskab',
+  'Bilag',
+  'Historisk',
+  'Andet',
+] as const;
+export type DocCategory = (typeof DOC_CATEGORIES)[number];
+
+export interface Meeting {
+  meetingId: string;
+  kind: MeetingKind | string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  description: string;
+  createdAt: string;
+  createdByEmail: string | null;
+}
+
+export interface DocumentListItem {
+  docId: string;
+  title: string;
+  meetingId: string | null;
+  category: string;
+  year: number | null;
+  tags: string[];
+  note: string | null;
+  contentType: string;
+  originalFilename: string;
+  uploadedAt: string;
+  uploadedByEmail: string | null;
+}
+
+export interface DocumentList {
+  items: DocumentListItem[];
+  filters: { years: number[]; categories: string[] };
+}
+
+export interface DocumentDetail extends DocumentListItem {
+  meeting: { meetingId: string; kind: string; date: string; title: string } | null;
+  downloadUrl: string;
+  downloadExpiresIn: number;
+}
+
+export interface DocumentUploadUrlResponse {
+  docId: string;
+  uploadUrl: string;
+  expiresIn: number;
+  maxBytes: number;
+  s3Key: string;
+}
+
+export const DOC_ACCEPTED_MIME: Record<string, string> = {
+  'application/pdf': 'PDF',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+};
+
+export const DOC_MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
 /** Human-readable short ID like "ID-00042". Used when referring to a photo
  * verbally or in chat — easier than a UUID. */
 export const formatShortId = (n: number | null | undefined): string =>

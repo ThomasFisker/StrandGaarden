@@ -20,6 +20,8 @@ import { AdminActivitiesPage } from './pages/AdminActivities';
 import { AdminHouseTextsPage } from './pages/AdminHouseTexts';
 import { NotFoundPage } from './pages/NotFound';
 import { SamtykkePage } from './pages/Samtykke';
+import { DocumentsPage } from './pages/Documents';
+import { DocumentDetailPage } from './pages/DocumentDetail';
 
 export const App = () => (
   <ProfileProvider>
@@ -36,6 +38,10 @@ export const App = () => (
           <Route path="/mine/kategori" element={<MinePage />} />
           <Route path="/mine/tekst" element={<MinePage />} />
           <Route path="/samtykke" element={<SamtykkePage />} />
+        </Route>
+        <Route element={<ProtectedRoute requireAny={['member', 'admin', 'board', 'administrator']} />}>
+          <Route path="/dokumenter" element={<DocumentsPage />} />
+          <Route path="/dokumenter/:id" element={<DocumentDetailPage />} />
         </Route>
         <Route element={<ProtectedRoute requireGroup="admin" />}>
           <Route path="/admin" element={<AdminHomePage />} />

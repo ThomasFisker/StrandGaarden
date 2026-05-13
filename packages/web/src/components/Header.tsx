@@ -1,20 +1,26 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { Claims } from '../auth';
 import { useProfile } from '../profile';
+import {
+  canManagePhotos,
+  canUploadPhotos,
+  canViewDocs,
+  effectiveRole,
+  ROLE_LABEL,
+} from '../permissions';
 
 const primaryRole = (groups: string[]): string => {
-  if (groups.includes('admin')) return 'Administrator';
-  if (groups.includes('member')) return 'Medlem';
-  if (groups.includes('viewer')) return 'Kigger';
-  return '(ingen rolle)';
+  const r = effectiveRole(groups);
+  return r ? ROLE_LABEL[r] : '(ingen rolle)';
 };
 
 export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => void }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile } = useProfile();
-  const canUpload = claims.groups.some((g) => g === 'admin' || g === 'member');
-  const isAdmin = claims.groups.includes('admin');
+  const canUpload = canUploadPhotos(claims);
+  const isAdmin = canManagePhotos(claims);
+  const showDocs = canViewDocs(claims);
   // Gallery stays visible for admins always; for non-admins we hide it in
   // stages 1+2 where the gallery isn't the audience-facing experience.
   // While the profile is still loading we keep it visible so the link
@@ -51,6 +57,18 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
               }
             >
               Mine billeder
+            </NavLink>
+          )}
+          {showDocs && (
+            <NavLink
+              to="/dokumenter"
+              className={() =>
+                location.pathname === '/dokumenter' || location.pathname.startsWith('/dokumenter/')
+                  ? 'active'
+                  : undefined
+              }
+            >
+              Dokumenter
             </NavLink>
           )}
           {isAdmin && (

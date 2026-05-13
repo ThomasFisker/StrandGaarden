@@ -9,9 +9,14 @@ import type {
   BookExportResponse,
   BookPhoto,
   DecisionResponse,
+  DocumentDetail,
+  DocumentList,
+  DocumentUploadUrlResponse,
   GalleryDetail,
   GalleryList,
   GdprText,
+  Meeting,
+  MeetingKind,
   MyPhoto,
   MyProfile,
   PersonTag,
@@ -559,4 +564,124 @@ export const listHouseTexts = async (idToken: string): Promise<AdminHouseTextRow
   if (!r.ok) return throwFromResponse(r, 'house-texts');
   const b = (await r.json()) as { items: AdminHouseTextRow[] };
   return b.items ?? [];
+};
+
+// ---- Documents + Meetings -------------------------------------------------
+
+export const listMeetings = async (idToken: string): Promise<Meeting[]> => {
+  const r = await fetch(`${apiBase}/meetings`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'meetings');
+  const b = (await r.json()) as { items: Meeting[] };
+  return b.items ?? [];
+};
+
+export const createMeeting = async (
+  idToken: string,
+  body: { kind: MeetingKind; date: string; title: string; description?: string },
+): Promise<{ meetingId: string; createdAt: string }> => {
+  const r = await fetch(`${apiBase}/meetings`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return throwFromResponse(r, 'meetings POST');
+  return r.json();
+};
+
+export const updateMeeting = async (
+  idToken: string,
+  meetingId: string,
+  body: { kind: MeetingKind; date: string; title: string; description?: string },
+): Promise<{ meetingId: string; updatedAt: string }> => {
+  const r = await fetch(`${apiBase}/meetings/${encodeURIComponent(meetingId)}`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return throwFromResponse(r, `meetings/${meetingId} PATCH`);
+  return r.json();
+};
+
+export const deleteMeeting = async (idToken: string, meetingId: string): Promise<void> => {
+  const r = await fetch(`${apiBase}/meetings/${encodeURIComponent(meetingId)}`, {
+    method: 'DELETE',
+    headers: bearer(idToken),
+  });
+  if (!r.ok && r.status !== 204) return throwFromResponse(r, `meetings/${meetingId} DELETE`);
+};
+
+export const listDocuments = async (
+  idToken: string,
+  filters?: { year?: number; category?: string; meetingId?: string; q?: string },
+): Promise<DocumentList> => {
+  const qs = new URLSearchParams();
+  if (filters?.year !== undefined) qs.set('year', String(filters.year));
+  if (filters?.category) qs.set('category', filters.category);
+  if (filters?.meetingId) qs.set('meetingId', filters.meetingId);
+  if (filters?.q) qs.set('q', filters.q);
+  const suffix = qs.toString() ? `?${qs}` : '';
+  const r = await fetch(`${apiBase}/documents${suffix}`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'documents');
+  return r.json();
+};
+
+export const getDocument = async (idToken: string, docId: string): Promise<DocumentDetail> => {
+  const r = await fetch(`${apiBase}/documents/${encodeURIComponent(docId)}`, {
+    headers: bearer(idToken),
+  });
+  if (!r.ok) return throwFromResponse(r, `documents/${docId}`);
+  return r.json();
+};
+
+export interface DocumentUploadBody {
+  filename: string;
+  contentType: string;
+  title: string;
+  category: string;
+  year: number;
+  meetingId?: string | null;
+  note?: string;
+  tags?: string[];
+}
+
+export const requestDocumentUploadUrl = async (
+  idToken: string,
+  body: DocumentUploadBody,
+): Promise<DocumentUploadUrlResponse> => {
+  const r = await fetch(`${apiBase}/documents/upload-url`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return throwFromResponse(r, 'documents/upload-url');
+  return r.json();
+};
+
+export const updateDocument = async (
+  idToken: string,
+  docId: string,
+  body: {
+    title: string;
+    category: string;
+    year: number;
+    meetingId: string | null;
+    note?: string;
+    tags?: string[];
+  },
+): Promise<{ docId: string; updatedAt: string }> => {
+  const r = await fetch(`${apiBase}/documents/${encodeURIComponent(docId)}`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return throwFromResponse(r, `documents/${docId} PATCH`);
+  return r.json();
+};
+
+export const deleteDocument = async (idToken: string, docId: string): Promise<void> => {
+  const r = await fetch(`${apiBase}/documents/${encodeURIComponent(docId)}`, {
+    method: 'DELETE',
+    headers: bearer(idToken),
+  });
+  if (!r.ok && r.status !== 204) return throwFromResponse(r, `documents/${docId} DELETE`);
 };
