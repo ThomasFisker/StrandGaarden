@@ -29,7 +29,12 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
   const [catalog, setCatalog] = useState<PersonTag[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [input, setInput] = useState('');
-  const [focus, setFocus] = useState(false);
+  const [focus, setFocusRaw] = useState(false);
+  const [lastSetReason, setLastSetReason] = useState<string>('init');
+  const setFocus = (next: boolean, reason: string) => {
+    setLastSetReason(`${reason}:${next}`);
+    setFocusRaw(next);
+  };
   const [activeIdx, setActiveIdx] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -92,7 +97,11 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (!containerRef.current) return;
-      if (!containerRef.current.contains(e.target as Node)) setFocus(false);
+      const target = e.target as Node | null;
+      const inside = !!target && containerRef.current.contains(target);
+      const tagName = target && 'tagName' in target ? (target as Element).tagName : 'TEXT';
+      setLastSetReason(`doc-md:tgt=${tagName}:inside=${inside}`);
+      if (!inside) setFocus(false, 'doc-md-outside');
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -101,13 +110,13 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
   const addExisting = (person: PersonTag) => {
     onChange([...value, { slug: person.slug }]);
     setInput('');
-    setFocus(true);
+    setFocus(true, 'addExisting');
     inputRef.current?.focus();
   };
   const addProposal = (displayName: string) => {
     onChange([...value, { proposedName: displayName }]);
     setInput('');
-    setFocus(true);
+    setFocus(true, 'addProposal');
     inputRef.current?.focus();
   };
   const removeAt = (idx: number) => {
@@ -134,7 +143,7 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
     } else if (e.key === 'Backspace' && !input && value.length > 0) {
       removeAt(value.length - 1);
     } else if (e.key === 'Escape') {
-      setFocus(false);
+      setFocus(false, 'escape');
     }
   };
 
@@ -180,7 +189,7 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
           value={input}
           disabled={disabled}
           onChange={(e) => setInput(e.target.value)}
-          onFocus={() => setFocus(true)}
+          onFocus={() => setFocus(true, 'onFocus')}
           onKeyDown={onKeyDown}
           placeholder={value.length === 0 ? 'Skriv et navn…' : ''}
           className="chip-input"
@@ -190,7 +199,7 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
       {loadError && <div className="error">{loadError}</div>}
 
       <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '0.2rem', fontFamily: 'monospace' }}>
-        debug: focus={String(focus)} cat={catalog.length} sel={selectedSlugs.size} rows={dropdownRows.length} input="{input}"
+        debug: focus={String(focus)} cat={catalog.length} sel={selectedSlugs.size} rows={dropdownRows.length} input="{input}" last={lastSetReason}
       </div>
 
       {focus && dropdownRows.length > 0 && (
