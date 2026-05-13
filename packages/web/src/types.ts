@@ -352,18 +352,18 @@ export const BOOK_MIN_LONG_EDGE = 1500;
 
 export type MeetingKind = 'board' | 'assembly';
 
-export const DOC_CATEGORIES = [
-  'Mødeindkaldelse',
-  'Referat',
-  'Formandens Beretning',
-  'Årsregnskab',
-  'Budget',
-  'Vedtægter',
-  'Bilag',
-  'Historisk',
-  'Andet',
-] as const;
-export type DocCategory = (typeof DOC_CATEGORIES)[number];
+/** Categories are admin-managed via /bestyrelse/dokument-kategorier.
+ * The SPA fetches the list at runtime via `listDocCategories()` and
+ * passes it to the upload form. No compile-time enum any more. */
+export type DocCategory = string;
+
+export interface DocCategoryRow {
+  key: string;
+  displayName: string;
+  displayOrder: number;
+  createdAt: string | null;
+  createdByEmail: string | null;
+}
 
 export interface Meeting {
   meetingId: string;

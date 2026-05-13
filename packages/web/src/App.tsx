@@ -26,6 +26,7 @@ import { BestyrelsenPage } from './pages/Bestyrelsen';
 import { BestyrelsenMeetingsPage } from './pages/BestyrelsenMeetings';
 import { BestyrelsenMeetingDetailPage } from './pages/BestyrelsenMeetingDetail';
 import { BestyrelsenDocumentsPage } from './pages/BestyrelsenDocuments';
+import { BestyrelsenDocCategoriesPage } from './pages/BestyrelsenDocCategories';
 
 export const App = () => (
   <ProfileProvider>
@@ -64,6 +65,9 @@ export const App = () => (
           <Route path="/bestyrelse/moder" element={<BestyrelsenMeetingsPage />} />
           <Route path="/bestyrelse/moder/:id" element={<BestyrelsenMeetingDetailPage />} />
           <Route path="/bestyrelse/dokumenter" element={<BestyrelsenDocumentsPage />} />
+        </Route>
+        <Route element={<ProtectedRoute requireGroup="administrator" />}>
+          <Route path="/bestyrelse/dokument-kategorier" element={<BestyrelsenDocCategoriesPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>

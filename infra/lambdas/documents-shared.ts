@@ -31,24 +31,10 @@ export type MeetingKind = (typeof MEETING_KINDS)[number];
 export const isMeetingKind = (s: unknown): s is MeetingKind =>
   typeof s === 'string' && (MEETING_KINDS as readonly string[]).includes(s);
 
-/** Hardcoded category enum — mirrors VALID_HOUSES convention.
- *
- * Promote to admin-managed (like Aktiviteter) only if friction shows
- * up; board categories are stable by nature. */
-export const DOC_CATEGORIES = [
-  'Mødeindkaldelse',
-  'Referat',
-  'Formandens Beretning',
-  'Årsregnskab',
-  'Budget',
-  'Vedtægter',
-  'Bilag',
-  'Historisk',
-  'Andet',
-] as const;
-export type DocCategory = (typeof DOC_CATEGORIES)[number];
-export const isDocCategory = (s: unknown): s is DocCategory =>
-  typeof s === 'string' && (DOC_CATEGORIES as readonly string[]).includes(s);
+/** Categories are admin-managed via /bestyrelse/dokument-kategorier
+ * (DDB partition `DOCCATEGORYLIST`). Validation lives in
+ * `loadDocCategoryNames` from `doc-categories-shared.ts`. */
+export type DocCategory = string;
 
 /** MIME allowlist for document uploads. Separate from the photo
  * allowlist — do not merge them. */

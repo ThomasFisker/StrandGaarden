@@ -555,6 +555,46 @@ export class ApiStack extends cdk.Stack {
     props.table.grantReadWriteData(documentsDeleteFn);
     props.originalsBucket.grantDelete(documentsDeleteFn);
 
+    const docCategoriesListFn = new lambdaNodejs.NodejsFunction(this, 'DocCategoriesListFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'doc-categories-list.ts'),
+      functionName: `strandgaarden-${props.stage}-doc-categories-list`,
+      description: 'List document categories (medlem+ — drives the upload form dropdown)',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadData(docCategoriesListFn);
+
+    const docCategoriesCreateFn = new lambdaNodejs.NodejsFunction(this, 'DocCategoriesCreateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'doc-categories-create.ts'),
+      functionName: `strandgaarden-${props.stage}-doc-categories-create`,
+      description: 'Administrator-only: create a document category',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(docCategoriesCreateFn);
+
+    const docCategoriesUpdateFn = new lambdaNodejs.NodejsFunction(this, 'DocCategoriesUpdateFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'doc-categories-update.ts'),
+      functionName: `strandgaarden-${props.stage}-doc-categories-update`,
+      description: 'Administrator-only: rename or reorder a document category',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(docCategoriesUpdateFn);
+
+    const docCategoriesDeleteFn = new lambdaNodejs.NodejsFunction(this, 'DocCategoriesDeleteFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'doc-categories-delete.ts'),
+      functionName: `strandgaarden-${props.stage}-doc-categories-delete`,
+      description: 'Administrator-only: delete a document category (existing docs keep their stored string)',
+      timeout: cdk.Duration.seconds(10),
+    });
+    props.table.grantReadWriteData(docCategoriesDeleteFn);
+
+    // The two doc-write Lambdas also need to read the category list at
+    // validation time. Their existing grantReadWriteData already covers
+    // the read; no extra grant required.
+
     // Upload-url Lambda also needs to read and write PERSON items (to verify
     // known slugs and upsert pending proposals). Its existing grantWriteData
     // covers the write side; add read for the GetCommand guard.
@@ -948,6 +988,31 @@ export class ApiStack extends cdk.Stack {
       path: '/documents/{id}',
       methods: [apigwv2.HttpMethod.DELETE],
       integration: new apigwIntegrations.HttpLambdaIntegration('DocumentsDeleteIntegration', documentsDeleteFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/doc-categories',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration('DocCategoriesListIntegration', docCategoriesListFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/doc-categories',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new apigwIntegrations.HttpLambdaIntegration('DocCategoriesCreateIntegration', docCategoriesCreateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/doc-categories/{key}',
+      methods: [apigwv2.HttpMethod.PATCH],
+      integration: new apigwIntegrations.HttpLambdaIntegration('DocCategoriesUpdateIntegration', docCategoriesUpdateFn),
+      authorizer: jwtAuthorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/doc-categories/{key}',
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: new apigwIntegrations.HttpLambdaIntegration('DocCategoriesDeleteIntegration', docCategoriesDeleteFn),
       authorizer: jwtAuthorizer,
     });
 

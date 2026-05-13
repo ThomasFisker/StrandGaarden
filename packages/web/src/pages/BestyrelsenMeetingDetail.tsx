@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { deleteDocument, listDocuments, listMeetings } from '../api';
+import { deleteDocument, listDocCategories, listDocuments, listMeetings } from '../api';
 import { DocumentUploadForm } from '../components/DocumentUploadForm';
 import { useSession } from '../session';
-import type { DocumentListItem, Meeting } from '../types';
+import type { DocCategoryRow, DocumentListItem, Meeting } from '../types';
 
 const KIND_LABEL: Record<string, string> = {
   board: 'Bestyrelsesmøde',
@@ -23,18 +23,21 @@ export const BestyrelsenMeetingDetailPage = () => {
   const { id } = useParams();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [docs, setDocs] = useState<DocumentListItem[]>([]);
+  const [categories, setCategories] = useState<DocCategoryRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!session || !id) return;
     setError(null);
     try {
-      const [m, d] = await Promise.all([
+      const [m, d, c] = await Promise.all([
         listMeetings(session.idToken),
         listDocuments(session.idToken, { meetingId: id }),
+        listDocCategories(session.idToken),
       ]);
       setMeetings(m);
       setDocs(d.items);
+      setCategories(c);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kunne ikke hente mødet');
     }
@@ -130,7 +133,12 @@ export const BestyrelsenMeetingDetailPage = () => {
       )}
 
       <div style={{ marginTop: '2rem' }}>
-        <DocumentUploadForm meetings={meetings} fixedMeetingId={meeting.meetingId} onUploaded={load} />
+        <DocumentUploadForm
+          meetings={meetings}
+          categories={categories}
+          fixedMeetingId={meeting.meetingId}
+          onUploaded={load}
+        />
       </div>
     </main>
   );

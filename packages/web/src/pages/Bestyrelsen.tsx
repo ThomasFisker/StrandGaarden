@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { listDocuments, listMeetings } from '../api';
+import { listDocCategories, listDocuments, listMeetings } from '../api';
+import { isAdministrator } from '../permissions';
 import { useSession } from '../session';
 
 interface Counts {
   meetings: number | null;
   documents: number | null;
+  categories: number | null;
 }
 
-const EMPTY: Counts = { meetings: null, documents: null };
+const EMPTY: Counts = { meetings: null, documents: null, categories: null };
 
 interface Card {
   to: string;
@@ -23,19 +25,23 @@ export const BestyrelsenPage = () => {
   const [counts, setCounts] = useState<Counts>(EMPTY);
   const [error, setError] = useState<string | null>(null);
 
+  const isAdmin = session ? isAdministrator(session.claims) : false;
+
   useEffect(() => {
     if (!session) return;
     let active = true;
     (async () => {
       try {
-        const [meetings, documents] = await Promise.all([
+        const [meetings, documents, categories] = await Promise.all([
           listMeetings(session.idToken).catch(() => null),
           listDocuments(session.idToken).catch(() => null),
+          listDocCategories(session.idToken).catch(() => null),
         ]);
         if (!active) return;
         setCounts({
           meetings: meetings ? meetings.length : null,
           documents: documents ? documents.items.length : null,
+          categories: categories ? categories.length : null,
         });
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : 'Kunne ikke hente tal');
@@ -70,6 +76,18 @@ export const BestyrelsenPage = () => {
       badge: null,
       badgeLabel: '',
     },
+    ...(isAdmin
+      ? [
+          {
+            to: '/bestyrelse/dokument-kategorier',
+            title: 'Dokument-kategorier',
+            description:
+              'Administrator-værktøj: tilføj, omdøb eller slet kategorier på dokument-uploadformularen.',
+            badge: counts.categories,
+            badgeLabel: 'kategorier',
+          } satisfies Card,
+        ]
+      : []),
   ];
 
   return (

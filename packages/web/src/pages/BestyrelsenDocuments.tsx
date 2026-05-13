@@ -1,26 +1,29 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { deleteDocument, listDocuments, listMeetings } from '../api';
+import { deleteDocument, listDocCategories, listDocuments, listMeetings } from '../api';
 import { DocumentUploadForm } from '../components/DocumentUploadForm';
 import { useSession } from '../session';
-import type { DocumentListItem, Meeting } from '../types';
+import type { DocCategoryRow, DocumentListItem, Meeting } from '../types';
 
 export const BestyrelsenDocumentsPage = () => {
   const { session } = useSession();
   const [docs, setDocs] = useState<DocumentListItem[] | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [categories, setCategories] = useState<DocCategoryRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!session) return;
     setError(null);
     try {
-      const [d, m] = await Promise.all([
+      const [d, m, c] = await Promise.all([
         listDocuments(session.idToken),
         listMeetings(session.idToken),
+        listDocCategories(session.idToken),
       ]);
       setDocs(d.items);
       setMeetings(m);
+      setCategories(c);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kunne ikke hente dokumenter');
     }
@@ -56,7 +59,7 @@ export const BestyrelsenDocumentsPage = () => {
       {error && <div className="error">{error}</div>}
 
       <div style={{ marginTop: '1.5rem' }}>
-        <DocumentUploadForm meetings={meetings} onUploaded={load} />
+        <DocumentUploadForm meetings={meetings} categories={categories} onUploaded={load} />
       </div>
 
       <h2 style={{ marginTop: '2rem' }}>Alle dokumenter</h2>

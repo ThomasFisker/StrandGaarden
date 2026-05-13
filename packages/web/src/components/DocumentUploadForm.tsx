@@ -4,14 +4,14 @@ import { requestDocumentUploadUrl } from '../api';
 import { useSession } from '../session';
 import {
   DOC_ACCEPTED_MIME,
-  DOC_CATEGORIES,
   DOC_MAX_UPLOAD_BYTES,
-  type DocCategory,
+  type DocCategoryRow,
   type Meeting,
 } from '../types';
 
 interface Props {
   meetings: Meeting[];
+  categories: DocCategoryRow[];
   fixedMeetingId?: string | null;
   onUploaded: () => void;
 }
@@ -36,11 +36,12 @@ const putToS3 = (url: string, file: File): Promise<void> =>
     xhr.send(file);
   });
 
-export const DocumentUploadForm = ({ meetings, fixedMeetingId, onUploaded }: Props) => {
+export const DocumentUploadForm = ({ meetings, categories, fixedMeetingId, onUploaded }: Props) => {
   const { session } = useSession();
+  const defaultCategory = categories[0]?.displayName ?? '';
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<DocCategory>('Andet');
+  const [category, setCategory] = useState<string>(defaultCategory);
   const [year, setYear] = useState<string>(String(CURRENT_YEAR));
   const [meetingId, setMeetingId] = useState<string>(fixedMeetingId ?? '');
   const [note, setNote] = useState('');
@@ -51,7 +52,7 @@ export const DocumentUploadForm = ({ meetings, fixedMeetingId, onUploaded }: Pro
   const reset = () => {
     setFile(null);
     setTitle('');
-    setCategory('Andet');
+    setCategory(defaultCategory);
     setYear(String(CURRENT_YEAR));
     setNote('');
     setTagsRaw('');
@@ -75,6 +76,10 @@ export const DocumentUploadForm = ({ meetings, fixedMeetingId, onUploaded }: Pro
     }
     if (!title.trim()) {
       setError('Titel skal udfyldes.');
+      return;
+    }
+    if (!category) {
+      setError('Ingen kategorier oprettet endnu. Administrator skal tilføje mindst én under /bestyrelse/dokument-kategorier.');
       return;
     }
     const yearNum = Number(year);
@@ -150,12 +155,13 @@ export const DocumentUploadForm = ({ meetings, fixedMeetingId, onUploaded }: Pro
         <select
           id="d-cat"
           value={category}
-          onChange={(e) => setCategory(e.target.value as DocCategory)}
-          disabled={submitting}
+          onChange={(e) => setCategory(e.target.value)}
+          disabled={submitting || categories.length === 0}
         >
-          {DOC_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          {categories.length === 0 && <option value="">— ingen kategorier oprettet —</option>}
+          {categories.map((c) => (
+            <option key={c.key} value={c.displayName}>
+              {c.displayName}
             </option>
           ))}
         </select>

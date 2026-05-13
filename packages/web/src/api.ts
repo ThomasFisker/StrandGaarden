@@ -9,6 +9,7 @@ import type {
   BookExportResponse,
   BookPhoto,
   DecisionResponse,
+  DocCategoryRow,
   DocumentDetail,
   DocumentList,
   DocumentUploadUrlResponse,
@@ -684,4 +685,46 @@ export const deleteDocument = async (idToken: string, docId: string): Promise<vo
     headers: bearer(idToken),
   });
   if (!r.ok && r.status !== 204) return throwFromResponse(r, `documents/${docId} DELETE`);
+};
+
+export const listDocCategories = async (idToken: string): Promise<DocCategoryRow[]> => {
+  const r = await fetch(`${apiBase}/doc-categories`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'doc-categories');
+  const b = (await r.json()) as { items: DocCategoryRow[] };
+  return b.items ?? [];
+};
+
+export const createDocCategory = async (
+  idToken: string,
+  body: { displayName: string; displayOrder?: number },
+): Promise<{ key: string; displayName: string; displayOrder: number; createdAt: string }> => {
+  const r = await fetch(`${apiBase}/doc-categories`, {
+    method: 'POST',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return throwFromResponse(r, 'doc-categories POST');
+  return r.json();
+};
+
+export const updateDocCategory = async (
+  idToken: string,
+  key: string,
+  body: { displayName?: string; displayOrder?: number },
+): Promise<{ key: string; displayName: string; displayOrder: number }> => {
+  const r = await fetch(`${apiBase}/doc-categories/${encodeURIComponent(key)}`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return throwFromResponse(r, `doc-categories/${key} PATCH`);
+  return r.json();
+};
+
+export const deleteDocCategory = async (idToken: string, key: string): Promise<void> => {
+  const r = await fetch(`${apiBase}/doc-categories/${encodeURIComponent(key)}`, {
+    method: 'DELETE',
+    headers: bearer(idToken),
+  });
+  if (!r.ok && r.status !== 204) return throwFromResponse(r, `doc-categories/${key} DELETE`);
 };

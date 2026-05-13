@@ -8,11 +8,11 @@ import {
   DOC_TAGS_MAX_COUNT,
   DOC_TITLE_MAX,
   docPk,
-  isDocCategory,
   isPositiveInt,
   META_SK,
   meetingPk,
 } from './documents-shared';
+import { loadDocCategoryNames } from './doc-categories-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
@@ -55,7 +55,13 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const errors: string[] = [];
   if (!title) errors.push('title required');
   if (title.length > DOC_TITLE_MAX) errors.push(`title max ${DOC_TITLE_MAX} chars`);
-  if (!isDocCategory(category)) errors.push('category must be one of the predefined values');
+  if (typeof category !== 'string' || !category) {
+    errors.push('category required');
+  } else {
+    const validCategoryNames = await loadDocCategoryNames(ddb, tableName);
+    if (!validCategoryNames.has(category))
+      errors.push('category must be one of the registered values');
+  }
   if (!isPositiveInt(year) || (year as number) < YEAR_MIN || (year as number) > CURRENT_YEAR + 1)
     errors.push(`year must be a positive integer between ${YEAR_MIN} and ${CURRENT_YEAR + 1}`);
   if (note.length > DOC_NOTE_MAX) errors.push(`note max ${DOC_NOTE_MAX} chars`);

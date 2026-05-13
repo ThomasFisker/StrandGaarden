@@ -16,12 +16,12 @@ import {
   DOC_UPLOAD_URL_TTL_SECONDS,
   docPk,
   FILENAME_MAX,
-  isDocCategory,
   isPositiveInt,
   META_SK,
   meetingPk,
   safeFilename,
 } from './documents-shared';
+import { loadDocCategoryNames } from './doc-categories-shared';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
@@ -70,7 +70,13 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     errors.push(`contentType must be one of: ${Object.keys(ACCEPTED_DOC_CONTENT_TYPES).join(', ')}`);
   if (!title) errors.push('title required');
   if (title.length > DOC_TITLE_MAX) errors.push(`title max ${DOC_TITLE_MAX} chars`);
-  if (!isDocCategory(category)) errors.push('category must be one of the predefined values');
+  if (typeof category !== 'string' || !category) {
+    errors.push('category required');
+  } else {
+    const validCategoryNames = await loadDocCategoryNames(ddb, tableName);
+    if (!validCategoryNames.has(category))
+      errors.push(`category must be one of the registered values (manage at /bestyrelse/dokument-kategorier)`);
+  }
   if (!isPositiveInt(year) || (year as number) < YEAR_MIN || (year as number) > CURRENT_YEAR + 1)
     errors.push(`year must be a positive integer between ${YEAR_MIN} and ${CURRENT_YEAR + 1}`);
   if (note.length > DOC_NOTE_MAX) errors.push(`note max ${DOC_NOTE_MAX} chars`);
