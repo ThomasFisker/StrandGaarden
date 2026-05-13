@@ -32,6 +32,7 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
   const [focus, setFocus] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -100,10 +101,14 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
   const addExisting = (person: PersonTag) => {
     onChange([...value, { slug: person.slug }]);
     setInput('');
+    setFocus(true);
+    inputRef.current?.focus();
   };
   const addProposal = (displayName: string) => {
     onChange([...value, { proposedName: displayName }]);
     setInput('');
+    setFocus(true);
+    inputRef.current?.focus();
   };
   const removeAt = (idx: number) => {
     const next = value.slice();
@@ -170,6 +175,7 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
           return null;
         })}
         <input
+          ref={inputRef}
           type="text"
           value={input}
           disabled={disabled}
