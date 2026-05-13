@@ -29,12 +29,7 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
   const [catalog, setCatalog] = useState<PersonTag[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [input, setInput] = useState('');
-  const [focus, setFocusRaw] = useState(false);
-  const [lastSetReason, setLastSetReason] = useState<string>('init');
-  const setFocus = (next: boolean, reason: string) => {
-    setLastSetReason(`${reason}:${next}`);
-    setFocusRaw(next);
-  };
+  const [focus, setFocus] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -108,14 +103,14 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
     cancelPendingBlur();
     onChange([...value, { slug: person.slug }]);
     setInput('');
-    setFocus(true, 'addExisting');
+    setFocus(true);
     inputRef.current?.focus();
   };
   const addProposal = (displayName: string) => {
     cancelPendingBlur();
     onChange([...value, { proposedName: displayName }]);
     setInput('');
-    setFocus(true, 'addProposal');
+    setFocus(true);
     inputRef.current?.focus();
   };
   const removeAt = (idx: number) => {
@@ -142,7 +137,7 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
     } else if (e.key === 'Backspace' && !input && value.length > 0) {
       removeAt(value.length - 1);
     } else if (e.key === 'Escape') {
-      setFocus(false, 'escape');
+      setFocus(false);
     }
   };
 
@@ -193,12 +188,12 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
           onChange={(e) => setInput(e.target.value)}
           onFocus={() => {
             cancelPendingBlur();
-            setFocus(true, 'onFocus');
+            setFocus(true);
           }}
           onBlur={() => {
             cancelPendingBlur();
             blurTimeoutRef.current = window.setTimeout(() => {
-              setFocus(false, 'blur-timeout');
+              setFocus(false);
               blurTimeoutRef.current = null;
             }, 150);
           }}
@@ -209,10 +204,6 @@ export const PersonTagInput = ({ value, onChange, disabled }: Props) => {
       </div>
 
       {loadError && <div className="error">{loadError}</div>}
-
-      <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '0.2rem', fontFamily: 'monospace' }}>
-        debug: focus={String(focus)} cat={catalog.length} sel={selectedSlugs.size} rows={dropdownRows.length} input="{input}" last={lastSetReason}
-      </div>
 
       {focus && dropdownRows.length > 0 && (
         <ul className="tag-dropdown" role="listbox">
