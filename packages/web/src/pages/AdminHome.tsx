@@ -135,13 +135,6 @@ export const AdminHomePage = () => {
       badge: null,
       badgeLabel: '',
     },
-    {
-      to: '/admin/users',
-      title: 'Brugere',
-      description: 'Opret nye medlemmer, administrér adgang, navne, kodeord og hus-nummer.',
-      badge: null,
-      badgeLabel: '',
-    },
   ];
 
   return (

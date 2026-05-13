@@ -7,7 +7,8 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { json, requireAdmin, USER_PK_PREFIX } from './users-shared';
+import { json, USER_PK_PREFIX } from './users-shared';
+import { canManageUsers } from './permissions';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const userPoolId = process.env.USER_POOL_ID!;
@@ -56,7 +57,7 @@ const loadUserExtras = async (): Promise<Map<string, UserRowExtras>> => {
 };
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
-  if (!requireAdmin(event)) return json(403, { error: 'Admin only' });
+  if (!canManageUsers(event)) return json(403, { error: 'Forbidden' });
 
   const all: UserType[] = [];
   let PaginationToken: string | undefined;

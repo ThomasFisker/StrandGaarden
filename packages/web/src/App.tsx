@@ -22,6 +22,10 @@ import { NotFoundPage } from './pages/NotFound';
 import { SamtykkePage } from './pages/Samtykke';
 import { DocumentsPage } from './pages/Documents';
 import { DocumentDetailPage } from './pages/DocumentDetail';
+import { BestyrelsenPage } from './pages/Bestyrelsen';
+import { BestyrelsenMeetingsPage } from './pages/BestyrelsenMeetings';
+import { BestyrelsenMeetingDetailPage } from './pages/BestyrelsenMeetingDetail';
+import { BestyrelsenDocumentsPage } from './pages/BestyrelsenDocuments';
 
 export const App = () => (
   <ProfileProvider>
@@ -43,17 +47,23 @@ export const App = () => (
           <Route path="/dokumenter" element={<DocumentsPage />} />
           <Route path="/dokumenter/:id" element={<DocumentDetailPage />} />
         </Route>
-        <Route element={<ProtectedRoute requireGroup="admin" />}>
+        <Route element={<ProtectedRoute requireAny={['admin', 'administrator']} />}>
           <Route path="/admin" element={<AdminHomePage />} />
           <Route path="/admin/fase" element={<AdminPhasePage />} />
           <Route path="/admin/aktiviteter" element={<AdminActivitiesPage />} />
           <Route path="/admin/hustekster" element={<AdminHouseTextsPage />} />
           <Route path="/review" element={<ReviewPage />} />
-          <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/personer" element={<AdminPersonsPage />} />
           <Route path="/admin/kommentarer" element={<AdminCommentsPage />} />
           <Route path="/admin/fjernelser" element={<AdminRemovalsPage />} />
           <Route path="/admin/bog" element={<AdminBookPage />} />
+        </Route>
+        <Route element={<ProtectedRoute requireAny={['board', 'administrator']} />}>
+          <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/bestyrelse" element={<BestyrelsenPage />} />
+          <Route path="/bestyrelse/moder" element={<BestyrelsenMeetingsPage />} />
+          <Route path="/bestyrelse/moder/:id" element={<BestyrelsenMeetingDetailPage />} />
+          <Route path="/bestyrelse/dokumenter" element={<BestyrelsenDocumentsPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>

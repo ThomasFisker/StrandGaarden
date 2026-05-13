@@ -4,7 +4,8 @@ import {
   CognitoIdentityProviderClient,
   UserNotFoundException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { json, requireAdmin } from './users-shared';
+import { json } from './users-shared';
+import { canManageUsers } from './permissions';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const userPoolId = process.env.USER_POOL_ID!;
@@ -14,7 +15,7 @@ const cognito = new CognitoIdentityProviderClient({ region });
 const LOGIN_NAME_RE = /^[A-Za-zÆØÅæøå0-9 ._-]{2,30}$/;
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
-  if (!requireAdmin(event)) return json(403, { error: 'Admin only' });
+  if (!canManageUsers(event)) return json(403, { error: 'Forbidden' });
 
   const username = event.pathParameters?.username;
   if (!username) return json(400, { error: 'Missing username' });

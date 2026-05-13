@@ -2,6 +2,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { Claims } from '../auth';
 import { useProfile } from '../profile';
 import {
+  canManageDocs,
   canManagePhotos,
   canUploadPhotos,
   canViewDocs,
@@ -21,6 +22,7 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
   const canUpload = canUploadPhotos(claims);
   const isAdmin = canManagePhotos(claims);
   const showDocs = canViewDocs(claims);
+  const showBoard = canManageDocs(claims);
   // Gallery stays visible for admins always; for non-admins we hide it in
   // stages 1+2 where the gallery isn't the audience-facing experience.
   // While the profile is still loading we keep it visible so the link
@@ -77,6 +79,18 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
               className={() => (onAdminSection ? 'active' : undefined)}
             >
               Udvalget
+            </NavLink>
+          )}
+          {showBoard && (
+            <NavLink
+              to="/bestyrelse"
+              className={() =>
+                location.pathname === '/bestyrelse' || location.pathname.startsWith('/bestyrelse/')
+                  ? 'active'
+                  : undefined
+              }
+            >
+              Bestyrelsen
             </NavLink>
           )}
         </nav>

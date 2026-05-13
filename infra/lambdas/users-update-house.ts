@@ -9,10 +9,10 @@ import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import {
   isValidHouse,
   json,
-  requireAdmin,
   userPk,
   USER_SK,
 } from './users-shared';
+import { canManageUsers } from './permissions';
 
 const region = process.env.AWS_REGION ?? 'eu-west-1';
 const userPoolId = process.env.USER_POOL_ID!;
@@ -26,7 +26,7 @@ interface Body {
 }
 
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
-  if (!requireAdmin(event)) return json(403, { error: 'Admin only' });
+  if (!canManageUsers(event)) return json(403, { error: 'Forbidden' });
 
   const username = event.pathParameters?.username;
   if (!username) return json(400, { error: 'Missing username' });

@@ -46,19 +46,21 @@ export const isBoard = (e: APIGatewayProxyEventV2WithJWTAuthorizer) => has(e, GR
 export const isAdministrator = (e: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   has(e, GROUP_ADMINISTRATOR);
 
-/**
- * Backward-compat alias. Callers built before the role split treat
- * `admin` as the highest privilege; after the split, `admin` is
- * "Udvalg" (committee). Existing call sites still work but the new
- * semantics are clearer via `isUdvalg`.
- */
-export const isAdmin = isUdvalg;
-
 /** True if the caller belongs to at least one of the given groups. */
 export const isAny = (e: APIGatewayProxyEventV2WithJWTAuthorizer, groups: CognitoGroup[]): boolean => {
   const cg = callerGroups(e);
   return groups.some((g) => cg.includes(g));
 };
+
+/**
+ * Backward-compat alias used by photo-admin Lambdas (review, photos-*,
+ * persons-*, activities-*, config-*). After the role split, both
+ * Udvalg (Cognito group `admin`) and Administrator have photo-admin
+ * powers — administrator is a superset role. Same behaviour as
+ * `canManagePhotos`; prefer that name in new code.
+ */
+export const isAdmin = (e: APIGatewayProxyEventV2WithJWTAuthorizer): boolean =>
+  isAny(e, [GROUP_UDVALG, GROUP_ADMINISTRATOR]);
 
 // Capability predicates — what each role is allowed to DO. These are
 // the only checks Lambdas outside this module should call.
