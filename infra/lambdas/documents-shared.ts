@@ -39,6 +39,7 @@ export const DOC_CATEGORIES = [
   'Mødeindkaldelse',
   'Referat',
   'Årsregnskab',
+  'Budget',
   'Bilag',
   'Historisk',
   'Andet',
