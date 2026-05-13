@@ -41,6 +41,7 @@ export const DOC_CATEGORIES = [
   'Formandens Beretning',
   'Årsregnskab',
   'Budget',
+  'Vedtægter',
   'Bilag',
   'Historisk',
   'Andet',
