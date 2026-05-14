@@ -27,6 +27,7 @@ import { BestyrelsenMeetingsPage } from './pages/BestyrelsenMeetings';
 import { BestyrelsenMeetingDetailPage } from './pages/BestyrelsenMeetingDetail';
 import { BestyrelsenDocumentsPage } from './pages/BestyrelsenDocuments';
 import { BestyrelsenDocCategoriesPage } from './pages/BestyrelsenDocCategories';
+import { HelpPage } from './pages/Help';
 
 export const App = () => (
   <ProfileProvider>
@@ -34,6 +35,7 @@ export const App = () => (
       <Route element={<Layout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/glemt-adgangskode" element={<ForgotPasswordPage />} />
+        <Route path="/hjaelp" element={<HelpPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Navigate to="/galleri" replace />} />
           <Route path="/galleri" element={<GalleryPage />} />

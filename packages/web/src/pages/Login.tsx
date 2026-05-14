@@ -90,6 +90,8 @@ export const LoginPage = () => {
           </form>
           <p className="reset-hint">
             <Link to="/glemt-adgangskode">Glemt adgangskode?</Link>
+            <span aria-hidden style={{ margin: '0 0.5rem', color: 'var(--ink-soft)' }}>·</span>
+            <Link to="/hjaelp">Sådan bruger du siden</Link>
           </p>
         </div>
       </section>

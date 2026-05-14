@@ -46,18 +46,66 @@ export class HostingStack extends cdk.Stack {
       autoDeleteObjects: !isProd,
     });
 
+    // index.html must revalidate every load so a new deploy is picked up
+    // without the user hard-refreshing. The browser still keeps the file
+    // (304 on revalidation is cheap), but never serves it from cache
+    // without checking with CloudFront first.
+    const htmlHeaders = new cloudfront.ResponseHeadersPolicy(this, 'HtmlNoCacheHeaders', {
+      responseHeadersPolicyName: `strandgaarden-${props.stage}-html-no-cache`,
+      customHeadersBehavior: {
+        customHeaders: [
+          {
+            header: 'cache-control',
+            value: 'no-cache, no-store, must-revalidate',
+            override: true,
+          },
+        ],
+      },
+    });
+
+    // Vite-hashed assets under /assets/<file>-<hash>.<ext> are immutable
+    // by construction — a new build always means a new filename. Cache
+    // them in the browser for a year so repeat visits are instant.
+    const assetHeaders = new cloudfront.ResponseHeadersPolicy(this, 'AssetLongCacheHeaders', {
+      responseHeadersPolicyName: `strandgaarden-${props.stage}-asset-long-cache`,
+      customHeadersBehavior: {
+        customHeaders: [
+          {
+            header: 'cache-control',
+            value: 'public, max-age=31536000, immutable',
+            override: true,
+          },
+        ],
+      },
+    });
+
+    const s3Origin = origins.S3BucketOrigin.withOriginAccessControl(this.webBucket);
+
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
       comment: `Strandgaarden ${props.stage} SPA`,
       defaultRootObject: 'index.html',
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
       defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(this.webBucket),
+        origin: s3Origin,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
         compress: true,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        responseHeadersPolicy: htmlHeaders,
+      },
+      additionalBehaviors: {
+        // Hashed Vite assets — long-cache.
+        '/assets/*': {
+          origin: s3Origin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+          cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
+          compress: true,
+          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+          responseHeadersPolicy: assetHeaders,
+        },
       },
       errorResponses: [
         {

@@ -2310,3 +2310,54 @@ button.link-muted:hover { color: var(--copper-deep); }
   color: var(--ink);
 }
 
+/* ---- Help page ---------------------------------------------------- */
+
+.help-page p,
+.help-page li {
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+.help-page h2 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 1.75rem;
+  margin-bottom: 0.6rem;
+  color: var(--ink);
+}
+.help-page h3 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 1.2rem;
+  margin-bottom: 0.3rem;
+  color: var(--ink);
+}
+.help-page section {
+  border-top: 1px solid var(--line);
+  padding-top: 1.5rem;
+}
+.help-page section:first-of-type { border-top: none; padding-top: 0; }
+.help-page code {
+  background: var(--paper-warm);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.95em;
+  color: var(--copper-deep);
+}
+.help-toc {
+  background: var(--paper-lifted);
+  border: 1px solid var(--line);
+  padding: 1rem 1.5rem 1rem 1rem;
+}
+.help-toc ol {
+  margin: 0;
+  padding-left: 1.4rem;
+}
+.help-toc li {
+  padding: 0.15rem 0;
+}
+.help-toc a {
+  color: var(--sea-deep);
+  text-decoration: none;
+}
+.help-toc a:hover { color: var(--copper); text-decoration: underline; }
+
