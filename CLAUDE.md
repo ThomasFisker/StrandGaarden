@@ -15,12 +15,17 @@ Stack: AWS CDK (TypeScript) · Cognito · API Gateway HTTP API · Lambda
 
 ## Live URLs
 
-- **SPA**: https://d2wq22ivboh02d.cloudfront.net/ — log in with the admin
-  user (`thomas.madsen@secondepic.com`, password `Picture1!`) or any user
-  created via /admin/users.
+- **SPA (canonical)**: https://medlemmer.strandgaardenis.dk/ — log in
+  with the admin user (`thomas.madsen@secondepic.com`, password
+  `Picture1!`) or any user created via /bestyrelse (Brugere).
+- **SPA (default CloudFront fallback)**: https://d2wq22ivboh02d.cloudfront.net/
+  — same content, kept reachable as a fallback if DNS at one.com
+  misbehaves.
 - **API**: https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com
-- **Custom domain** `jubilaeum.strandgaardenis.dk` — pending DNS
-  delegation; when it lands, small additive change.
+- **DNS / cert**: ACM cert `arn:aws:acm:us-east-1:734705207936:certificate/4d4d17cd-7bce-46b0-8bee-67ae7d286909`,
+  DNS-validated via a CNAME at one.com under
+  `_022da67cc4ee8f8b62b5dc9860e4b15c.medlemmer`. Leave the validation
+  record in place — ACM uses it for automatic yearly renewal.
 
 ## Valid house numbers
 

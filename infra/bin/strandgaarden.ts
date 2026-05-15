@@ -37,10 +37,14 @@ const hosting = new HostingStack(app, 'Strandgaarden-Dev-Hosting', {
 
 // Origins that need to talk to the API (browser → API Gateway) and PUT
 // uploads (browser → originals bucket). localhost entries stay so
-// `npm run dev` keeps working alongside the deployed site.
+// `npm run dev` keeps working alongside the deployed site. The
+// custom-domain alias and the default CloudFront URL are both kept so
+// users can hit either one (medlemmer.strandgaardenis.dk is the
+// canonical entry point, but the default URL stays as a fallback).
 const webOrigin = `https://${hosting.distribution.distributionDomainName}`;
+const customDomainOrigin = 'https://medlemmer.strandgaardenis.dk';
 const localDevOrigins = ['http://localhost:5173', 'http://localhost:3000'];
-const allowedOrigins = [...localDevOrigins, webOrigin];
+const allowedOrigins = [...localDevOrigins, webOrigin, customDomainOrigin];
 
 const storage = new StorageStack(app, 'Strandgaarden-Dev-Storage', {
   env,

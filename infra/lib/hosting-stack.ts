@@ -1,11 +1,22 @@
 import * as path from 'node:path';
 import * as cdk from 'aws-cdk-lib';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
+
+/** Custom domain alias for the SPA. The CNAME at one.com points
+ * medlemmer.strandgaardenis.dk → the CloudFront distribution domain;
+ * the ACM cert below is referenced as the viewer cert. Cert lives in
+ * us-east-1 (CloudFront requirement) and was issued outside CDK via
+ * `aws acm request-certificate` since the DNS validation record lives
+ * at one.com and isn't managed in this repo. */
+const CUSTOM_DOMAIN = 'medlemmer.strandgaardenis.dk';
+const CUSTOM_DOMAIN_CERT_ARN =
+  'arn:aws:acm:us-east-1:734705207936:certificate/4d4d17cd-7bce-46b0-8bee-67ae7d286909';
 
 export interface HostingStackProps extends cdk.StackProps {
   stage: string;
@@ -22,10 +33,10 @@ export interface HostingStackProps extends cdk.StackProps {
  *   deploy. The web bundle MUST be built before `cdk deploy` (CI does this
  *   in the workflow; locally run `npm run build -w @strandgaarden/web`).
  *
- * Custom domain (jubilaeum.strandgaardenis.dk) is intentionally deferred —
- * DNS delegation is still pending. When it lands we add an ACM cert in
- * us-east-1, a CNAME + domainNames on the distribution, and a Route53
- * alias, all additive.
+ * Custom domain: medlemmer.strandgaardenis.dk is served via the alias
+ * configured below. DNS for both the validation CNAME and the
+ * subdomain itself lives at one.com (the parent registrar) — see
+ * CUSTOM_DOMAIN_CERT_ARN above for the issued cert.
  */
 export class HostingStack extends cdk.Stack {
   public readonly webBucket: s3.Bucket;
@@ -81,11 +92,19 @@ export class HostingStack extends cdk.Stack {
 
     const s3Origin = origins.S3BucketOrigin.withOriginAccessControl(this.webBucket);
 
+    const customDomainCert = acm.Certificate.fromCertificateArn(
+      this,
+      'CustomDomainCert',
+      CUSTOM_DOMAIN_CERT_ARN,
+    );
+
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
       comment: `Strandgaarden ${props.stage} SPA`,
       defaultRootObject: 'index.html',
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
+      domainNames: [CUSTOM_DOMAIN],
+      certificate: customDomainCert,
       defaultBehavior: {
         origin: s3Origin,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -136,13 +155,17 @@ export class HostingStack extends cdk.Stack {
 
     new ssm.StringParameter(this, 'WebUrlParam', {
       parameterName: `/strandgaarden/${props.stage}/web/url`,
-      stringValue: `https://${this.distribution.distributionDomainName}`,
-      description: 'Base URL of the deployed SPA (CloudFront default domain)',
+      stringValue: `https://${CUSTOM_DOMAIN}`,
+      description: 'Public URL of the SPA (custom-domain alias)',
     });
 
     new cdk.CfnOutput(this, 'WebUrl', {
+      value: `https://${CUSTOM_DOMAIN}`,
+      description: 'Public URL of the SPA (custom-domain alias)',
+    });
+    new cdk.CfnOutput(this, 'WebUrlCloudFront', {
       value: `https://${this.distribution.distributionDomainName}`,
-      description: 'Public URL of the SPA',
+      description: 'Default CloudFront URL — still works, useful as a fallback',
     });
     new cdk.CfnOutput(this, 'DistributionId', {
       value: this.distribution.distributionId,
