@@ -96,6 +96,17 @@ export class ApiStack extends cdk.Stack {
     props.table.grantReadData(mineFn);
     props.derivedBucket.grantRead(mineFn);
 
+    const photosHouseMineFn = new lambdaNodejs.NodejsFunction(this, 'PhotosHouseMineFn', {
+      ...commonFnProps,
+      entry: path.join(lambdaDir, 'photos-house-mine.ts'),
+      functionName: `strandgaarden-${props.stage}-photos-house-mine`,
+      description:
+        'Returns every Stage-1 priority photo in the caller\'s assigned house with isMine flag and uploader byline',
+      timeout: cdk.Duration.seconds(20),
+    });
+    props.table.grantReadData(photosHouseMineFn);
+    props.derivedBucket.grantRead(photosHouseMineFn);
+
     const reviewListFn = new lambdaNodejs.NodejsFunction(this, 'ReviewListFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'review-list.ts'),
@@ -695,6 +706,16 @@ export class ApiStack extends cdk.Stack {
       path: '/photos/mine',
       methods: [apigwv2.HttpMethod.GET],
       integration: new apigwIntegrations.HttpLambdaIntegration('MineIntegration', mineFn),
+      authorizer: jwtAuthorizer,
+    });
+
+    this.httpApi.addRoutes({
+      path: '/photos/house/mine',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: new apigwIntegrations.HttpLambdaIntegration(
+        'PhotosHouseMineIntegration',
+        photosHouseMineFn,
+      ),
       authorizer: jwtAuthorizer,
     });
 

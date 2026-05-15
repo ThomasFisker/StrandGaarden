@@ -2095,6 +2095,8 @@ button.link-muted:hover { color: var(--copper-deep); }
   flex-direction: column;
 }
 .mine-card-house { border-left: 3px solid var(--copper); }
+.mine-card-sibling { background: var(--paper-warm); opacity: 0.9; }
+.mine-card-sibling .mine-card-priority-num { color: var(--ink-soft); }
 
 .mine-card-priority {
   display: flex;

@@ -89,12 +89,24 @@ export const HelpPage = () => {
 
       <section id="medlem" style={{ marginTop: '2.5rem' }}>
         <h2>4. Hvad kan du som medlem</h2>
+
+        <p>
+          <strong>Hvor er vi i forløbet?</strong> Lige nu er vi i fase 1, hvor vi <em>samler
+          billeder ind</em> fra alle huse. Når vi har fået billeder nok, går vi i en kort fase 2,
+          hvor Udvalget gennemgår alt og siden låses for ændringer. Til sidst åbner fase 3, hvor
+          billederne offentliggøres i <strong>Galleriet</strong> her på siden og udvalgte
+          billeder samles i den trykte jubilæumsbog. Så lige nu handler det om at få jeres
+          billeder med — galleriet kommer senere.
+        </p>
+
         <p>Som medlem har du adgang til alt det her:</p>
 
         <h3 style={{ marginTop: '1rem' }}>Galleri</h3>
         <p>
-          Klik <strong>Galleri</strong> i toppen for at se billeder andre medlemmer har uploadet og som
-          Udvalget har godkendt til hjemmesiden. Du kan filtrere på år, hus, person og kategori.
+          Når galleriet åbner (fase 3) kan du klikke <strong>Galleri</strong> i toppen for at se
+          billeder andre medlemmer har uploadet og som Udvalget har godkendt til hjemmesiden. Du
+          kan filtrere på år, hus, person og kategori. I fase 1 og 2 er galleriet endnu ikke
+          synligt — vi samler først, og åbner senere.
         </p>
 
         <h3 style={{ marginTop: '1rem' }}>Upload billede</h3>

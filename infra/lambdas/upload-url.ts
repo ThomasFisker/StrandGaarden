@@ -91,11 +91,13 @@ const countUserUploads = async (sub: string): Promise<number> => {
   return count;
 };
 
-/** Next free priority slot 1..max for the uploader's photos in the
- * given house. Returns null if every slot is taken (the per-house cap
- * elsewhere should already have caught this — this is defensive). */
+/** Next free priority slot 1..max in the given house, across ALL
+ * uploaders. The priority space is shared per house — when two members
+ * are assigned to the same house, they compete for the same 7 slots.
+ * Last upload wins the next free slot (fills the lowest gap first).
+ * Returns null if every slot is taken (the per-house cap elsewhere
+ * should already have caught this — this is defensive). */
 const nextFreePriority = async (
-  sub: string,
   house: number,
   max: number,
 ): Promise<number | null> => {
@@ -106,8 +108,8 @@ const nextFreePriority = async (
       new ScanCommand({
         TableName: tableName,
         FilterExpression:
-          'entity = :p AND uploaderSub = :u AND contains(houseNumbers, :h) AND attribute_exists(priority)',
-        ExpressionAttributeValues: { ':p': 'Photo', ':u': sub, ':h': house },
+          'entity = :p AND contains(houseNumbers, :h) AND attribute_exists(priority)',
+        ExpressionAttributeValues: { ':p': 'Photo', ':h': house },
         ProjectionExpression: 'priority',
         ExclusiveStartKey,
       }),
@@ -272,12 +274,14 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   }
 
   // Stage-1 + house branch: assign the next free priority slot in the
-  // uploader's house. Activity uploads and Stage-3 uploads don't carry a
-  // priority — null is fine.
+  // uploader's house. The slot space is shared per house — when two
+  // members are assigned to the same house, they compete for the same
+  // 7 slots, and the newest upload claims the lowest free one.
+  // Activity uploads and Stage-3 uploads don't carry a priority —
+  // null is fine.
   let resolvedPriority: number | null = null;
   if (stageOneNonAdmin && houseNumbers.length === 1 && !resolvedActivityKey && callerSubForCounts) {
     resolvedPriority = await nextFreePriority(
-      callerSubForCounts,
       houseNumbers[0],
       cfg.maxBookSlotsPerHouse,
     );
@@ -391,6 +395,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         taggedPersonSlugs: resolvedSlugs,
         uploaderSub: claims.sub,
         uploaderEmail: claims.email,
+        uploaderLoginName:
+          typeof claims.preferred_username === 'string' ? claims.preferred_username : '',
         createdAt,
         GSI1PK: 'STATUS#Uploaded',
         GSI1SK: `${createdAt}#${photoId}`,

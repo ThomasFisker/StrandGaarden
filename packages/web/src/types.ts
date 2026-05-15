@@ -73,6 +73,20 @@ export interface MyPhoto {
   priority: number | null;
 }
 
+/** Row returned by GET /photos/house/mine. Same shape as MyPhoto plus
+ * `isMine` (the caller is the uploader) and `uploaderDisplayName` (a
+ * human-readable name for the byline on cards belonging to other
+ * members of the house). */
+export interface HousePhoto extends MyPhoto {
+  isMine: boolean;
+  uploaderDisplayName: string;
+}
+
+export interface HousePhotosResponse {
+  items: HousePhoto[];
+  houseNumber: number | null;
+}
+
 export interface ReviewPhoto {
   photoId: string;
   shortId: number | null;

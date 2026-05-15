@@ -35,8 +35,10 @@ const countPriorityPhotosForHouse = async (house: number): Promise<number> => {
   return count;
 };
 
+/** Next free priority slot 1..max in the given house, across ALL
+ * uploaders. Slots are shared per house — see upload-url.ts for the
+ * same logic on initial upload. */
 const nextFreePriority = async (
-  sub: string,
   house: number,
   max: number,
 ): Promise<number | null> => {
@@ -47,8 +49,8 @@ const nextFreePriority = async (
       new ScanCommand({
         TableName: tableName,
         FilterExpression:
-          'entity = :p AND uploaderSub = :u AND contains(houseNumbers, :h) AND attribute_exists(priority)',
-        ExpressionAttributeValues: { ':p': 'Photo', ':u': sub, ':h': house },
+          'entity = :p AND contains(houseNumbers, :h) AND attribute_exists(priority)',
+        ExpressionAttributeValues: { ':p': 'Photo', ':h': house },
         ProjectionExpression: 'priority',
         ExclusiveStartKey,
       }),
@@ -152,7 +154,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         error: `Hus ${myHouse} har allerede ${used} af ${cfg.maxBookSlotsPerHouse} mulige billeder. Slet eller flyt et hus-billede først.`,
       });
     }
-    const newPriority = await nextFreePriority(callerSub, myHouse, cfg.maxBookSlotsPerHouse);
+    const newPriority = await nextFreePriority(myHouse, cfg.maxBookSlotsPerHouse);
     if (newPriority === null) {
       return json(409, {
         error: `Hus ${myHouse} har allerede ${cfg.maxBookSlotsPerHouse} billeder.`,

@@ -13,14 +13,17 @@ const region = process.env.AWS_REGION ?? 'eu-west-1';
 const tableName = process.env.TABLE_NAME!;
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region }));
 
-/** PATCH /photos/{id}/priority — re-rank the caller's photos in their
- * own house by swapping with the immediate neighbour above or below.
+/** PATCH /photos/{id}/priority — bump a photo up or down within the
+ * house's shared 7-slot book ordering. The slot space is shared across
+ * all members of the house, so swapping "up" on your photo may move
+ * another member's photo down by one. Last save wins.
  *
  * Body: { direction: 'up' | 'down' }.
  *
- * Auth: caller must be the photo's uploader. Admins are intentionally
- * blocked here — priority is a member-only concept (the user's own
- * ranking of their book contributions). Stage-2 freeze applies. */
+ * Auth: caller must be the photo's uploader (you can only press ↑↓
+ * on your own card). The swap partner is whoever holds the adjacent
+ * priority — could be a different member of the house. Stage-2 freeze
+ * applies. */
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) => {
   const claims = event.requestContext.authorizer?.jwt?.claims ?? {};
   const callerSub = typeof claims.sub === 'string' ? claims.sub : '';
@@ -67,7 +70,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   }
   const house = houseNumbers[0];
 
-  // Fetch all of the caller's photos in this house that have a priority.
+  // Fetch every priority-ranked photo in this house, regardless of
+  // uploader — the priority space is shared across all members of the
+  // house, so the swap partner may belong to someone else.
   type Slot = { photoId: string; priority: number };
   const slots: Slot[] = [];
   let ExclusiveStartKey: Record<string, unknown> | undefined;
@@ -76,8 +81,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       new ScanCommand({
         TableName: tableName,
         FilterExpression:
-          'entity = :p AND uploaderSub = :u AND contains(houseNumbers, :h) AND attribute_exists(priority)',
-        ExpressionAttributeValues: { ':p': 'Photo', ':u': callerSub, ':h': house },
+          'entity = :p AND contains(houseNumbers, :h) AND attribute_exists(priority)',
+        ExpressionAttributeValues: { ':p': 'Photo', ':h': house },
         ProjectionExpression: 'photoId, priority',
         ExclusiveStartKey,
       }),
@@ -108,7 +113,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const b = slots[otherIdx];
 
   // Atomic swap. ConditionExpressions guard against a concurrent change
-  // racing us between the scan and the write.
+  // racing us between the scan and the write. We don't condition on
+  // uploaderSub — the swap partner may belong to another member of the
+  // same house, and that's intentional under shared-slot semantics.
   try {
     await ddb.send(
       new TransactWriteCommand({
@@ -118,8 +125,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
               TableName: tableName,
               Key: { PK: `PHOTO#${a.photoId}`, SK: 'META' },
               UpdateExpression: 'SET priority = :new',
-              ConditionExpression: 'priority = :old AND uploaderSub = :u',
-              ExpressionAttributeValues: { ':new': b.priority, ':old': a.priority, ':u': callerSub },
+              ConditionExpression: 'priority = :old',
+              ExpressionAttributeValues: { ':new': b.priority, ':old': a.priority },
             },
           },
           {
@@ -127,8 +134,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
               TableName: tableName,
               Key: { PK: `PHOTO#${b.photoId}`, SK: 'META' },
               UpdateExpression: 'SET priority = :new',
-              ConditionExpression: 'priority = :old AND uploaderSub = :u',
-              ExpressionAttributeValues: { ':new': a.priority, ':old': b.priority, ':u': callerSub },
+              ConditionExpression: 'priority = :old',
+              ExpressionAttributeValues: { ':new': a.priority, ':old': b.priority },
             },
           },
         ],

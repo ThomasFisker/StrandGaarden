@@ -16,6 +16,8 @@ import type {
   GalleryDetail,
   GalleryList,
   GdprText,
+  HousePhoto,
+  HousePhotosResponse,
   Meeting,
   MeetingKind,
   MyPhoto,
@@ -133,6 +135,13 @@ export const getMyPhotos = async (idToken: string): Promise<MyPhoto[]> => {
   if (!r.ok) return throwFromResponse(r, 'photos/mine');
   const body = (await r.json()) as { items: MyPhoto[] };
   return body.items ?? [];
+};
+
+export const getHousePhotos = async (idToken: string): Promise<HousePhotosResponse> => {
+  const r = await fetch(`${apiBase}/photos/house/mine`, { headers: bearer(idToken) });
+  if (!r.ok) return throwFromResponse(r, 'photos/house/mine');
+  const body = (await r.json()) as { items?: HousePhoto[]; houseNumber?: number | null };
+  return { items: body.items ?? [], houseNumber: body.houseNumber ?? null };
 };
 
 export const getReviewQueue = async (idToken: string): Promise<ReviewPhoto[]> => {

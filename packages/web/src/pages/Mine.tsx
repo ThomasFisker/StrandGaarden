@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { getMyPhotos, movePhotoSection, swapPhotoPriority, updateHouseText } from '../api';
+import {
+  getHousePhotos,
+  getMyPhotos,
+  movePhotoSection,
+  swapPhotoPriority,
+  updateHouseText,
+} from '../api';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { useProfile } from '../profile';
 import { useSession } from '../session';
-import { formatShortId, type MyPhoto } from '../types';
+import { formatShortId, type HousePhoto, type MyPhoto } from '../types';
 
 const visibleLength = (html: string): number =>
   html
@@ -43,6 +49,7 @@ export const MinePage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [photos, setPhotos] = useState<MyPhoto[] | null>(null);
+  const [houseSiblings, setHouseSiblings] = useState<HousePhoto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const justUploaded = searchParams.get('justUploaded') === '1';
   const isAdmin = profile?.groups.includes('admin') ?? false;
@@ -80,13 +87,21 @@ export const MinePage = () => {
     }
   }, [location.pathname, stageOneMember, profile, navigate]);
 
+  const reloadPhotos = async (token: string) => {
+    const [own, house] = await Promise.all([
+      getMyPhotos(token),
+      getHousePhotos(token).catch(() => ({ items: [], houseNumber: null })),
+    ]);
+    setPhotos(own);
+    setHouseSiblings(house.items);
+  };
+
   const swapPriority = async (photo: MyPhoto, direction: 'up' | 'down') => {
     if (!session || swapping) return;
     setSwapping(photo.photoId);
     try {
       await swapPhotoPriority(session.idToken, photo.photoId, direction);
-      const items = await getMyPhotos(session.idToken);
-      setPhotos(items);
+      await reloadPhotos(session.idToken);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kunne ikke ændre rækkefølgen');
     } finally {
@@ -100,8 +115,7 @@ export const MinePage = () => {
     setError(null);
     try {
       await movePhotoSection(session.idToken, photo.photoId, { target: 'house' });
-      const [items] = await Promise.all([getMyPhotos(session.idToken), refreshProfile()]);
-      setPhotos(items);
+      await Promise.all([reloadPhotos(session.idToken), refreshProfile()]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kunne ikke flytte billedet');
     } finally {
@@ -115,8 +129,7 @@ export const MinePage = () => {
     setError(null);
     try {
       await movePhotoSection(session.idToken, photo.photoId, { target: 'other' });
-      const [items] = await Promise.all([getMyPhotos(session.idToken), refreshProfile()]);
-      setPhotos(items);
+      await Promise.all([reloadPhotos(session.idToken), refreshProfile()]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kunne ikke flytte billedet');
     } finally {
@@ -156,9 +169,14 @@ export const MinePage = () => {
   useEffect(() => {
     if (!session) return;
     let active = true;
-    getMyPhotos(session.idToken)
-      .then((items) => {
-        if (active) setPhotos(items);
+    Promise.all([
+      getMyPhotos(session.idToken),
+      getHousePhotos(session.idToken).catch(() => ({ items: [], houseNumber: null })),
+    ])
+      .then(([own, house]) => {
+        if (!active) return;
+        setPhotos(own);
+        setHouseSiblings(house.items);
       })
       .catch((e) => {
         if (active) setError(e instanceof Error ? e.message : 'Kunne ikke hente billeder');
@@ -195,71 +213,110 @@ export const MinePage = () => {
 
   const renderCard = (
     p: MyPhoto,
-    opts: { showArrows?: { canUp: boolean; canDown: boolean }; section?: 'house' | 'other' } = {},
+    opts: {
+      showArrows?: { canUp: boolean; canDown: boolean };
+      section?: 'house' | 'other';
+      isMine?: boolean;
+      uploaderName?: string;
+    } = {},
   ) => {
+    const isMine = opts.isMine !== false;
     const detailHref = `/galleri/${encodeURIComponent(p.photoId)}`;
     const isHouseSection = opts.section === 'house';
     const isOtherSection = opts.section === 'other';
     const moveBusy = moving === p.photoId;
-    const showMoveToOther = !frozen && stageOneMember && isHouseSection;
+    // Only the uploader can rearrange / move / open the editor; other
+    // members of the same house see their houseSiblings cards as
+    // read-only.
+    const showMoveToOther = !frozen && stageOneMember && isHouseSection && isMine;
     const showMoveToHouse =
-      !frozen && stageOneMember && isOtherSection && myHouse !== null;
+      !frozen && stageOneMember && isOtherSection && myHouse !== null && isMine;
     const moveToHouseDisabled = !!houseAtCap || moveBusy;
     const statusClass = p.status === 'Decided' ? ' decided' : '';
+    // Arrow row stays visible on every house card so the priority
+    // number is always shown — but the ↑↓ buttons are only enabled on
+    // the caller's own photos.
+    const showPriorityRow = !!opts.showArrows && p.priority !== null;
     return (
       <article
         key={p.photoId}
-        className={`mine-card${opts.showArrows ? ' mine-card-house' : ''}`}
+        className={`mine-card${opts.showArrows ? ' mine-card-house' : ''}${isMine ? '' : ' mine-card-sibling'}`}
       >
-        {opts.showArrows && p.priority !== null && (
+        {showPriorityRow && (
           <div className="mine-card-priority">
             <strong className="mine-card-priority-num">#{p.priority}</strong>
             <span className="mine-card-priority-label">Rækkefølge i bogens hus-afsnit</span>
-            <button
-              type="button"
-              aria-label="Flyt op"
-              className="mine-card-arrow"
-              disabled={!opts.showArrows.canUp || !!swapping || frozen}
-              onClick={() => swapPriority(p, 'up')}
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              aria-label="Flyt ned"
-              className="mine-card-arrow"
-              disabled={!opts.showArrows.canDown || !!swapping || frozen}
-              onClick={() => swapPriority(p, 'down')}
-            >
-              ↓
-            </button>
+            {isMine && opts.showArrows && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Flyt op"
+                  className="mine-card-arrow"
+                  disabled={!opts.showArrows.canUp || !!swapping || frozen}
+                  onClick={() => swapPriority(p, 'up')}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label="Flyt ned"
+                  className="mine-card-arrow"
+                  disabled={!opts.showArrows.canDown || !!swapping || frozen}
+                  onClick={() => swapPriority(p, 'down')}
+                >
+                  ↓
+                </button>
+              </>
+            )}
           </div>
         )}
         <div className="mine-card-row">
           <div className="mine-card-thumb">
-            <Link
-              to={detailHref}
-              aria-label={`Se detaljer for ${p.description || p.originalFilename}`}
-            >
-              {p.thumbnailUrl ? (
-                <img
-                  src={p.thumbnailUrl}
-                  alt={p.description || p.originalFilename}
-                  className="thumb"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="thumb thumb-placeholder">
-                  {p.status === 'Rejected' ? 'Afvist' : p.processingError ? 'Fejl' : 'Behandles…'}
-                </div>
-              )}
-            </Link>
+            {isMine ? (
+              <Link
+                to={detailHref}
+                aria-label={`Se detaljer for ${p.description || p.originalFilename}`}
+              >
+                {p.thumbnailUrl ? (
+                  <img
+                    src={p.thumbnailUrl}
+                    alt={p.description || p.originalFilename}
+                    className="thumb"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="thumb thumb-placeholder">
+                    {p.status === 'Rejected' ? 'Afvist' : p.processingError ? 'Fejl' : 'Behandles…'}
+                  </div>
+                )}
+              </Link>
+            ) : p.thumbnailUrl ? (
+              <img
+                src={p.thumbnailUrl}
+                alt={p.description || p.originalFilename}
+                className="thumb"
+                loading="lazy"
+              />
+            ) : (
+              <div className="thumb thumb-placeholder">
+                {p.status === 'Rejected' ? 'Afvist' : p.processingError ? 'Fejl' : 'Behandles…'}
+              </div>
+            )}
             <p className="mine-card-id">{formatShortId(p.shortId)}</p>
           </div>
           <div className="mine-card-body">
             <h3 className="mine-card-title">
-              <Link to={detailHref}>{p.description || <em>(ingen beskrivelse)</em>}</Link>
+              {isMine ? (
+                <Link to={detailHref}>{p.description || <em>(ingen beskrivelse)</em>}</Link>
+              ) : (
+                <span>{p.description || <em>(ingen beskrivelse)</em>}</span>
+              )}
             </h3>
+            {!isMine && opts.uploaderName && (
+              <p className="mine-card-meta" style={{ fontStyle: 'italic' }}>
+                Uploadet af {opts.uploaderName}
+              </p>
+            )}
             <p className="mine-card-status">
               <span className={`status${statusClass}`}>{prettyStatus(p)}</span>
             </p>
@@ -302,11 +359,12 @@ export const MinePage = () => {
             )}
           </div>
         </div>
-        <div className="mine-card-actions">
-          <Link to={detailHref} className="btn-card btn-card-primary">
-            Se detaljer / rediger
-          </Link>
-          {showMoveToOther && (
+        {isMine && (
+          <div className="mine-card-actions">
+            <Link to={detailHref} className="btn-card btn-card-primary">
+              Se detaljer / rediger
+            </Link>
+            {showMoveToOther && (
             <button
               type="button"
               className="btn-card"
@@ -335,7 +393,8 @@ export const MinePage = () => {
               )}
             </button>
           )}
-        </div>
+          </div>
+        )}
       </article>
     );
   };
@@ -350,6 +409,11 @@ export const MinePage = () => {
         En kort tekst som hus {profile.houseNumber} bidrager med til jubilæumsbogen — fx en hilsen,
         et minde eller et par linjer om huset gennem årene. Du kan rette teksten frem til bogen
         sendes i tryk.
+      </p>
+      <p className="help" style={{ marginTop: '0.4rem', fontStyle: 'italic' }}>
+        Teksten er <strong>fælles for hele hus {profile.houseNumber}</strong> — hvis I er flere
+        medlemmer i samme hus, deler I om teksten, og det er den sidst gemte version der står.
+        Snak gerne sammen i huset, så I er enige om hvad der skal stå.
       </p>
       <form onSubmit={submitHouseText} noValidate>
         <RichTextEditor
@@ -402,8 +466,8 @@ export const MinePage = () => {
         className={({ isActive }) => `mine-tab${isActive ? ' active' : ''}`}
       >
         Mine Hus Billeder
-        {housePhotos.length > 0 && (
-          <span className="mine-tab-count">{housePhotos.length}</span>
+        {houseSiblings && houseSiblings.length > 0 && (
+          <span className="mine-tab-count">{houseSiblings.length}</span>
         )}
       </NavLink>
       <NavLink
@@ -444,9 +508,18 @@ export const MinePage = () => {
             {profile && profile.houseNumber !== null ? (
               <>
                 Hus <strong>{profile.houseNumber}</strong> kan have op til{' '}
-                <strong>{profile.maxBookSlotsPerHouse}</strong> billeder med i bogen. Du har
-                sendt <strong>{housePhotos.length}</strong>. Brug pilene til at flytte de
-                vigtigste billeder øverst — udvalget skærer fra bunden, hvis der ikke er plads
+                <strong>{profile.maxBookSlotsPerHouse}</strong> billeder med i bogen. Indtil nu
+                har hus {profile.houseNumber} sendt{' '}
+                <strong>{houseSiblings?.length ?? slotsUsed ?? housePhotos.length}</strong>{' '}
+                i alt
+                {houseSiblings &&
+                  housePhotos.length > 0 &&
+                  housePhotos.length < houseSiblings.length && (
+                    <> (heraf <strong>{housePhotos.length}</strong> fra dig)</>
+                  )}
+                . Tallet gælder hele huset — hvis I er flere fra samme hus, deles I om de{' '}
+                {profile.maxBookSlotsPerHouse} pladser. Brug pilene på dine egne billeder til at
+                flytte de vigtigste øverst — udvalget skærer fra bunden, hvis der ikke er plads
                 til alle.
               </>
             ) : (
@@ -466,27 +539,31 @@ export const MinePage = () => {
         </div>
 
         {error && <div className="error">{error}</div>}
-        {photos === null && !error && <p>Indlæser…</p>}
+        {(photos === null || houseSiblings === null) && !error && <p>Indlæser…</p>}
 
-        {photos && photos.length === 0 && (
+        {houseSiblings && houseSiblings.length === 0 && (
           <p className="subtle">
-            Du har ikke sendt nogen billeder endnu.{' '}
-            <Link to="/upload?target=house">Upload dit første billede</Link>.
+            Ingen hus-billeder endnu i hus {profile?.houseNumber}. Brug knappen ovenfor til at
+            uploade det første.
           </p>
         )}
-        {photos && photos.length > 0 && housePhotos.length === 0 && (
-          <p className="subtle">
-            Ingen hus-billeder endnu. Brug knappen ovenfor til at uploade dit første hus-billede.
-          </p>
-        )}
-        {housePhotos.length > 0 && (
+        {houseSiblings && houseSiblings.length > 0 && (
           <div className="photo-grid">
-            {housePhotos.map((p, i) =>
-              renderCard(p, {
-                showArrows: { canUp: i > 0, canDown: i < housePhotos.length - 1 },
+            {houseSiblings.map((p) => {
+              // Arrow gating is over the shared priority space — slotsUsed
+              // is the house-wide count from /me, which == the highest
+              // assigned priority (slots are filled contiguously). The
+              // swap operates on whoever holds the adjacent priority,
+              // including other members of the house.
+              const total = slotsUsed ?? houseSiblings.length;
+              const myPri = p.priority ?? 0;
+              return renderCard(p, {
+                showArrows: { canUp: myPri > 1, canDown: myPri < total },
                 section: 'house',
-              }),
-            )}
+                isMine: p.isMine,
+                uploaderName: p.uploaderDisplayName,
+              });
+            })}
           </div>
         )}
       </main>
