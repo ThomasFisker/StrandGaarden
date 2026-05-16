@@ -11,12 +11,15 @@
     "deploy": "cdk deploy"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.69.0",
     "@types/archiver": "^6.0.3",
     "@types/aws-lambda": "^8.10.161",
     "@types/node": "^22.10.0",
     "esbuild": "^0.28.0",
+    "mammoth": "^1.8.0",
     "sharp": "^0.33.5",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
     "typescript": "~5.6.3"
   },
   "dependencies": {
