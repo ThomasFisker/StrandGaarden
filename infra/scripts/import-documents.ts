@@ -98,13 +98,22 @@ const anthropic = new Anthropic({ apiKey });
 
 // ─── Folder-name normalization ────────────────────────────────────────
 
-const MEETING_KIND_MAP: Record<string, 'board' | 'assembly' | null> = {
-  bestyrelsesmoede: 'board',
-  bestyrelsesmøde: 'board',
-  bestyrelsesmoder: 'board',
-  generalforsamling: 'assembly',
-  'ekstraordinaer-generalforsamling': 'assembly',
-  'ekstraordinær-generalforsamling': 'assembly',
+interface MeetingFolderInfo {
+  kind: 'board' | 'assembly';
+  /** True if the folder name says "Ekstraordinær Generalforsamling".
+   * Always false for board meetings (no such distinction). Used to set
+   * the meeting `title` so the ordinær vs ekstraordinær difference
+   * survives the kind→2-value mapping. */
+  isExtraordinaer: boolean;
+}
+
+const MEETING_KIND_MAP: Record<string, MeetingFolderInfo | null> = {
+  bestyrelsesmoede: { kind: 'board', isExtraordinaer: false },
+  bestyrelsesmøde: { kind: 'board', isExtraordinaer: false },
+  bestyrelsesmoder: { kind: 'board', isExtraordinaer: false },
+  generalforsamling: { kind: 'assembly', isExtraordinaer: false },
+  'ekstraordinaer-generalforsamling': { kind: 'assembly', isExtraordinaer: true },
+  'ekstraordinær-generalforsamling': { kind: 'assembly', isExtraordinaer: true },
 };
 
 /**
@@ -143,13 +152,49 @@ const slug = (s: string): string =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-const meetingKindFromFolder = (name: string): 'board' | 'assembly' | null => {
+const meetingKindFromFolder = (name: string): MeetingFolderInfo | null => {
   const s = slug(name);
   return MEETING_KIND_MAP[s] ?? null;
 };
 
 const meetingKindLabel = (kind: 'board' | 'assembly'): string =>
   kind === 'board' ? 'Bestyrelsesmøde' : 'Generalforsamling';
+
+/** Danish long-form date — used in the meeting `title` field so it
+ * renders as "Bestyrelsesmøde: 15. april 2025 (15-04-2025)" without
+ * repeating the kind or the ISO date. Falls back to the ISO string if
+ * the input isn't a valid YYYY-MM-DD. */
+const DK_MONTHS = [
+  'januar',
+  'februar',
+  'marts',
+  'april',
+  'maj',
+  'juni',
+  'juli',
+  'august',
+  'september',
+  'oktober',
+  'november',
+  'december',
+];
+
+const formatDanishLongDate = (iso: string): string => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  const day = Number(m[3]);
+  const month = DK_MONTHS[Number(m[2]) - 1];
+  if (!month || !Number.isInteger(day)) return iso;
+  return `${day}. ${month} ${m[1]}`;
+};
+
+const buildMeetingTitle = (info: MeetingFolderInfo, isoDate: string): string => {
+  const danish = formatDanishLongDate(isoDate);
+  if (info.kind === 'assembly' && info.isExtraordinaer) {
+    return `Ekstraordinær ${danish}`;
+  }
+  return danish;
+};
 
 // ─── API helpers (Strandgaarden platform) ─────────────────────────────
 
@@ -372,7 +417,7 @@ interface FileEntry {
   ext: 'pdf' | 'docx' | 'doc';
   // Folder hints (only filled in when path matches the expected layout).
   yearFolder: number | null;
-  meetingKindFolder: 'board' | 'assembly' | null;
+  meetingFolder: MeetingFolderInfo | null;
   meetingDateFolder: string | null;
 }
 
@@ -404,14 +449,14 @@ const walk = async (root: string): Promise<FileEntry[]> => {
         const rel = path.relative(root, p).split(path.sep);
         // Try to interpret rel[0]=YYYY, rel[1]=<kind>, rel[2]=YYYY-MM-DD
         const yearFolder = rel[0] && /^\d{4}$/.test(rel[0]) ? Number(rel[0]) : null;
-        const kindFolder = rel[1] ? meetingKindFromFolder(rel[1]) : null;
+        const meetingFolder = rel[1] ? meetingKindFromFolder(rel[1]) : null;
         const dateFolder = rel[2] && /^\d{4}-\d{2}-\d{2}$/.test(rel[2]) ? rel[2] : null;
         out.push({
           absPath: p,
           relPath: rel.join('/'),
           ext,
           yearFolder,
-          meetingKindFolder: kindFolder,
+          meetingFolder,
           meetingDateFolder: dateFolder,
         });
       }
@@ -480,9 +525,16 @@ const main = async () => {
   } else {
     console.log('DRY RUN — skipping API fetches.');
   }
-  // Dedupe key for meetings.
+  // Dedupe key for meetings. Format: `<kind>:<o|x>:<date>` where the
+  // middle byte is 'x' if the existing meeting's title starts with
+  // "Ekstraordinær" (so an ordinær and an ekstraordinær generalforsamling
+  // on the same date stay distinct). Board meetings always use 'o'.
   const meetingIndex = new Map<string, string>();
-  for (const m of meetings) meetingIndex.set(`${m.kind}:${m.date}`, m.meetingId);
+  for (const m of meetings) {
+    const flag =
+      m.kind === 'assembly' && /^ekstraordin/i.test(m.title.trim()) ? 'x' : 'o';
+    meetingIndex.set(`${m.kind}:${flag}:${m.date}`, m.meetingId);
+  }
 
   const rows: ReportRow[] = [];
 
@@ -515,12 +567,17 @@ const main = async () => {
       const bytes = await fs.readFile(f.absPath);
 
       // ── Build prompt + send to Claude ──────────────────────────────
+      const folderKindHint = f.meetingFolder
+        ? f.meetingFolder.isExtraordinaer
+          ? `Ekstraordinær ${meetingKindLabel(f.meetingFolder.kind)}`
+          : meetingKindLabel(f.meetingFolder.kind)
+        : null;
       const prompt = buildPrompt(
         categories.length
           ? categories
           : // dry-run fallback so the call still produces useful debug output
             [{ key: 'andet', displayName: 'Andet', displayOrder: 999 }],
-        f.meetingKindFolder ? meetingKindLabel(f.meetingKindFolder) : null,
+        folderKindHint,
         f.meetingDateFolder,
       );
 
@@ -566,20 +623,21 @@ const main = async () => {
       }
 
       // ── Resolve meeting (dedupe or create) ─────────────────────────
-      const kind = f.meetingKindFolder;
+      // Dedupe key is kind+date+extraordinaer-flag so an ordinær and an
+      // ekstraordinær generalforsamling on the same date don't collide.
+      const folderInfo = f.meetingFolder;
       const meetingDate = f.meetingDateFolder ?? result.extractedDateIso ?? null;
       let meetingId: string | null = null;
-      if (kind && meetingDate) {
-        const key = `${kind}:${meetingDate}`;
+      if (folderInfo && meetingDate) {
+        const key = `${folderInfo.kind}:${folderInfo.isExtraordinaer ? 'x' : 'o'}:${meetingDate}`;
         meetingId = meetingIndex.get(key) ?? null;
         if (!meetingId && !args.dryRun) {
-          const title =
-            kind === 'board'
-              ? `Bestyrelsesmøde ${meetingDate}`
-              : `Generalforsamling ${meetingDate}`;
-          meetingId = await createMeeting(kind, meetingDate, title);
+          const title = buildMeetingTitle(folderInfo, meetingDate);
+          meetingId = await createMeeting(folderInfo.kind, meetingDate, title);
           meetingIndex.set(key, meetingId);
-          console.log(`  + created meeting ${kind} ${meetingDate} → ${meetingId}`);
+          console.log(
+            `  + created meeting ${folderInfo.kind}${folderInfo.isExtraordinaer ? ' (ekstraordinær)' : ''} ${meetingDate} → ${meetingId}`,
+          );
         }
       }
 
