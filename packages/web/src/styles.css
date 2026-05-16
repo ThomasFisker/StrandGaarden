@@ -2293,6 +2293,20 @@ button.link-muted:hover { color: var(--copper-deep); }
   text-transform: uppercase;
   color: var(--copper-deep);
 }
+.doc-summary-excerpt {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  line-height: 1.4;
+  max-width: 70ch;
+}
+.doc-summary {
+  background: var(--paper-warm);
+  border-left: 3px solid var(--copper);
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0 1rem;
+}
 .doc-meta-list {
   display: grid;
   grid-template-columns: max-content 1fr;

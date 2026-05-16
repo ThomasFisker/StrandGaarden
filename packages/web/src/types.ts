@@ -397,6 +397,10 @@ export interface DocumentListItem {
   year: number | null;
   tags: string[];
   note: string | null;
+  /** AI-generated or human-edited longer-form description of the
+   * document's content (max 2000 chars). Searchable. Distinct from
+   * `note`, which is for short user-curated comments. */
+  summary: string | null;
   contentType: string;
   originalFilename: string;
   uploadedAt: string;

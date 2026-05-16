@@ -49,6 +49,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     year: typeof it.year === 'number' ? it.year : null,
     tags: Array.isArray(it.tags) ? (it.tags as unknown[]).map(String) : [],
     note: typeof it.note === 'string' ? it.note : null,
+    summary: typeof it.summary === 'string' ? it.summary : null,
     contentType: String(it.contentType ?? ''),
     originalFilename: String(it.originalFilename ?? ''),
     uploadedAt: String(it.uploadedAt ?? ''),
@@ -64,7 +65,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
       (r) =>
         r.title.toLowerCase().includes(q) ||
         r.tags.some((t) => t.toLowerCase().includes(q)) ||
-        r.note?.toLowerCase().includes(q),
+        r.note?.toLowerCase().includes(q) ||
+        r.summary?.toLowerCase().includes(q),
     );
 
   const years = Array.from(new Set(rows.map((r) => r.year).filter((y): y is number => y !== null))).sort(

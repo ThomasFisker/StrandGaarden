@@ -90,6 +90,13 @@ export const BestyrelsenDocumentsPage = () => {
                       <span>· tilknyttet møde</span>
                     )}
                   </span>
+                  {d.summary && (
+                    <span className="doc-summary-excerpt">
+                      {d.summary.length > 180
+                        ? `${d.summary.slice(0, 180).trimEnd()}…`
+                        : d.summary}
+                    </span>
+                  )}
                 </Link>
                 <button type="button" className="btn-card" onClick={() => onDelete(d)}>
                   Slet

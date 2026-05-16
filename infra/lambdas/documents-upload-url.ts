@@ -10,6 +10,7 @@ import {
   DOC_LIST_GSI1PK,
   DOC_MAX_BYTES,
   DOC_NOTE_MAX,
+  DOC_SUMMARY_MAX,
   DOC_TAG_MAX,
   DOC_TAGS_MAX_COUNT,
   DOC_TITLE_MAX,
@@ -62,6 +63,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const year = body.year;
   const meetingId = typeof body.meetingId === 'string' && body.meetingId ? body.meetingId : null;
   const note = typeof body.note === 'string' ? body.note.trim() : '';
+  const summary = typeof body.summary === 'string' ? body.summary.trim() : '';
   const tagsRaw = Array.isArray(body.tags) ? body.tags : [];
 
   const errors: string[] = [];
@@ -80,6 +82,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   if (!isPositiveInt(year) || (year as number) < YEAR_MIN || (year as number) > CURRENT_YEAR + 1)
     errors.push(`year must be a positive integer between ${YEAR_MIN} and ${CURRENT_YEAR + 1}`);
   if (note.length > DOC_NOTE_MAX) errors.push(`note max ${DOC_NOTE_MAX} chars`);
+  if (summary.length > DOC_SUMMARY_MAX) errors.push(`summary max ${DOC_SUMMARY_MAX} chars`);
 
   const tags: string[] = [];
   for (const t of tagsRaw) {
@@ -141,6 +144,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         year,
         tags,
         note: note || null,
+        summary: summary || null,
         s3Key,
         bytes: null, // filled in by client follow-up if we add it later; informational only
         originalFilename: safe,

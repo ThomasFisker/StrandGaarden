@@ -179,6 +179,13 @@ export const DocumentsPage = () => {
                       )}
                       {d.tags.length > 0 && <span>· {d.tags.join(', ')}</span>}
                     </span>
+                    {d.summary && (
+                      <span className="doc-summary-excerpt">
+                        {d.summary.length > 180
+                          ? `${d.summary.slice(0, 180).trimEnd()}…`
+                          : d.summary}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );

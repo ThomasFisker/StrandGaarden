@@ -88,6 +88,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     year: typeof it.year === 'number' ? it.year : null,
     tags: Array.isArray(it.tags) ? (it.tags as unknown[]).map(String) : [],
     note: typeof it.note === 'string' ? it.note : null,
+    summary: typeof it.summary === 'string' ? it.summary : null,
     contentType,
     originalFilename,
     uploadedAt: String(it.uploadedAt ?? ''),

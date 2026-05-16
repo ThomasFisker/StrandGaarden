@@ -4,6 +4,7 @@ import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from '@
 import { canManageDocs } from './permissions';
 import {
   DOC_NOTE_MAX,
+  DOC_SUMMARY_MAX,
   DOC_TAG_MAX,
   DOC_TAGS_MAX_COUNT,
   DOC_TITLE_MAX,
@@ -50,6 +51,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   const year = body.year;
   const meetingId = body.meetingId === null ? null : typeof body.meetingId === 'string' ? body.meetingId : undefined;
   const note = typeof body.note === 'string' ? body.note.trim() : '';
+  const summary = typeof body.summary === 'string' ? body.summary.trim() : '';
   const tagsRaw = Array.isArray(body.tags) ? body.tags : [];
 
   const errors: string[] = [];
@@ -65,6 +67,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   if (!isPositiveInt(year) || (year as number) < YEAR_MIN || (year as number) > CURRENT_YEAR + 1)
     errors.push(`year must be a positive integer between ${YEAR_MIN} and ${CURRENT_YEAR + 1}`);
   if (note.length > DOC_NOTE_MAX) errors.push(`note max ${DOC_NOTE_MAX} chars`);
+  if (summary.length > DOC_SUMMARY_MAX) errors.push(`summary max ${DOC_SUMMARY_MAX} chars`);
   if (meetingId === undefined) errors.push('meetingId required (use null to detach)');
 
   const tags: string[] = [];
@@ -109,7 +112,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
           TableName: tableName,
           Key: { PK: docPk(docId), SK: META_SK },
           UpdateExpression:
-            'SET title = :t, category = :c, #y = :y, tags = :tags, note = :n, ' +
+            'SET title = :t, category = :c, #y = :y, tags = :tags, note = :n, summary = :s, ' +
             'lastEditedAt = :at, lastEditedBy = :by REMOVE meetingId',
           ConditionExpression: 'attribute_exists(PK)',
           ExpressionAttributeNames: { '#y': 'year' },
@@ -119,6 +122,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
             ':y': year,
             ':tags': tags,
             ':n': note || null,
+            ':s': summary || null,
             ':at': now,
             ':by': editor,
           },
@@ -130,7 +134,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
           TableName: tableName,
           Key: { PK: docPk(docId), SK: META_SK },
           UpdateExpression:
-            'SET title = :t, meetingId = :m, category = :c, #y = :y, tags = :tags, note = :n, ' +
+            'SET title = :t, meetingId = :m, category = :c, #y = :y, tags = :tags, note = :n, summary = :s, ' +
             'lastEditedAt = :at, lastEditedBy = :by',
           ConditionExpression: 'attribute_exists(PK)',
           ExpressionAttributeNames: { '#y': 'year' },
@@ -141,6 +145,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
             ':y': year,
             ':tags': tags,
             ':n': note || null,
+            ':s': summary || null,
             ':at': now,
             ':by': editor,
           },
@@ -170,8 +175,9 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
             year: typeof before.Item.year === 'number' ? before.Item.year : null,
             tags: Array.isArray(before.Item.tags) ? (before.Item.tags as unknown[]).map(String) : [],
             note: typeof before.Item.note === 'string' ? before.Item.note : null,
+            summary: typeof before.Item.summary === 'string' ? before.Item.summary : null,
           },
-          after: { title, meetingId, category, year, tags, note: note || null },
+          after: { title, meetingId, category, year, tags, note: note || null, summary: summary || null },
         },
       },
     }),

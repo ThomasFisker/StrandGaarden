@@ -41,6 +41,7 @@ interface EditState {
   year: string;
   meetingId: string;
   note: string;
+  summary: string;
   tagsRaw: string;
 }
 
@@ -89,6 +90,7 @@ export const DocumentDetailPage = () => {
         year: doc.year !== null ? String(doc.year) : String(CURRENT_YEAR),
         meetingId: doc.meetingId ?? '',
         note: doc.note ?? '',
+        summary: doc.summary ?? '',
         tagsRaw: doc.tags.join(', '),
       });
     } catch (e) {
@@ -132,6 +134,7 @@ export const DocumentDetailPage = () => {
         year: yearNum,
         meetingId: edit.meetingId || null,
         note: edit.note.trim() || undefined,
+        summary: edit.summary.trim() || undefined,
         tags,
       });
       setEdit(null);
@@ -173,6 +176,12 @@ export const DocumentDetailPage = () => {
 
       {!edit ? (
         <>
+          {doc.summary && (
+            <section className="doc-summary" style={{ marginTop: '0.75rem' }}>
+              <p className="eyebrow" style={{ marginTop: 0 }}>Resumé</p>
+              <p style={{ whiteSpace: 'pre-line', marginTop: '0.25rem' }}>{doc.summary}</p>
+            </section>
+          )}
           <dl className="doc-meta-list">
             {doc.year !== null && (
               <>
@@ -308,6 +317,22 @@ export const DocumentDetailPage = () => {
               maxLength={500}
               disabled={saving}
             />
+          </div>
+          <div className="field">
+            <label htmlFor="edit-summary">Resumé (valgfri)</label>
+            <textarea
+              id="edit-summary"
+              value={edit.summary}
+              onChange={(e) => setEdit({ ...edit, summary: e.target.value })}
+              maxLength={2000}
+              rows={6}
+              disabled={saving}
+              placeholder="Kort beskrivelse af dokumentets indhold — søgbar fra dokument-listen."
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+            <p className="help" style={{ marginTop: '0.25rem' }}>
+              {edit.summary.length}/2000 tegn
+            </p>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="submit" className="btn-primary" disabled={saving}>

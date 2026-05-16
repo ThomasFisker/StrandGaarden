@@ -49,6 +49,11 @@ export const DOC_UPLOAD_URL_TTL_SECONDS = 300; // 5 min for PUT
 
 export const DOC_TITLE_MAX = 200;
 export const DOC_NOTE_MAX = 500;
+/** Long-form AI-generated description of the document's content. Set
+ * by the bulk-import script (infra/scripts/import-documents.ts) or
+ * optionally edited by bestyrelsen. Separate from `note` so a manual
+ * comment doesn't clobber the auto-generated summary. Searchable. */
+export const DOC_SUMMARY_MAX = 2000;
 export const DOC_TAG_MAX = 50;
 export const DOC_TAGS_MAX_COUNT = 10;
 export const MEETING_TITLE_MAX = 200;

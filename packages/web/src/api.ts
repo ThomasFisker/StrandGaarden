@@ -651,6 +651,7 @@ export interface DocumentUploadBody {
   year: number;
   meetingId?: string | null;
   note?: string;
+  summary?: string;
   tags?: string[];
 }
 
@@ -676,6 +677,7 @@ export const updateDocument = async (
     year: number;
     meetingId: string | null;
     note?: string;
+    summary?: string;
     tags?: string[];
   },
 ): Promise<{ docId: string; updatedAt: string }> => {
