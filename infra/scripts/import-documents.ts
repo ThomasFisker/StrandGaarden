@@ -107,6 +107,34 @@ const MEETING_KIND_MAP: Record<string, 'board' | 'assembly' | null> = {
   'ekstraordinær-generalforsamling': 'assembly',
 };
 
+/**
+ * Strandgaarden's fiscal year runs June 1 → May 31. We file every
+ * date-bearing document under the fiscal year it falls within, using
+ * the ENDING-year convention (e.g. Jun 2025–May 2026 = fiscal year
+ * 2026). Cutover: month >= 6 → next calendar year. This keeps board
+ * meetings, indkaldelser, referater, budget and regnskab for the same
+ * period grouped under one year-filter value.
+ *
+ * Examples:
+ *   2025-04-15  → 2025 (still in fiscal year 2024-2025)
+ *   2025-05-31  → 2025 (last day of fiscal year 2024-2025)
+ *   2025-06-01  → 2026 (first day of fiscal year 2025-2026)
+ *   2025-10-15  → 2026 (fiscal year 2025-2026)
+ *   2026-05-31  → 2026 (last day of fiscal year 2025-2026)
+ *
+ * For docs without a clear date (vedtægter, meddelelser without dato,
+ * regnskab/budget which describe a period rather than a moment) we
+ * trust Claude's `extractedYear` and skip the override.
+ */
+const fiscalYearFromIsoDate = (iso: string | null): number | null => {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const [yStr, mStr] = iso.split('-');
+  const y = Number(yStr);
+  const m = Number(mStr);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) return null;
+  return m >= 6 ? y + 1 : y;
+};
+
 const slug = (s: string): string =>
   s
     .normalize('NFKD')
@@ -555,9 +583,26 @@ const main = async () => {
         }
       }
 
-      // ── Year ───────────────────────────────────────────────────────
+      // ── Year (fiscal-year override) ────────────────────────────────
+      // Prefer fiscal year derived from the document's actual date so
+      // bestyrelsesmøde + indkaldelse + referat + budget + regnskab for
+      // the same period all land under the same year-filter value
+      // (regnskabsåret 2025-2026 → year=2026). Claude's extractedYear
+      // is only trusted for docs without a concrete date — typically
+      // budget/regnskab themselves, where Claude already returns the
+      // ending year correctly.
+      const fiscalFromDate = fiscalYearFromIsoDate(result.extractedDateIso);
       const year =
-        result.extractedYear ?? f.yearFolder ?? new Date().getUTCFullYear();
+        fiscalFromDate ?? result.extractedYear ?? f.yearFolder ?? new Date().getUTCFullYear();
+      if (
+        fiscalFromDate !== null &&
+        result.extractedYear !== null &&
+        fiscalFromDate !== result.extractedYear
+      ) {
+        console.log(
+          `  · fiscal-year override: date=${result.extractedDateIso} → year=${fiscalFromDate} (Claude said ${result.extractedYear})`,
+        );
+      }
 
       // ── Canonical filename ─────────────────────────────────────────
       const baseName = result.suggestedFilename || `${year} - ${result.title}`;
