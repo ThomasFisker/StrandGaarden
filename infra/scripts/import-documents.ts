@@ -112,6 +112,8 @@ const MEETING_KIND_MAP: Record<string, MeetingFolderInfo | null> = {
   bestyrelsesmøde: { kind: 'board', isExtraordinaer: false },
   bestyrelsesmoder: { kind: 'board', isExtraordinaer: false },
   generalforsamling: { kind: 'assembly', isExtraordinaer: false },
+  'ordinaer-generalforsamling': { kind: 'assembly', isExtraordinaer: false },
+  'ordinær-generalforsamling': { kind: 'assembly', isExtraordinaer: false },
   'ekstraordinaer-generalforsamling': { kind: 'assembly', isExtraordinaer: true },
   'ekstraordinær-generalforsamling': { kind: 'assembly', isExtraordinaer: true },
 };
@@ -538,6 +540,109 @@ const main = async () => {
 
   const rows: ReportRow[] = [];
 
+  // ── Group files by parent folder ────────────────────────────────────
+  // All files inside the same <root>/<YYYY>/<MeetingKind>/[<YYYY-MM-DD>]/
+  // folder belong to the same meeting. We classify each file individually,
+  // then pick the folder's meeting date from whichever file gave us the
+  // strongest signal (referat or indkaldelse preferred; otherwise any
+  // dated file), and tie every file in the folder to that meeting.
+  const folderKey = (f: FileEntry): string => f.relPath.split('/').slice(0, -1).join('/');
+  const groups = new Map<string, FileEntry[]>();
+  for (const f of trimmed) {
+    const k = folderKey(f);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k)!.push(f);
+  }
+  console.log(`Grouped into ${groups.size} folder(s).`);
+
+  // Pre-classify everything + resolve a meeting per folder. Cached so
+  // pass 2 doesn't re-call Claude.
+  const classifications = new Map<string, ClaudeResult>();
+  const classifyErrors = new Map<string, string>();
+  const meetingIdByFolder = new Map<string, string | null>();
+  const groupMeetingDateByFolder = new Map<string, string | null>();
+
+  const isReferatOrIndkaldelseCategory = (cat: string): boolean =>
+    /^(referat|m[øo]deindkaldelse|indkaldelse)/i.test(cat ?? '');
+
+  for (const [fp, groupFiles] of groups) {
+    console.log(`\n── ${fp || '(root)'} (${groupFiles.length} files) ──`);
+    for (const f of groupFiles) {
+      if (f.ext === 'doc') {
+        console.log(`  SKIP  ${f.relPath} — legacy .doc (convert to PDF first)`);
+        continue;
+      }
+      try {
+        console.log(`  READ  ${f.relPath}`);
+        const bytes = await fs.readFile(f.absPath);
+        const folderKindHint = f.meetingFolder
+          ? f.meetingFolder.isExtraordinaer
+            ? `Ekstraordinær ${meetingKindLabel(f.meetingFolder.kind)}`
+            : meetingKindLabel(f.meetingFolder.kind)
+          : null;
+        const prompt = buildPrompt(
+          categories.length
+            ? categories
+            : [{ key: 'andet', displayName: 'Andet', displayOrder: 999 }],
+          folderKindHint,
+          f.meetingDateFolder,
+        );
+        let result: ClaudeResult;
+        if (f.ext === 'pdf') {
+          result = await callClaudeForPdf(bytes, prompt);
+        } else {
+          const m = await mammoth.extractRawText({ buffer: bytes });
+          if (!m.value.trim()) throw new Error('DOCX yielded empty text');
+          result = await callClaudeForText(m.value, prompt);
+        }
+        classifications.set(f.relPath, result);
+        console.log(
+          `    → ${result.categoryDisplayName} | ${result.title} | date=${result.extractedDateIso ?? '—'} | year=${result.extractedYear ?? '—'}`,
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`    ! classify failed: ${msg}`);
+        classifyErrors.set(f.relPath, msg);
+      }
+    }
+
+    // Pick this folder's meeting date.
+    const groupResults = groupFiles
+      .map((f) => classifications.get(f.relPath))
+      .filter((r): r is ClaudeResult => !!r);
+    const datedPreferred = groupResults.find(
+      (r) => r.extractedDateIso && isReferatOrIndkaldelseCategory(r.categoryDisplayName),
+    );
+    const datedFallback = groupResults.find((r) => r.extractedDateIso);
+    const groupMeetingDate =
+      datedPreferred?.extractedDateIso ?? datedFallback?.extractedDateIso ?? null;
+    groupMeetingDateByFolder.set(fp, groupMeetingDate);
+
+    const folderInfo = groupFiles[0]?.meetingFolder ?? null;
+    let groupMeetingId: string | null = null;
+    if (folderInfo && groupMeetingDate) {
+      const key = `${folderInfo.kind}:${folderInfo.isExtraordinaer ? 'x' : 'o'}:${groupMeetingDate}`;
+      groupMeetingId = meetingIndex.get(key) ?? null;
+      if (!groupMeetingId && !args.dryRun) {
+        const title = buildMeetingTitle(folderInfo, groupMeetingDate);
+        groupMeetingId = await createMeeting(folderInfo.kind, groupMeetingDate, title);
+        meetingIndex.set(key, groupMeetingId);
+        console.log(
+          `  + meeting ${folderInfo.kind}${folderInfo.isExtraordinaer ? ' (ekstraordinær)' : ''} ${groupMeetingDate} → ${groupMeetingId}`,
+        );
+      } else if (groupMeetingId) {
+        console.log(`  · existing meeting ${groupMeetingDate} → ${groupMeetingId.slice(0, 8)}`);
+      } else {
+        console.log(`  · dry-run meeting placeholder for ${folderInfo.kind} ${groupMeetingDate}`);
+      }
+    } else if (folderInfo && !groupMeetingDate) {
+      console.log(`  ! no meeting date detected in this folder — files won't be tied to a meeting`);
+    }
+    meetingIdByFolder.set(fp, groupMeetingId);
+  }
+
+  // ── Pass 2: per-file upload + report ────────────────────────────────
+  console.log('\n══ Uploading ══');
   for (const f of trimmed) {
     const reportBase: ReportRow = {
       file: f.relPath,
@@ -551,50 +656,23 @@ const main = async () => {
       message: '',
     };
 
+    if (f.ext === 'doc') {
+      rows.push({
+        ...reportBase,
+        status: 'skipped',
+        message: 'Legacy .doc not supported. Convert to PDF manually and re-run.',
+      });
+      continue;
+    }
+
+    const result = classifications.get(f.relPath);
+    if (!result) {
+      const msg = classifyErrors.get(f.relPath) ?? 'classification missing';
+      rows.push({ ...reportBase, status: 'error', message: msg });
+      continue;
+    }
+
     try {
-      // ── Skip legacy .doc ───────────────────────────────────────────
-      if (f.ext === 'doc') {
-        rows.push({
-          ...reportBase,
-          status: 'skipped',
-          message: 'Legacy .doc not supported. Convert to PDF manually and re-run.',
-        });
-        console.log(`SKIP  ${f.relPath} — legacy .doc`);
-        continue;
-      }
-
-      console.log(`READ  ${f.relPath}`);
-      const bytes = await fs.readFile(f.absPath);
-
-      // ── Build prompt + send to Claude ──────────────────────────────
-      const folderKindHint = f.meetingFolder
-        ? f.meetingFolder.isExtraordinaer
-          ? `Ekstraordinær ${meetingKindLabel(f.meetingFolder.kind)}`
-          : meetingKindLabel(f.meetingFolder.kind)
-        : null;
-      const prompt = buildPrompt(
-        categories.length
-          ? categories
-          : // dry-run fallback so the call still produces useful debug output
-            [{ key: 'andet', displayName: 'Andet', displayOrder: 999 }],
-        folderKindHint,
-        f.meetingDateFolder,
-      );
-
-      let result: ClaudeResult;
-      if (f.ext === 'pdf') {
-        result = await callClaudeForPdf(bytes, prompt);
-      } else {
-        // docx → extract text via mammoth.
-        const m = await mammoth.extractRawText({ buffer: bytes });
-        if (!m.value.trim()) throw new Error('DOCX yielded empty text');
-        result = await callClaudeForText(m.value, prompt);
-      }
-
-      console.log(
-        `  → ${result.categoryDisplayName} | ${result.title} | year=${result.extractedYear} | summary=${result.summary.length}c`,
-      );
-
       // Skip if --only-cat doesn't match.
       if (args.onlyCat && result.categoryDisplayName !== args.onlyCat) {
         rows.push({
@@ -608,70 +686,40 @@ const main = async () => {
         continue;
       }
 
-      // ── Resolve category to a registered one ───────────────────────
+      // Resolve category to a registered one
       let category = result.categoryDisplayName;
       if (categories.length) {
         const exists = categories.find((c) => c.displayName === category);
         if (!exists) {
           const fallback =
             categories.find((c) => c.displayName === 'Andet') ?? categories[0];
-          console.log(
-            `  ! category "${category}" not in catalog — falling back to "${fallback.displayName}"`,
-          );
+          console.log(`  ! ${f.relPath}: category "${category}" not in catalog → "${fallback.displayName}"`);
           category = fallback.displayName;
         }
       }
 
-      // ── Resolve meeting (dedupe or create) ─────────────────────────
-      // Dedupe key is kind+date+extraordinaer-flag so an ordinær and an
-      // ekstraordinær generalforsamling on the same date don't collide.
-      const folderInfo = f.meetingFolder;
-      const meetingDate = f.meetingDateFolder ?? result.extractedDateIso ?? null;
-      let meetingId: string | null = null;
-      if (folderInfo && meetingDate) {
-        const key = `${folderInfo.kind}:${folderInfo.isExtraordinaer ? 'x' : 'o'}:${meetingDate}`;
-        meetingId = meetingIndex.get(key) ?? null;
-        if (!meetingId && !args.dryRun) {
-          const title = buildMeetingTitle(folderInfo, meetingDate);
-          meetingId = await createMeeting(folderInfo.kind, meetingDate, title);
-          meetingIndex.set(key, meetingId);
-          console.log(
-            `  + created meeting ${folderInfo.kind}${folderInfo.isExtraordinaer ? ' (ekstraordinær)' : ''} ${meetingDate} → ${meetingId}`,
-          );
-        }
-      }
-
-      // ── Year (fiscal-year override) ────────────────────────────────
-      // Prefer fiscal year derived from the document's actual date so
-      // bestyrelsesmøde + indkaldelse + referat + budget + regnskab for
-      // the same period all land under the same year-filter value
-      // (regnskabsåret 2025-2026 → year=2026). Claude's extractedYear
-      // is only trusted for docs without a concrete date — typically
-      // budget/regnskab themselves, where Claude already returns the
-      // ending year correctly.
-      const fiscalFromDate = fiscalYearFromIsoDate(result.extractedDateIso);
+      // Folder-resolved meeting + year. The fiscal year follows the
+      // folder's meeting date so every doc in the same folder lands
+      // under the same year-filter value. Falls through to the doc's
+      // own date, then Claude's year, then the year-folder name.
+      const fp = folderKey(f);
+      const groupMeetingId = meetingIdByFolder.get(fp) ?? null;
+      const groupDate = groupMeetingDateByFolder.get(fp) ?? null;
+      const fiscalFromGroup = fiscalYearFromIsoDate(groupDate);
+      const fiscalFromDoc = fiscalYearFromIsoDate(result.extractedDateIso);
       const year =
-        fiscalFromDate ?? result.extractedYear ?? f.yearFolder ?? new Date().getUTCFullYear();
-      if (
-        fiscalFromDate !== null &&
-        result.extractedYear !== null &&
-        fiscalFromDate !== result.extractedYear
-      ) {
-        console.log(
-          `  · fiscal-year override: date=${result.extractedDateIso} → year=${fiscalFromDate} (Claude said ${result.extractedYear})`,
-        );
-      }
+        fiscalFromGroup ??
+        fiscalFromDoc ??
+        result.extractedYear ??
+        f.yearFolder ??
+        new Date().getUTCFullYear();
 
-      // ── Canonical filename ─────────────────────────────────────────
+      // Canonical filename
       const baseName = result.suggestedFilename || `${year} - ${result.title}`;
-      const ext = f.ext === 'docx' ? 'pdf' : 'pdf'; // we upload as PDF (docx→ converted later if needed; for now upload original ext)
-      // Actually keep original extension for the upload — converting docx
-      // would require LibreOffice on the host. The platform accepts both
-      // pdf and docx, and Claude already read the docx contents for us.
       const uploadExt = f.ext === 'docx' ? 'docx' : 'pdf';
       const canonicalName = `${baseName}.${uploadExt}`.replace(/[\\/]/g, '_');
 
-      // ── Renamed copy ───────────────────────────────────────────────
+      // Renamed copy
       let renamedTo: string | null = null;
       if (!args.noRename) {
         const subdir = path.dirname(f.relPath);
@@ -689,7 +737,7 @@ const main = async () => {
           category,
           title: result.title,
           year,
-          meetingId,
+          meetingId: groupMeetingId,
           summaryLen: result.summary.length,
           renamedTo,
           message: 'dry run, not uploaded',
@@ -697,23 +745,23 @@ const main = async () => {
         continue;
       }
 
-      // ── Upload to platform ─────────────────────────────────────────
       const contentType =
         uploadExt === 'pdf'
           ? 'application/pdf'
           : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      const bytes = await fs.readFile(f.absPath);
       const upload = await requestUploadUrl({
         filename: canonicalName,
         contentType,
         title: result.title,
         category,
         year,
-        meetingId,
+        meetingId: groupMeetingId,
         summary: result.summary,
         tags: [],
       });
       await putS3(upload.uploadUrl, bytes, contentType);
-      console.log(`  ✓ uploaded ${upload.docId}`);
+      console.log(`  ✓ ${f.relPath} → ${upload.docId}`);
 
       rows.push({
         ...reportBase,
@@ -721,14 +769,14 @@ const main = async () => {
         category,
         title: result.title,
         year,
-        meetingId,
+        meetingId: groupMeetingId,
         summaryLen: result.summary.length,
         renamedTo,
         message: `docId=${upload.docId}`,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`ERROR ${f.relPath}: ${msg}`);
+      console.error(`  ERROR ${f.relPath}: ${msg}`);
       rows.push({ ...reportBase, status: 'error', message: msg });
     }
   }
