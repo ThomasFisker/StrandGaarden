@@ -519,14 +519,22 @@ const main = async () => {
     return;
   }
 
+  // Load categories + existing meetings even in dry-run mode — both are
+  // GET-only and the categories list is critical for evaluating
+  // classification accuracy ("did Claude pick the right category?")
+  // without the live list, Claude only sees "Andet" as a fallback.
   let categories: DocCategory[] = [];
   let meetings: MeetingRow[] = [];
-  if (!args.dryRun) {
+  try {
     [categories, meetings] = await Promise.all([loadCategories(), loadMeetings()]);
     console.log(`API: ${categories.length} categories, ${meetings.length} existing meetings.`);
-  } else {
-    console.log('DRY RUN — skipping API fetches.');
+  } catch (e) {
+    if (!args.dryRun) throw e;
+    console.log(
+      `DRY RUN — could not fetch categories/meetings (${e instanceof Error ? e.message : e}). Proceeding with "Andet"-only fallback.`,
+    );
   }
+  if (args.dryRun) console.log('DRY RUN — no uploads or meeting creates will happen.');
   // Dedupe key for meetings. Format: `<kind>:<o|x>:<date>` where the
   // middle byte is 'x' if the existing meeting's title starts with
   // "Ekstraordinær" (so an ordinær and an ekstraordinær generalforsamling
@@ -698,15 +706,23 @@ const main = async () => {
         }
       }
 
-      // Folder-resolved meeting + year. The fiscal year follows the
-      // folder's meeting date so every doc in the same folder lands
-      // under the same year-filter value. Falls through to the doc's
-      // own date, then Claude's year, then the year-folder name.
+      // Folder-resolved meeting + year. The fiscal year usually follows
+      // the folder's meeting date so every doc in the same folder lands
+      // under the same year-filter value — EXCEPT for Budget/Regnskab/
+      // Årsregnskab, which describe a specific fiscal period and should
+      // be filed under that period's ending year (matches the user-
+      // visible title like "Budget 2019/2020" → year=2020), not under
+      // the year of the GF where they happened to be presented.
       const fp = folderKey(f);
       const groupMeetingId = meetingIdByFolder.get(fp) ?? null;
       const groupDate = groupMeetingDateByFolder.get(fp) ?? null;
-      const fiscalFromGroup = fiscalYearFromIsoDate(groupDate);
-      const fiscalFromDoc = fiscalYearFromIsoDate(result.extractedDateIso);
+      const isFiscalPeriodDoc = /^(budget|regnskab|.rsregnskab)/i.test(category);
+      const fiscalFromGroup = isFiscalPeriodDoc
+        ? null
+        : fiscalYearFromIsoDate(groupDate);
+      const fiscalFromDoc = isFiscalPeriodDoc
+        ? null
+        : fiscalYearFromIsoDate(result.extractedDateIso);
       const year =
         fiscalFromGroup ??
         fiscalFromDoc ??
