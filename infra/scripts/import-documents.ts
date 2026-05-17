@@ -146,6 +146,37 @@ const fiscalYearFromIsoDate = (iso: string | null): number | null => {
   return m >= 6 ? y + 1 : y;
 };
 
+/** Year to file a meeting-bound document under, given the meeting's
+ * date and kind. The two kinds differ because of when in the FY they
+ * happen relative to the FY they belong to:
+ *
+ *   - Assembly (generalforsamling): held shortly AFTER the FY ends —
+ *     reviews the regnskab for the just-closed FY. So a GF held in
+ *     July 2021 closes FY 2020-2021 (slutår 2021) and the docs
+ *     belong under year=2021 (calendar year of the GF == ending year
+ *     of the FY it closes).
+ *
+ *   - Board (bestyrelsesmøde): held throughout the FY — belongs to
+ *     the currently-running FY. A bestyrelsesmøde 15. oktober 2025
+ *     is mid FY 2025-2026, so docs file under year=2026.
+ *
+ * Budget and Regnskab docs override both rules — they use Claude's
+ * extractedYear since they describe a specific fiscal period rather
+ * than a moment in time. That happens at the caller. */
+const yearForMeetingDoc = (
+  isoDate: string | null,
+  kind: 'board' | 'assembly' | null,
+): number | null => {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
+  const [yStr, mStr] = isoDate.split('-');
+  const y = Number(yStr);
+  const m = Number(mStr);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) return null;
+  if (kind === 'assembly') return y;
+  if (kind === 'board') return m >= 6 ? y + 1 : y;
+  return null;
+};
+
 /** ASCII-safe slug for folder-name lookup. Crucially Danish letters
  * are spelled out (æ→ae, ø→oe, å→aa) BEFORE stripping non-[a-z0-9],
  * so "Ordinær Generalforsamling" becomes "ordinaer-generalforsamling"
@@ -714,26 +745,28 @@ const main = async () => {
         }
       }
 
-      // Folder-resolved meeting + year. The fiscal year usually follows
-      // the folder's meeting date so every doc in the same folder lands
-      // under the same year-filter value — EXCEPT for Budget/Regnskab/
-      // Årsregnskab, which describe a specific fiscal period and should
-      // be filed under that period's ending year (matches the user-
-      // visible title like "Budget 2019/2020" → year=2020), not under
-      // the year of the GF where they happened to be presented.
+      // Folder-resolved meeting + year. The rule depends on meeting
+      // kind: assemblies (GFs) file under their CALENDAR year because
+      // a GF closes the just-ended FY (GF 12. juli 2021 reviews FY
+      // 2020-2021 → year=2021). Board meetings file under the
+      // FISCAL year they're inside of (board møde 15. okt 2025 is in
+      // FY 2025-2026 → year=2026). Budget/Regnskab/Årsregnskab
+      // override both — they describe a specific fiscal period and
+      // use Claude's extractedYear (slutår of period).
       const fp = folderKey(f);
+      const folderKind = f.meetingFolder?.kind ?? null;
       const groupMeetingId = meetingIdByFolder.get(fp) ?? null;
       const groupDate = groupMeetingDateByFolder.get(fp) ?? null;
       const isFiscalPeriodDoc = /^(budget|regnskab|.rsregnskab)/i.test(category);
-      const fiscalFromGroup = isFiscalPeriodDoc
+      const yearFromGroup = isFiscalPeriodDoc
         ? null
-        : fiscalYearFromIsoDate(groupDate);
-      const fiscalFromDoc = isFiscalPeriodDoc
+        : yearForMeetingDoc(groupDate, folderKind);
+      const yearFromDoc = isFiscalPeriodDoc
         ? null
-        : fiscalYearFromIsoDate(result.extractedDateIso);
+        : yearForMeetingDoc(result.extractedDateIso, folderKind);
       const year =
-        fiscalFromGroup ??
-        fiscalFromDoc ??
+        yearFromGroup ??
+        yearFromDoc ??
         result.extractedYear ??
         f.yearFolder ??
         new Date().getUTCFullYear();
