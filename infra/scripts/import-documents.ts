@@ -146,11 +146,19 @@ const fiscalYearFromIsoDate = (iso: string | null): number | null => {
   return m >= 6 ? y + 1 : y;
 };
 
+/** ASCII-safe slug for folder-name lookup. Crucially Danish letters
+ * are spelled out (æ→ae, ø→oe, å→aa) BEFORE stripping non-[a-z0-9],
+ * so "Ordinær Generalforsamling" becomes "ordinaer-generalforsamling"
+ * and matches MEETING_KIND_MAP — a previous NFKD-based version dropped
+ * the bytes entirely and produced "ordin-r-generalforsamling", causing
+ * every assembly meeting to silently skip the meeting-create step. */
 const slug = (s: string): string =>
   s
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    .normalize('NFKC')
     .toLowerCase()
+    .replace(/æ/g, 'ae')
+    .replace(/ø/g, 'oe')
+    .replace(/å/g, 'aa')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
