@@ -43,7 +43,7 @@ ovenstående.`;
 export const DEFAULT_CONFIG: AppConfig = {
   stage: 3,
   maxBookSlotsPerHouse: 7,
-  maxHouseTextChars: 900,
+  maxHouseTextChars: 2000,
   gdprText: DEFAULT_GDPR_TEXT,
   gdprVersion: '2026-05-03',
 };

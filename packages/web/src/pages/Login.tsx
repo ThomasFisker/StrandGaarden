@@ -42,8 +42,8 @@ export const LoginPage = () => {
         <img src="/bg/hero-beach.jpg" alt="" aria-hidden="true" />
         <div className="hero-content">
           <div className="hero-top">
-            <p className="eyebrow">Strandgaarden Interessentskab</p>
-            <p className="hero-quote">Et album for fællesskabet ved havet — samlet gennem hundrede somre.</p>
+            <p className="eyebrow">Strandgaarden I/S</p>
+            <p className="hero-quote">Et sommerparadis langs Nordjyllands østkyst — fortalt gennem hundrede somre i billeder.</p>
           </div>
           <div className="hero-bottom">
             <span className="hero-mark"><em>100</em></span>
@@ -55,6 +55,11 @@ export const LoginPage = () => {
         <div className="login-card">
           <p className="eyebrow">Jubilæumsarkiv</p>
           <h1>Log ind</h1>
+          <p className="login-lede">
+            Hjemmesiden er platform for informationsudveksling mellem interessentskabets
+            medlemmer og fortæller Strandgaardens 100 års historie gennem billeder og
+            kommentarer.
+          </p>
           <p className="login-lede">
             Velkommen tilbage. Indtast din e-mail og adgangskode for at uploade og finde billeder.
           </p>

@@ -119,9 +119,15 @@ export const GalleryPage = () => {
         </h1>
         <p className="lede">
           {stage === 1
-            ? 'Galleriet åbner først når jubilæumsbogen er klar. Imens samler vi billederne ind — bidrag du har sendt finder du på Mine billeder, og du kan uploade flere via Upload billede.'
+            ? 'Hjælp os med at samle Strandgaardens historie i billeder. Hvert billede, du deler, bliver en del af den fælles fortælling — og du kan altid se dine egne bidrag under Mine billeder eller uploade flere via Upload billede.'
             : 'Udvalget arbejder på den trykte bog. Når vi åbner igen, finder du galleriet her. Imens kan du stadig se det du selv har uploadet.'}
         </p>
+        {stage === 1 && (
+          <p className="lede">
+            Galleriet åbner, så snart jubilæumsbogen er klar. Indtil da samler vi billeder og
+            tekster ind, så vi sammen kan fylde det med minder.
+          </p>
+        )}
         <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <Link to="/mine" className="btn-primary">
             Mine billeder <span className="arrow">→</span>

@@ -56,6 +56,11 @@ export const GalleryPhotoPage = () => {
     !!callerSub && photo !== null && photo.uploaderSub === callerSub;
   const canEdit = isAdmin || isUploader;
   const frozen = profile?.stage === 2 && !isAdmin;
+  // "Hjælp søges" and "Anmod om fjernelse" only belong in the public
+  // phase (3). In phase 1 members delete their own photos directly; in
+  // phase 2 everything is frozen. Admins keep the help-wanted toggle in
+  // any phase.
+  const stageThree = profile?.stage === 3;
   const [editOpen, setEditOpen] = useState(false);
   const [editDesc, setEditDesc] = useState('');
   const [editYear, setEditYear] = useState<string>('');
@@ -499,7 +504,7 @@ export const GalleryPhotoPage = () => {
               </div>
             )}
 
-            {canEdit && !frozen && (
+            {canEdit && (stageThree || isAdmin) && (
               <div className="photo-section">
                 <p className="photo-section-title">Hjælp søges</p>
                 <label
@@ -537,7 +542,7 @@ export const GalleryPhotoPage = () => {
                   Hent billedet <span className="arrow">↓</span>
                 </a>
               )}
-              {!frozen && !removalOpen && !removalSent && (
+              {stageThree && !removalOpen && !removalSent && (
                 <button
                   type="button"
                   className="link-muted"
@@ -557,7 +562,7 @@ export const GalleryPhotoPage = () => {
               </div>
             )}
 
-            {!frozen && removalOpen && !removalSent && (
+            {stageThree && removalOpen && !removalSent && (
               <form className="removal-form" onSubmit={submitRemoval}>
                 <p className="removal-intro">
                   <strong>Anmod udvalget om at fjerne billedet.</strong> Skriv en kort begrundelse (f.eks.

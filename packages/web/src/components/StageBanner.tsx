@@ -2,9 +2,9 @@ import type { Stage } from '../types';
 
 const COPY: Record<Stage, { eyebrow: string; body: string } | null> = {
   1: {
-    eyebrow: 'Fase 1 — Indsamling til bog',
+    eyebrow: 'Fase 1 — Indsamling til bogen',
     body:
-      'Vi samler billeder ind til jubilæumsbogen. Galleriet åbner først senere — for nu er det udvalget der gennemgår de indsendte billeder.',
+      'Vi samler billeder ind til jubilæumsbogen — både til dine egne sider og til fællessiderne. Galleriet aktiveres senere.',
   },
   2: {
     eyebrow: 'Frys — udvalget arbejder på bogen',

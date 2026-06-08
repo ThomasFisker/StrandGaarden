@@ -231,7 +231,7 @@ export const UploadPage = () => {
   if (frozen) {
     return (
       <main className="content">
-        <p className="eyebrow">Bidrag til arkivet</p>
+        <p className="eyebrow">Bidrag til bogen</p>
         <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>
           Upload <em>billede</em>
         </h1>
@@ -244,18 +244,119 @@ export const UploadPage = () => {
     );
   }
 
+  // Where the photo belongs (own house vs a shared category). Rendered
+  // above the description so the choice comes first — testers found that
+  // ordering more logical.
+  const targetSelector = stageOneNonAdmin ? (
+    <div className="field">
+      <label>Hvor hører billedet til?</label>
+      <div className="help" style={{ marginBottom: '0.6rem' }}>
+        I fase 1 uploader hvert hus til sin egen del af bogen, og fælles billeder lægges
+        under en kategori (Sct. Hans, Vejdag & skovdag, Fællesskabet osv.).
+      </div>
+      <div className="checkbox-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>
+        <label>
+          <input
+            type="radio"
+            name="upload-target"
+            value="house"
+            checked={target === 'house'}
+            onChange={() => setTarget('house')}
+            disabled={myHouse === null || houseAtCap}
+          />{' '}
+          <strong>Til mit hus</strong>
+          {myHouse !== null ? ` (Hus ${myHouse})` : ' — du er ikke tildelt et hus endnu'}
+          {myHouse !== null && slotsUsed !== null && (
+            <span className="subtle"> · {slotsUsed} af {slotsMax} pladser brugt</span>
+          )}
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="upload-target"
+            value="activity"
+            checked={target === 'activity'}
+            onChange={() => setTarget('activity')}
+          />{' '}
+          <strong>Til en kategori</strong>
+          <span className="subtle"> (fælles afsnit i bogen)</span>
+        </label>
+      </div>
+      {target === 'activity' && (
+        <div style={{ marginTop: '0.6rem' }}>
+          <select
+            value={activityKey}
+            onChange={(e) => setActivityKey(e.target.value)}
+            aria-label="Kategori"
+          >
+            <option value="">— Vælg kategori —</option>
+            {(activities ?? []).map((a) => (
+              <option key={a.key} value={a.key}>
+                {a.displayName}
+              </option>
+            ))}
+          </select>
+          {activities !== null && activities.length === 0 && (
+            <div className="help" style={{ marginTop: '0.4rem' }}>
+              Udvalget har ikke oprettet kategorier endnu.
+            </div>
+          )}
+        </div>
+      )}
+      {houseAtCap && (
+        <div
+          style={{
+            marginTop: '0.6rem',
+            padding: '0.5rem 0.75rem',
+            background: 'var(--paper-warm, #faf2e6)',
+            borderLeft: '3px solid var(--copper, #b85a2a)',
+            fontSize: '0.95rem',
+          }}
+        >
+          Hus {myHouse} har allerede {slotsUsed} af {slotsMax} mulige billeder. Bed udvalget
+          fjerne et billede først, eller upload til en kategori i stedet.
+        </div>
+      )}
+    </div>
+  ) : (
+    <div className="field">
+      <label>Hus nr.</label>
+      <div className="help" style={{ marginBottom: '0.5rem' }}>Vælg de huse billedet hører til. Mindst ét.</div>
+      <HouseSelector value={houseNumbers} onToggle={toggleHouse} />
+    </div>
+  );
+
   return (
     <main className="content">
-      <p className="eyebrow">Bidrag til arkivet</p>
+      <p className="eyebrow">Bidrag til bogen</p>
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>Upload <em>billede</em></h1>
       <p className="lede">
         Udfyld så meget du kan. Udvalget kigger billederne igennem, før de vises på siden eller kommer med i bogen.
       </p>
+      {stageOneNonAdmin && (
+        <p className="lede" style={{ marginTop: '-0.4rem', fontSize: '1.05rem' }}>
+          <strong>Dine sider:</strong> upload op til {slotsMax} billeder, og udfyld så meget du
+          kan. Til fælleskategorierne kan du uploade så mange du har lyst. Vi vælger en
+          balanceret blanding af billeder fra alles bidrag, så bogen kommer til at afspejle
+          hele fællesskabet.
+        </p>
+      )}
 
       <form onSubmit={onSubmit} noValidate>
         <div className="field">
           <label htmlFor="file">Billedfil</label>
-          <input id="file" type="file" accept={ACCEPT_ATTR} onChange={onFileChange} required />
+          <div className="file-input-row">
+            <label htmlFor="file" className="file-input-btn">Vælg billede</label>
+            <span className="file-input-name">{file ? file.name : 'Intet billede valgt'}</span>
+          </div>
+          <input
+            id="file"
+            type="file"
+            accept={ACCEPT_ATTR}
+            onChange={onFileChange}
+            className="file-input-native"
+            required
+          />
           <div className="help">
             <p style={{ margin: '0 0 0.4rem' }}>
               <strong>Brug originalen</strong> fra kameraet eller mobilen — ikke et lille billede du har
@@ -294,6 +395,8 @@ export const UploadPage = () => {
           )}
         </div>
 
+        {targetSelector}
+
         <div className="field">
           <label htmlFor="description">Beskrivelse</label>
           <textarea
@@ -302,7 +405,7 @@ export const UploadPage = () => {
             maxLength={2000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="F.eks.: Sct. Hans bål på stranden. Fra venstre: Hans, Else og Edvard."
+            placeholder="F.eks.: Sct. Hans bål på stranden. Fra venstre Thomas Fisker, Charlotte Jensen og Jørgen Huno."
           />
           <div className="help">
             Fortæl historien om billedet — hvor, hvornår, hvem og hvad der sker.
@@ -311,24 +414,27 @@ export const UploadPage = () => {
 
         <div className="field">
           <label htmlFor="year">År</label>
-          <input
-            id="year"
-            type="number"
-            inputMode="numeric"
-            min={1800}
-            max={CURRENT_YEAR}
-            value={yearText}
-            onChange={(e) => setYearText(e.target.value)}
-            placeholder="f.eks. 1975"
-          />
-          <div className="checkbox-row">
+          <div className="year-row">
             <input
-              id="yearApprox"
-              type="checkbox"
-              checked={yearApprox}
-              onChange={(e) => setYearApprox(e.target.checked)}
+              id="year"
+              type="number"
+              inputMode="numeric"
+              min={1800}
+              max={CURRENT_YEAR}
+              value={yearText}
+              onChange={(e) => setYearText(e.target.value)}
+              placeholder="f.eks. 1975"
+              className="year-input"
             />
-            <label htmlFor="yearApprox">Ca. — året er kun omtrentligt</label>
+            <label htmlFor="yearApprox" className="year-approx">
+              <input
+                id="yearApprox"
+                type="checkbox"
+                checked={yearApprox}
+                onChange={(e) => setYearApprox(e.target.checked)}
+              />
+              <span>Ca. — året er kun omtrentligt</span>
+            </label>
           </div>
         </div>
 
@@ -337,88 +443,10 @@ export const UploadPage = () => {
           <PersonTagInput value={personTags} onChange={setPersonTags} disabled={submitting} />
           <div className="help">
             Personer her gør billedet søgbart. Vælg fra listen, eller skriv et nyt navn og klik <em>Foreslå</em>;
-            udvalget godkender nye navne.
+            så godkender vi nye navne. Hensigten er at sikre en ensartet stavemåde af navnet, så vi
+            undgår forskellige versioner.
           </div>
         </div>
-
-        {stageOneNonAdmin ? (
-          <div className="field">
-            <label>Hvor hører billedet til?</label>
-            <div className="help" style={{ marginBottom: '0.6rem' }}>
-              I fase 1 uploader hvert hus til sin egen del af bogen, og fælles billeder lægges
-              under en kategori (Sct. Hans, Vejdag & skovdag, Fællesskabet osv.).
-            </div>
-            <div className="checkbox-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>
-              <label>
-                <input
-                  type="radio"
-                  name="upload-target"
-                  value="house"
-                  checked={target === 'house'}
-                  onChange={() => setTarget('house')}
-                  disabled={myHouse === null || houseAtCap}
-                />{' '}
-                <strong>Til mit hus</strong>
-                {myHouse !== null ? ` (Hus ${myHouse})` : ' — du er ikke tildelt et hus endnu'}
-                {myHouse !== null && slotsUsed !== null && (
-                  <span className="subtle"> · {slotsUsed} af {slotsMax} pladser brugt</span>
-                )}
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="upload-target"
-                  value="activity"
-                  checked={target === 'activity'}
-                  onChange={() => setTarget('activity')}
-                />{' '}
-                <strong>Til en kategori</strong>
-                <span className="subtle"> (fælles afsnit i bogen)</span>
-              </label>
-            </div>
-            {target === 'activity' && (
-              <div style={{ marginTop: '0.6rem' }}>
-                <select
-                  value={activityKey}
-                  onChange={(e) => setActivityKey(e.target.value)}
-                  aria-label="Kategori"
-                >
-                  <option value="">— Vælg kategori —</option>
-                  {(activities ?? []).map((a) => (
-                    <option key={a.key} value={a.key}>
-                      {a.displayName}
-                    </option>
-                  ))}
-                </select>
-                {activities !== null && activities.length === 0 && (
-                  <div className="help" style={{ marginTop: '0.4rem' }}>
-                    Udvalget har ikke oprettet kategorier endnu.
-                  </div>
-                )}
-              </div>
-            )}
-            {houseAtCap && (
-              <div
-                style={{
-                  marginTop: '0.6rem',
-                  padding: '0.5rem 0.75rem',
-                  background: 'var(--paper-warm, #faf2e6)',
-                  borderLeft: '3px solid var(--copper, #b85a2a)',
-                  fontSize: '0.95rem',
-                }}
-              >
-                Hus {myHouse} har allerede {slotsUsed} af {slotsMax} mulige billeder. Bed udvalget
-                fjerne et billede først, eller upload til en kategori i stedet.
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="field">
-            <label>Hus nr.</label>
-            <div className="help" style={{ marginBottom: '0.5rem' }}>Vælg de huse billedet hører til. Mindst ét.</div>
-            <HouseSelector value={houseNumbers} onToggle={toggleHouse} />
-          </div>
-        )}
 
         <div className="field">
           <div className="checkbox-row">

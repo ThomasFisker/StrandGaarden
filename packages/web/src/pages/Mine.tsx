@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  deletePhoto,
   getHousePhotos,
   getMyPhotos,
   movePhotoSection,
@@ -62,6 +63,8 @@ export const MinePage = () => {
     stageOneMember && myHouse !== null && slotsUsed !== null && slotsUsed >= slotsMax;
   const [swapping, setSwapping] = useState<string | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const activeTab: Tab =
     location.pathname === '/mine/kategori'
       ? 'kategori'
@@ -134,6 +137,22 @@ export const MinePage = () => {
       setError(e instanceof Error ? e.message : 'Kunne ikke flytte billedet');
     } finally {
       setMoving(null);
+    }
+  };
+
+  const deleteCard = async (photo: MyPhoto) => {
+    if (!session || deletingId) return;
+    setDeletingId(photo.photoId);
+    setError(null);
+    try {
+      await deletePhoto(session.idToken, photo.photoId);
+      setConfirmDeleteId(null);
+      // Refresh the profile too — deleting a house photo frees a slot.
+      await Promise.all([reloadPhotos(session.idToken), refreshProfile()]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Kunne ikke slette billedet');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -232,6 +251,11 @@ export const MinePage = () => {
     const showMoveToHouse =
       !frozen && stageOneMember && isOtherSection && myHouse !== null && isMine;
     const moveToHouseDisabled = !!houseAtCap || moveBusy;
+    // Stage-1 members may delete their own photos directly (no need to ask
+    // udvalget). In stage 2 the page is frozen; in stage 3 deletion goes
+    // through the removal-request flow on the detail page instead.
+    const showDelete = !frozen && stageOneMember && isMine;
+    const deleteBusy = deletingId === p.photoId;
     const statusClass = p.status === 'Decided' ? ' decided' : '';
     // Arrow row stays visible on every house card so the priority
     // number is always shown — but the ↑↓ buttons are only enabled on
@@ -393,6 +417,37 @@ export const MinePage = () => {
               )}
             </button>
           )}
+          {showDelete &&
+            (confirmDeleteId === p.photoId ? (
+              <span className="delete-confirm-inline">
+                <strong>Er du sikker?</strong>
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => deleteCard(p)}
+                  disabled={deleteBusy}
+                >
+                  {deleteBusy ? 'Sletter…' : 'Ja, slet'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-card"
+                  onClick={() => setConfirmDeleteId(null)}
+                  disabled={deleteBusy}
+                >
+                  Nej
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="btn-card btn-card-danger"
+                onClick={() => setConfirmDeleteId(p.photoId)}
+                title="Slet billedet permanent — fil og oplysninger fjernes"
+              >
+                Slet billede
+              </button>
+            ))}
           </div>
         )}
       </article>
@@ -406,14 +461,38 @@ export const MinePage = () => {
         Hus {profile.houseNumber}
       </h2>
       <p className="help" style={{ marginTop: 0 }}>
-        En kort tekst som hus {profile.houseNumber} bidrager med til jubilæumsbogen — fx en hilsen,
-        et minde eller et par linjer om huset gennem årene. Du kan rette teksten frem til bogen
-        sendes i tryk.
+        Hver husstand får tre sider i jubilæumsbogen til både billeder og tekst. Da huset allerede
+        er beskrevet i 75-års bogen, er dette tænkt som en opdatering — et tilbageblik på de seneste
+        15 år.
       </p>
+      <details className="housetext-inspiration">
+        <summary>Inspiration: hvad kan teksten handle om?</summary>
+        <ul>
+          <li>
+            <strong>Menneskene i huset:</strong> Hvem bor her i dag? Er der kommet en ny generation
+            til — børn eller børnebørn, fødsler, bryllupper, runde fødselsdage holdt i sommerhuset.
+            Og dem, vi har mistet i årenes løb, som stadig hører til stedet.
+          </li>
+          <li>
+            <strong>Huset selv:</strong> Ombygninger eller renoveringer — nyt tag, en tilbygning, et
+            køkken eller en terrasse, der har ændret hverdagen. Eller modsat: det, I bevidst har
+            bevaret. Historien bag, hvis huset har skiftet hænder i familien eller fået nye ejere.
+          </li>
+          <li>
+            <strong>Livet ved stranden:</strong> En tradition, der er jeres egen — morgenbadet, en
+            bestemt ret om sommeren, et tilbagevendende besøg, stormen der tog noget med sig, eller
+            bare året hvor alle var samlet. Små øjeblikke som er med til at danne minder.
+          </li>
+        </ul>
+        <p style={{ fontStyle: 'italic' }}>
+          Det behøver hverken være langt eller højtideligt — bare ægte linjer om det der virkelig
+          betyder noget for jer.
+        </p>
+      </details>
       <p className="help" style={{ marginTop: '0.4rem', fontStyle: 'italic' }}>
-        Teksten er <strong>fælles for hele hus {profile.houseNumber}</strong> — hvis I er flere
-        medlemmer i samme hus, deler I om teksten, og det er den sidst gemte version der står.
-        Snak gerne sammen i huset, så I er enige om hvad der skal stå.
+        Teksten er <strong>fælles for hele hus {profile.houseNumber}</strong> — er I flere medlemmer
+        i huset, deles I om den, og det er den sidst gemte version der står. Snak gerne sammen,
+        inden I skriver. Du kan rette teksten frem til den 31. oktober 2026.
       </p>
       <form onSubmit={submitHouseText} noValidate>
         <RichTextEditor
