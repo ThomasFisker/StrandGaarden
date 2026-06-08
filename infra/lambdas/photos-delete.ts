@@ -47,7 +47,7 @@ const deleteS3Best = async (Bucket: string, Key: string | undefined): Promise<vo
  * so the deletion stays discoverable.
  *
  * Authorization is stage-aware:
- * - Admins (udvalget) may delete in any stage.
+ * - Admins (redaktionen) may delete in any stage.
  * - Non-admin members may delete **their own** photo only in stage 1
  *   (Indsamling). In stage 2 (Frys) all non-admin writes are locked
  *   (423). In stage 3 (Offentlig) members must instead use the removal
@@ -80,7 +80,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     if (cfg.stage === 3) {
       return json(403, {
         error:
-          'I denne fase skal du bede udvalget om at fjerne billedet via "Anmod om fjernelse".',
+          'I denne fase skal du bede redaktionen om at fjerne billedet via "Anmod om fjernelse".',
       });
     }
     // Stage 1 (Indsamling): own photos only.

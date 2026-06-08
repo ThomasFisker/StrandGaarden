@@ -252,7 +252,7 @@ export const MinePage = () => {
       !frozen && stageOneMember && isOtherSection && myHouse !== null && isMine;
     const moveToHouseDisabled = !!houseAtCap || moveBusy;
     // Stage-1 members may delete their own photos directly (no need to ask
-    // udvalget). In stage 2 the page is frozen; in stage 3 deletion goes
+    // redaktionen). In stage 2 the page is frozen; in stage 3 deletion goes
     // through the removal-request flow on the detail page instead.
     const showDelete = !frozen && stageOneMember && isMine;
     const deleteBusy = deletingId === p.photoId;
@@ -358,7 +358,7 @@ export const MinePage = () => {
                   <span
                     key={person.slug}
                     className={`person-chip${person.state === 'pending' ? ' pending' : ''}`}
-                    title={person.state === 'pending' ? 'Afventer udvalgets godkendelse' : undefined}
+                    title={person.state === 'pending' ? 'Afventer redaktionens godkendelse' : undefined}
                   >
                     {person.displayName}
                   </span>
@@ -516,7 +516,7 @@ export const MinePage = () => {
         {textError && <div className="error" style={{ marginTop: '0.5rem' }}>{textError}</div>}
         {textOk && (
           <div className="ok" style={{ marginTop: '0.5rem' }}>
-            Gemt. Tak — udvalget kan se teksten under <strong>Hustekster</strong>.
+            Gemt. Tak — redaktionen kan se teksten under <strong>Hustekster</strong>.
           </div>
         )}
         <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
@@ -578,7 +578,7 @@ export const MinePage = () => {
           Mine <em>Hus Billeder</em>
         </h1>
         {justUploaded && (
-          <div className="ok">Tak! Billedet er sendt og venter på udvalgets gennemgang.</div>
+          <div className="ok">Tak! Billedet er sendt og venter på redaktionens gennemgang.</div>
         )}
         {tabStrip}
 
@@ -598,11 +598,11 @@ export const MinePage = () => {
                   )}
                 . Tallet gælder hele huset — hvis I er flere fra samme hus, deles I om de{' '}
                 {profile.maxBookSlotsPerHouse} pladser. Brug pilene på dine egne billeder til at
-                flytte de vigtigste øverst — udvalget skærer fra bunden, hvis der ikke er plads
+                flytte de vigtigste øverst — redaktionen skærer fra bunden, hvis der ikke er plads
                 til alle.
               </>
             ) : (
-              'Du er ikke tildelt et hus endnu. Bed udvalget tildele dig et hus før du uploader til denne sektion.'
+              'Du er ikke tildelt et hus endnu. Bed redaktionen tildele dig et hus før du uploader til denne sektion.'
             )}
           </p>
           <p className="help" style={{ margin: '0.6rem 0 0' }}>
@@ -672,14 +672,14 @@ export const MinePage = () => {
           Mine <em>Kategori Billeder</em>
         </h1>
         {justUploaded && (
-          <div className="ok">Tak! Billedet er sendt og venter på udvalgets gennemgang.</div>
+          <div className="ok">Tak! Billedet er sendt og venter på redaktionens gennemgang.</div>
         )}
         {tabStrip}
 
         <div className="mine-section-intro">
           <p className="lede" style={{ margin: 0 }}>
             Billeder fra fælles kategorier — Sct. Hans, Vejdag & skovdag, Fællesskabet og andre
-            — kommer med i bogens fællesafsnit. Ingen rækkefølge: udvalget vælger selv, hvad der
+            — kommer med i bogens fællesafsnit. Ingen rækkefølge: redaktionen vælger selv, hvad der
             kommer med.
           </p>
           {!frozen && (
@@ -714,7 +714,7 @@ export const MinePage = () => {
         Mine <em>billeder</em>
       </h1>
       {justUploaded && (
-        <div className="ok">Tak! Billedet er sendt og venter på udvalgets gennemgang.</div>
+        <div className="ok">Tak! Billedet er sendt og venter på redaktionens gennemgang.</div>
       )}
       {!frozen && (
         <Link to="/upload" className="btn-primary mine-upload-btn">

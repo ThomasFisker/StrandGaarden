@@ -7,7 +7,7 @@ const COPY: Record<Stage, { eyebrow: string; body: string } | null> = {
       'Vi samler billeder ind til jubilæumsbogen — både til dine egne sider og til fællessiderne. Galleriet aktiveres senere.',
   },
   2: {
-    eyebrow: 'Frys — udvalget arbejder på bogen',
+    eyebrow: 'Frys — redaktionen arbejder på bogen',
     body:
       'Siden er låst i denne periode. Du kan se det du allerede har uploadet, men ikke uploade nye, kommentere eller anmode om fjernelse. Vi åbner igen efter bog-deadline.',
   },

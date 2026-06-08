@@ -32,7 +32,7 @@ Hvad bekræfter du?
   indforståede med at billederne kan blive vist offentligt.
 
 Hvad gør vi for at beskytte dig?
-• Du kan altid bede udvalget fjerne et billede ved at klikke
+• Du kan altid bede redaktionen fjerne et billede ved at klikke
   "Anmod om fjernelse" på billedets side.
 • Vi gemmer ikke billederne længere end nødvendigt, og vi bruger
   dem ikke til andre formål uden at spørge dig først.
@@ -54,7 +54,7 @@ const isStage = (n: unknown): n is Stage => n === 1 || n === 2 || n === 3;
  * to write. 423 Locked is the HTTP semantic match. Reused across every
  * write lambda. */
 export const FREEZE_ERROR_MESSAGE =
-  'Siden er i frys-fase mens udvalget arbejder på bogen. Ingen ændringer er mulige indtil videre.';
+  'Siden er i frys-fase mens redaktionen arbejder på bogen. Ingen ændringer er mulige indtil videre.';
 
 export const isFrozenForCaller = (cfg: AppConfig, isAdminCaller: boolean): boolean =>
   cfg.stage === 2 && !isAdminCaller;

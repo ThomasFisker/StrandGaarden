@@ -74,7 +74,7 @@ export const FirstLoginPrompt = ({ children }: { children: ReactNode }) => {
         Vil du <em>vælge</em> din egen adgangskode?
       </h1>
       <p className="lede">
-        Udvalget har givet dig en adgangskode, så du kan logge ind. Du må gerne beholde den —
+        Redaktionen har givet dig en adgangskode, så du kan logge ind. Du må gerne beholde den —
         eller du kan vælge en, du selv kan huske. Du kan også springe over nu og ændre den
         senere.
       </p>
@@ -109,7 +109,7 @@ export const FirstLoginPrompt = ({ children }: { children: ReactNode }) => {
       ) : (
         <form onSubmit={onChange} noValidate style={{ marginTop: '1.5rem' }}>
           <div className="field">
-            <label htmlFor="old-pw">Nuværende adgangskode (den udvalget gav dig)</label>
+            <label htmlFor="old-pw">Nuværende adgangskode (den redaktionen gav dig)</label>
             <input
               id="old-pw"
               type="password"

@@ -96,7 +96,7 @@ export const SamtykkePage = () => {
       )}
 
       <p className="help">
-        Aktuel version: <code>{text?.version ?? '—'}</code>. Hvis udvalget opdaterer teksten,
+        Aktuel version: <code>{text?.version ?? '—'}</code>. Hvis redaktionen opdaterer teksten,
         bliver du bedt om at acceptere den nye version ved næste login.{' '}
         <Link to="/mine">Tilbage til Mine billeder</Link>.
       </p>

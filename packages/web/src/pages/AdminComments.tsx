@@ -158,7 +158,7 @@ export const AdminCommentsPage = () => {
 
   return (
     <main className="content wide">
-      <p className="eyebrow">Udvalgets gennemgang</p>
+      <p className="eyebrow">Redaktionens gennemgang</p>
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>
         Indkomne <em>kommentarer</em>
       </h1>

@@ -120,7 +120,7 @@ export const GalleryPage = () => {
         <p className="lede">
           {stage === 1
             ? 'Hjælp os med at samle Strandgaardens historie i billeder. Hvert billede, du deler, bliver en del af den fælles fortælling — og du kan altid se dine egne bidrag under Mine billeder eller uploade flere via Upload billede.'
-            : 'Udvalget arbejder på den trykte bog. Når vi åbner igen, finder du galleriet her. Imens kan du stadig se det du selv har uploadet.'}
+            : 'Redaktionen arbejder på den trykte bog. Når vi åbner igen, finder du galleriet her. Imens kan du stadig se det du selv har uploadet.'}
         </p>
         {stage === 1 && (
           <p className="lede">

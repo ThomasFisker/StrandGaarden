@@ -18,7 +18,7 @@ export const HelpPage = () => {
       </h1>
       <p className="lede">
         Denne side er for alle medlemmer af Strandgaarden Interessentskab — både Kikker, Medlem,
-        Udvalg og Bestyrelse. Start fra toppen, eller spring direkte til den sektion der er
+        Redaktion og Bestyrelse. Start fra toppen, eller spring direkte til den sektion der er
         relevant for dig.
       </p>
 
@@ -29,7 +29,7 @@ export const HelpPage = () => {
           <li><a href="#first-time">Første gang du logger ind</a></li>
           <li><a href="#glemt">Glemt adgangskode</a></li>
           <li><a href="#medlem">Hvad kan du som medlem</a></li>
-          <li><a href="#udvalg">Hvad kan Udvalget</a></li>
+          <li><a href="#udvalg">Hvad kan Redaktionen</a></li>
           <li><a href="#bestyrelse">Hvad kan Bestyrelsen</a></li>
           <li><a href="#sporgsmaal">Spørgsmål?</a></li>
         </ol>
@@ -93,7 +93,7 @@ export const HelpPage = () => {
         <p>
           <strong>Hvor er vi i forløbet?</strong> Lige nu er vi i fase 1, hvor vi <em>samler
           billeder ind</em> fra alle huse. Når vi har fået billeder nok, går vi i en kort fase 2,
-          hvor Udvalget gennemgår alt og siden låses for ændringer. Til sidst åbner fase 3, hvor
+          hvor Redaktionen gennemgår alt og siden låses for ændringer. Til sidst åbner fase 3, hvor
           billederne offentliggøres i <strong>Galleriet</strong> her på siden og udvalgte
           billeder samles i den trykte jubilæumsbog. Så lige nu handler det om at få jeres
           billeder med — galleriet kommer senere.
@@ -104,7 +104,7 @@ export const HelpPage = () => {
         <h3 style={{ marginTop: '1rem' }}>Galleri</h3>
         <p>
           Når galleriet åbner (fase 3) kan du klikke <strong>Galleri</strong> i toppen for at se
-          billeder andre medlemmer har uploadet og som Udvalget har godkendt til hjemmesiden. Du
+          billeder andre medlemmer har uploadet og som Redaktionen har godkendt til hjemmesiden. Du
           kan filtrere på år, hus, person og kategori. I fase 1 og 2 er galleriet endnu ikke
           synligt — vi samler først, og åbner senere.
         </p>
@@ -118,7 +118,7 @@ export const HelpPage = () => {
           <li><strong>Beskrivelse:</strong> Fortæl historien — hvor, hvornår, hvem og hvad der sker.</li>
           <li><strong>År:</strong> Ca-årstal er fint hvis du ikke kan huske præcist.</li>
           <li>
-            <strong>Tag personer:</strong> Vælg navne fra listen, eller foreslå nye (Udvalget godkender
+            <strong>Tag personer:</strong> Vælg navne fra listen, eller foreslå nye (Redaktionen godkender
             nye navne).
           </li>
           <li>
@@ -159,10 +159,10 @@ export const HelpPage = () => {
       </section>
 
       <section id="udvalg" style={{ marginTop: '2.5rem' }}>
-        <h2>5. Hvad kan Udvalget</h2>
+        <h2>5. Hvad kan Redaktionen</h2>
         <p>
-          Udvalget styrer alt det redaktionelle billede-arbejde. Som medlem af Udvalget har du desuden
-          adgang til alt det almindelige medlemmer kan. Klik <strong>Udvalget</strong> i toppen — der er ni felter:
+          Redaktionen styrer alt det redaktionelle billede-arbejde. Som medlem af Redaktionen har du desuden
+          adgang til alt det almindelige medlemmer kan. Klik <strong>Redaktionen</strong> i toppen — der er ni felter:
         </p>
         <ul>
           <li><strong>Fase:</strong> Sæt fasen for siden (1 indsamling / 2 frys / 3 offentlig) og rediger GDPR-teksten.</li>
@@ -210,7 +210,7 @@ export const HelpPage = () => {
         <h2>7. Spørgsmål?</h2>
         <p>
           Hvis noget ikke virker som du forventer, eller du har idéer til forbedringer — kontakt
-          Udvalget (for billed-spørgsmål) eller Bestyrelsen (for alt andet). De har kontaktoplysninger
+          Redaktionen (for billed-spørgsmål) eller Bestyrelsen (for alt andet). De har kontaktoplysninger
           i medlemslisten.
         </p>
         <p style={{ marginTop: '1rem', color: 'var(--ink-soft)' }}>

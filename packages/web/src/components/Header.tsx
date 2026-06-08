@@ -78,7 +78,7 @@ export const Header = ({ claims, onLogout }: { claims: Claims; onLogout: () => v
               to="/admin"
               className={() => (onAdminSection ? 'active' : undefined)}
             >
-              Udvalget
+              Redaktionen
             </NavLink>
           )}
           {showBoard && (

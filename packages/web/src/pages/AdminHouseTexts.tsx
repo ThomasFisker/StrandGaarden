@@ -51,7 +51,7 @@ export const AdminHouseTextsPage = () => {
       </h1>
       <p className="lede">
         Hvert hus skriver et kort afsnit til bogen. Medlemmer redigerer teksten på siden{' '}
-        <strong>Mine billeder</strong>; her ser udvalget alle 23 huse samlet.
+        <strong>Mine billeder</strong>; her ser redaktionen alle 23 huse samlet.
         {items && (
           <>
             {' '}

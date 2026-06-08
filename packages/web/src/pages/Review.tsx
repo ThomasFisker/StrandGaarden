@@ -150,10 +150,10 @@ export const ReviewPage = () => {
 
   return (
     <main className="content">
-      <p className="eyebrow">Udvalgets gennemgang</p>
+      <p className="eyebrow">Redaktionens gennemgang</p>
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>Bedøm <em>bidrag</em></h1>
       <p className="lede">
-        Billeder der afventer udvalgets beslutning. Marker hvilke der må vises på siden og hvilke der kommer i bogen,
+        Billeder der afventer redaktionens beslutning. Marker hvilke der må vises på siden og hvilke der kommer i bogen,
         og klik <em>Gem beslutning</em>.
       </p>
 

@@ -139,9 +139,9 @@ export const AdminHomePage = () => {
 
   return (
     <main className="content">
-      <p className="eyebrow">Udvalget</p>
+      <p className="eyebrow">Redaktionen</p>
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>
-        Udvalgs<em>arbejde</em>
+        Redaktions<em>arbejde</em>
       </h1>
       <p className="lede">
         Alt redaktionsarbejde samlet ét sted. Klik på en boks for at se afventende opgaver.

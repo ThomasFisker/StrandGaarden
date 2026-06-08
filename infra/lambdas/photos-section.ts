@@ -142,7 +142,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
   if (target === 'house') {
     if (myHouse === null) {
       return json(400, {
-        error: 'Du er ikke tildelt et hus. Bed udvalget om at tildele dig et hus først.',
+        error: 'Du er ikke tildelt et hus. Bed redaktionen om at tildele dig et hus først.',
       });
     }
     if (oldPriority !== null && oldHouseNumbers.length === 1 && oldHouseNumbers[0] === myHouse) {

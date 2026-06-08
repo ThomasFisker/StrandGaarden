@@ -525,7 +525,7 @@ export const GalleryPhotoPage = () => {
                   <span style={{ fontSize: '0.95rem' }}>
                     <strong>Hjælp søges</strong> — bed andre om hjælp til at identificere personerne.
                     Et lille mærke vises på billedet, og besøgende kan sende en kommentar til
-                    udvalget.
+                    redaktionen.
                   </span>
                 </label>
                 {helpError && (
@@ -556,7 +556,7 @@ export const GalleryPhotoPage = () => {
             {removalSent && (
               <div className="removal-thanks">
                 <p>
-                  <strong>Tak.</strong> Anmodningen er sendt til udvalget. Du får besked når der er truffet
+                  <strong>Tak.</strong> Anmodningen er sendt til redaktionen. Du får besked når der er truffet
                   en beslutning.
                 </p>
               </div>
@@ -565,8 +565,8 @@ export const GalleryPhotoPage = () => {
             {stageThree && removalOpen && !removalSent && (
               <form className="removal-form" onSubmit={submitRemoval}>
                 <p className="removal-intro">
-                  <strong>Anmod udvalget om at fjerne billedet.</strong> Skriv en kort begrundelse (f.eks.
-                  at en person på billedet har bedt om det). Udvalget ser anmodningen igennem.
+                  <strong>Anmod redaktionen om at fjerne billedet.</strong> Skriv en kort begrundelse (f.eks.
+                  at en person på billedet har bedt om det). Redaktionen ser anmodningen igennem.
                   Hvis godkendt, slettes billedet permanent.
                 </p>
                 <div className="field">
@@ -577,7 +577,7 @@ export const GalleryPhotoPage = () => {
                     maxLength={REMOVAL_REASON_MAX}
                     value={removalReason}
                     onChange={(e) => setRemovalReason(e.target.value)}
-                    placeholder="Kort begrundelse til udvalget."
+                    placeholder="Kort begrundelse til redaktionen."
                     disabled={removalSubmitting}
                   />
                   <div className="help">{removalReason.length}/{REMOVAL_REASON_MAX} tegn</div>
@@ -612,11 +612,11 @@ export const GalleryPhotoPage = () => {
             Kender du <em>nogen</em> på billedet? Har du en historie?
           </h2>
           <p className="lede comment-lede">
-            Skriv en kommentar — udvalget kigger den igennem og kan tilføje den til billedet.
+            Skriv en kommentar — redaktionen kigger den igennem og kan tilføje den til billedet.
           </p>
           {commentSent ? (
             <div className="comment-thanks">
-              <p><strong>Tak!</strong> Din kommentar er sendt til udvalget.</p>
+              <p><strong>Tak!</strong> Din kommentar er sendt til redaktionen.</p>
               <button
                 type="button"
                 className="btn-ghost"
@@ -645,7 +645,7 @@ export const GalleryPhotoPage = () => {
               </div>
               {commentError && <div className="error">{commentError}</div>}
               <button type="submit" className="btn-primary" disabled={commentSubmitting}>
-                {commentSubmitting ? 'Sender…' : <>Send til udvalget <span className="arrow">→</span></>}
+                {commentSubmitting ? 'Sender…' : <>Send til redaktionen <span className="arrow">→</span></>}
               </button>
             </form>
           )}

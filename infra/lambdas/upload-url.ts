@@ -217,7 +217,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     } else {
       if (myHouse === null) {
         errors.push(
-          'Du er ikke tildelt et hus. Bed udvalget om at tildele dig et hus, eller vælg en aktivitet.',
+          'Du er ikke tildelt et hus. Bed redaktionen om at tildele dig et hus, eller vælg en aktivitet.',
         );
       } else if (
         !Array.isArray(houseNumbersRaw) ||
@@ -256,7 +256,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     const total = await countUserUploads(callerSubForCounts);
     if (total >= TOTAL_UPLOADS_CAP) {
       return json(409, {
-        error: `Du har allerede sendt ${total} billeder. Bed udvalget om hjælp, hvis du har flere du gerne vil bidrage med.`,
+        error: `Du har allerede sendt ${total} billeder. Bed redaktionen om hjælp, hvis du har flere du gerne vil bidrage med.`,
       });
     }
   }
@@ -268,7 +268,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     const used = await countPriorityPhotosForHouse(houseNumbers[0]);
     if (used >= cfg.maxBookSlotsPerHouse) {
       return json(409, {
-        error: `Hus ${houseNumbers[0]} har allerede ${used} af ${cfg.maxBookSlotsPerHouse} mulige billeder. Bed udvalget om at fjerne et først, hvis du vil uploade flere.`,
+        error: `Hus ${houseNumbers[0]} har allerede ${used} af ${cfg.maxBookSlotsPerHouse} mulige billeder. Bed redaktionen om at fjerne et først, hvis du vil uploade flere.`,
       });
     }
   }

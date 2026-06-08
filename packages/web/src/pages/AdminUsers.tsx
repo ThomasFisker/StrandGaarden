@@ -233,7 +233,7 @@ export const AdminUsersPage = () => {
       <p className="eyebrow">Administration</p>
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>Brugere</h1>
       <p className="lede">
-        Administrer hvem der har adgang til Strandgaardens jubilæumsside. Roller: administrator (udvalget),
+        Administrer hvem der har adgang til Strandgaardens jubilæumsside. Roller: administrator (redaktionen),
         medlem (uploader billeder), kigger (ser billeder via den delte login).
       </p>
 

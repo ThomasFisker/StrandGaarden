@@ -86,7 +86,7 @@ export const GdprGate = ({ children }: { children: ReactNode }) => {
       </h1>
       <p className="lede">
         Inden du bruger jubilæumsarkivet, beder vi dig læse og acceptere samtykket. Du
-        behøver kun gøre dette én gang — eller igen, hvis udvalget opdaterer teksten.
+        behøver kun gøre dette én gang — eller igen, hvis redaktionen opdaterer teksten.
       </p>
       <pre
         style={{

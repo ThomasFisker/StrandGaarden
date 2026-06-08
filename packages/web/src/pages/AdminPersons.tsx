@@ -145,7 +145,7 @@ export const AdminPersonsPage = () => {
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>Personer</h1>
       <p className="lede">
         Den godkendte navneliste bruges af uploadformen og galleriets person-filter. Medlemmer kan foreslå nye
-        navne, som udvalget godkender eller afviser her.
+        navne, som redaktionen godkender eller afviser her.
       </p>
 
       <section className="admin-invite">

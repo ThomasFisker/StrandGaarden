@@ -83,7 +83,7 @@ export const effectiveRole = (
 export const ROLE_LABEL: Record<CognitoGroup, string> = {
   [GROUP_VIEWER]: 'Kigger',
   [GROUP_MEMBER]: 'Medlem',
-  [GROUP_UDVALG]: 'Udvalg',
+  [GROUP_UDVALG]: 'Redaktion',
   [GROUP_BOARD]: 'Bestyrelse',
   [GROUP_ADMINISTRATOR]: 'Administrator',
 };

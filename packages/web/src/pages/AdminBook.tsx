@@ -180,7 +180,7 @@ export const AdminBookPage = () => {
 
   return (
     <main className="content">
-      <p className="eyebrow">Udvalget · Bog-eksport</p>
+      <p className="eyebrow">Redaktionen · Bog-eksport</p>
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>
         Billeder til <em>jubilæumsbogen</em>
       </h1>

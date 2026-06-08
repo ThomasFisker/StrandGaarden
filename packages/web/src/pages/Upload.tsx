@@ -174,8 +174,8 @@ export const UploadPage = () => {
     }
     if (stageOneNonAdmin) {
       if (target === 'house') {
-        if (myHouse === null) return 'Du er ikke tildelt et hus. Bed udvalget om at tildele dig et — eller vælg en kategori.';
-        if (houseAtCap) return `Hus ${myHouse} er fyldt op (${slotsUsed}/${slotsMax}). Vælg en kategori, eller bed udvalget fjerne et billede først.`;
+        if (myHouse === null) return 'Du er ikke tildelt et hus. Bed redaktionen om at tildele dig et — eller vælg en kategori.';
+        if (houseAtCap) return `Hus ${myHouse} er fyldt op (${slotsUsed}/${slotsMax}). Vælg en kategori, eller bed redaktionen fjerne et billede først.`;
       } else {
         if (!activityKey) return 'Vælg en kategori.';
       }
@@ -236,7 +236,7 @@ export const UploadPage = () => {
           Upload <em>billede</em>
         </h1>
         <p className="lede">
-          Siden er i frys-fase mens udvalget arbejder på bogen. Du kan se det du allerede har
+          Siden er i frys-fase mens redaktionen arbejder på bogen. Du kan se det du allerede har
           uploadet på <a href="/mine">Mine billeder</a>, men nye uploads er ikke mulige indtil
           videre.
         </p>
@@ -298,7 +298,7 @@ export const UploadPage = () => {
           </select>
           {activities !== null && activities.length === 0 && (
             <div className="help" style={{ marginTop: '0.4rem' }}>
-              Udvalget har ikke oprettet kategorier endnu.
+              Redaktionen har ikke oprettet kategorier endnu.
             </div>
           )}
         </div>
@@ -313,7 +313,7 @@ export const UploadPage = () => {
             fontSize: '0.95rem',
           }}
         >
-          Hus {myHouse} har allerede {slotsUsed} af {slotsMax} mulige billeder. Bed udvalget
+          Hus {myHouse} har allerede {slotsUsed} af {slotsMax} mulige billeder. Bed redaktionen
           fjerne et billede først, eller upload til en kategori i stedet.
         </div>
       )}
@@ -331,7 +331,7 @@ export const UploadPage = () => {
       <p className="eyebrow">Bidrag til bogen</p>
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>Upload <em>billede</em></h1>
       <p className="lede">
-        Udfyld så meget du kan. Udvalget kigger billederne igennem, før de vises på siden eller kommer med i bogen.
+        Udfyld så meget du kan. Redaktionen kigger billederne igennem, før de vises på siden eller kommer med i bogen.
       </p>
       {stageOneNonAdmin && (
         <p className="lede" style={{ marginTop: '-0.4rem', fontSize: '1.05rem' }}>
@@ -462,7 +462,7 @@ export const UploadPage = () => {
           </div>
           <div className="help">
             Sæt hak hvis der er personer du ikke kan sætte navn på. Andre besøgende ser et lille
-            <em> Hjælp søges</em> mærke på billedet og kan sende en kommentar til udvalget.
+            <em> Hjælp søges</em> mærke på billedet og kan sende en kommentar til redaktionen.
           </div>
         </div>
 
