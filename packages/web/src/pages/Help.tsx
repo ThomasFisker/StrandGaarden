@@ -1,25 +1,31 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../session';
 
 /**
- * Public help page. Visible whether or not the caller is signed in, so
- * the welcome email can link to it before the recipient has logged in.
- * One long page with an anchor list at the top — easiest for elderly
- * readers to scan; no role-gated subsections.
+ * Public help page ("Sådan bruger du siden"). Visible whether or not the
+ * caller is signed in, so the welcome email can link to it before the
+ * recipient has logged in.
+ *
+ * The main flow is deliberately focused on Fase 1 and uploading photos
+ * for the jubilee book — that's what almost every reader needs. The
+ * Redaktionen + Bestyrelsen help is kept, but tucked behind a button so
+ * it doesn't distract ordinary members.
  */
 export const HelpPage = () => {
   const { session } = useSession();
   const signedIn = !!session;
+  const [showRoleHelp, setShowRoleHelp] = useState(false);
+
   return (
     <main className="content help-page">
-      <p className="eyebrow">Hjælp</p>
+      <p className="eyebrow">Strandgaarden · 100 års jubilæumsbog</p>
       <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>
         Sådan bruger du <em>siden</em>
       </h1>
       <p className="lede">
-        Denne side er for alle medlemmer af Strandgaarden Interessentskab — både Kikker, Medlem,
-        Redaktion og Bestyrelse. Start fra toppen, eller spring direkte til den sektion der er
-        relevant for dig.
+        Denne side er for alle medlemmer af Strandgaarden I/S. Læs fra toppen, eller spring til den
+        sektion, der er relevant for dig.
       </p>
 
       <nav className="help-toc" style={{ margin: '2rem 0' }}>
@@ -27,27 +33,25 @@ export const HelpPage = () => {
         <ol>
           <li><a href="#login">Sådan logger du ind</a></li>
           <li><a href="#first-time">Første gang du logger ind</a></li>
-          <li><a href="#glemt">Glemt adgangskode</a></li>
-          <li><a href="#medlem">Hvad kan du som medlem</a></li>
-          <li><a href="#udvalg">Hvad kan Redaktionen</a></li>
-          <li><a href="#bestyrelse">Hvad kan Bestyrelsen</a></li>
+          <li><a href="#adgangskode">Adgangskode</a></li>
+          <li><a href="#fase1">Fase 1 – det du skal gøre</a></li>
+          <li><a href="#vigtigt">Vigtigt i Fase 1</a></li>
           <li><a href="#sporgsmaal">Spørgsmål?</a></li>
+          <li><a href="#fase2">Fase 2 – Galleriet</a></li>
         </ol>
       </nav>
 
       <section id="login" style={{ marginTop: '2.5rem' }}>
         <h2>1. Sådan logger du ind</h2>
         <p>
-          Du har modtaget en email fra Strandgaarden med din login-email og en start-adgangskode.
-          Gå til forsiden og klik <strong>Log ind</strong> øverst.
+          Du har fået en e-mail fra Strandgaarden med dit login (e-mail og start-adgangskode). Gå til
+          forsiden og klik <strong>Log ind</strong> øverst.
         </p>
         <ul>
-          <li><strong>E-mail:</strong> Den email du fik velkomst-mailen til.</li>
-          <li><strong>Adgangskode:</strong> <code>Strandgaarden100</code> hvis det er din første gang.</li>
+          <li><strong>E-mail:</strong> Den adresse, du fik din velkomstmail på.</li>
+          <li><strong>Adgangskode:</strong> <code>Strandgaarden100</code>, hvis det er første gang.</li>
         </ul>
-        <p>
-          Du kan skifte adgangskode når som helst — se afsnit 3 nedenfor.
-        </p>
+        <p>Du kan skifte adgangskode når som helst — se afsnit 3.</p>
         {!signedIn && (
           <p>
             <Link to="/login" className="btn-primary" style={{ marginTop: '0.5rem' }}>
@@ -59,164 +63,268 @@ export const HelpPage = () => {
 
       <section id="first-time" style={{ marginTop: '2.5rem' }}>
         <h2>2. Første gang du logger ind</h2>
-        <p>To ting sker første gang:</p>
-        <ol>
-          <li>
-            <strong>GDPR-tekst:</strong> Du skal læse og acceptere persondatapolitikken før du kan
-            komme videre. Du kan altid læse den igen under <em>/samtykke</em>.
-          </li>
-          <li>
-            <strong>Vil du skifte adgangskode?</strong> Vi tilbyder at du sætter din egen kode i stedet
-            for <code>Strandgaarden100</code>. Du kan vælge <em>Sæt min egen</em> eller <em>Behold den jeg fik</em>.
-            Beholder du den, kan du altid skifte senere via <em>Glemt adgangskode</em>.
-          </li>
-        </ol>
+        <p>
+          Første gang du logger ind, skal du læse og acceptere persondatapolitikken, før du kan komme
+          videre. Du kan altid læse den igen under <em>Vilkår og samtykke</em>.
+        </p>
+
+        <h3 style={{ marginTop: '1rem' }}>GDPR og brug af billeder</h3>
+        <p>
+          <strong>Billeder i bogen.</strong> Bogen vil indeholde billeder fra fælles arrangementer
+          samt jeres egne bidrag. Når du indsender et billede, giver du samtidig samtykke til, at det
+          må bruges i bogen.
+        </p>
+        <p>
+          Hvis der er andre personer på dine billeder, går vi ud fra, at de er indforståede med, at
+          billedet deles og bruges i denne sammenhæng.
+        </p>
+        <p>
+          Ønsker du generelt ikke at optræde på billeder taget af andre ved fælles arrangementer, må
+          du gerne give os besked, så vi kan tage hensyn til det.
+        </p>
+        <p className="help">
+          Vær dog opmærksom på, at det kan være svært at sikre i praksis. Det kræver, at vi kan
+          genkende dig på tværs af mange billeder, situationer og aldre — også på billeder med flere
+          personer. Vi gør naturligvis vores bedste, men kan desværre ikke garantere, at det altid
+          lykkes.
+        </p>
       </section>
 
-      <section id="glemt" style={{ marginTop: '2.5rem' }}>
-        <h2>3. Glemt adgangskode</h2>
-        <p>Hvis du ikke kan huske din adgangskode:</p>
+      <section id="adgangskode" style={{ marginTop: '2.5rem' }}>
+        <h2>3. Adgangskode</h2>
+        <p>
+          <strong>Skift adgangskode:</strong> Du kan vælge din egen kode i stedet for{' '}
+          <code>Strandgaarden100</code>. Vælg <em>Sæt min egen</em> eller <em>Behold den jeg fik</em>.
+          Du kan altid skifte senere via <em>Glemt adgangskode</em>.
+        </p>
+        <p><strong>Glemt adgangskode?</strong> Sådan får du en ny:</p>
         <ol>
           <li>Gå til login-siden.</li>
-          <li>Klik <strong>Glemt adgangskode?</strong>.</li>
-          <li>Indtast din email — du modtager en 6-cifret kode (tjek også spam-mappen).</li>
-          <li>Indtast koden + en ny adgangskode (mindst 8 tegn med mindst 1 ciffer).</li>
+          <li>Klik <strong>Glemt adgangskode?</strong></li>
+          <li>Indtast din e-mail — du får en 6-cifret kode (tjek også spam-mappen).</li>
+          <li>Indtast koden og vælg en ny adgangskode (mindst 8 tegn og mindst 1 ciffer).</li>
         </ol>
         <p className="help">
-          Hvis koden ikke kommer inden for et par minutter, så kontakt Bestyrelsen.
+          Kommer koden ikke inden for et par minutter, så send en SMS til Thomas Fisker
+          (mob. 50 32 43 20).
         </p>
       </section>
 
-      <section id="medlem" style={{ marginTop: '2.5rem' }}>
-        <h2>4. Hvad kan du som medlem</h2>
-
+      <section id="fase1" style={{ marginTop: '2.5rem' }}>
+        <h2>4. Fase 1 – det du skal gøre</h2>
         <p>
-          <strong>Hvor er vi i forløbet?</strong> Lige nu er vi i fase 1, hvor vi <em>samler
-          billeder ind</em> fra alle huse. Når vi har fået billeder nok, går vi i en kort fase 2,
-          hvor Redaktionen gennemgår alt og siden låses for ændringer. Til sidst åbner fase 3, hvor
-          billederne offentliggøres i <strong>Galleriet</strong> her på siden og udvalgte
-          billeder samles i den trykte jubilæumsbog. Så lige nu handler det om at få jeres
-          billeder med — galleriet kommer senere.
+          Vi indsamler billeder og tekst fra alle 23 huse og sætter derefter bogen sammen. Deadlines
+          er faste og kan ikke forhandles:
         </p>
+        <table className="help-table">
+          <thead>
+            <tr>
+              <th>Hvad</th>
+              <th>Deadline</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Husbilleder og tekst</td>
+              <td>31. oktober 2026</td>
+            </tr>
+            <tr>
+              <td>Jubilæumsbilleder fra festen den 10. juli 2027</td>
+              <td>15. august 2027</td>
+            </tr>
+          </tbody>
+        </table>
 
-        <p>Som medlem har du adgang til alt det her:</p>
-
-        <h3 style={{ marginTop: '1rem' }}>Galleri</h3>
+        <h3 style={{ marginTop: '1.5rem' }}>Upload billeder</h3>
         <p>
-          Når galleriet åbner (fase 3) kan du klikke <strong>Galleri</strong> i toppen for at se
-          billeder andre medlemmer har uploadet og som Redaktionen har godkendt til hjemmesiden. Du
-          kan filtrere på år, hus, person og kategori. I fase 1 og 2 er galleriet endnu ikke
-          synligt — vi samler først, og åbner senere.
-        </p>
-
-        <h3 style={{ marginTop: '1rem' }}>Upload billede</h3>
-        <p>
-          Klik <strong>Upload billede</strong> for at dele et af dine egne billeder. Du skal udfylde:
-        </p>
-        <ul>
-          <li><strong>Billedfil:</strong> JPEG, PNG, TIFF, HEIC (max 100 MB)</li>
-          <li><strong>Beskrivelse:</strong> Fortæl historien — hvor, hvornår, hvem og hvad der sker.</li>
-          <li><strong>År:</strong> Ca-årstal er fint hvis du ikke kan huske præcist.</li>
-          <li>
-            <strong>Tag personer:</strong> Vælg navne fra listen, eller foreslå nye (Redaktionen godkender
-            nye navne).
-          </li>
-          <li>
-            <strong>Hvor hører billedet til?</strong> I fase 1 vælger du enten <em>dit hus</em> (billedet
-            tæller med i jeres del af jubilæumsbogen) eller <em>en kategori</em> (Sct. Hans, Vejdag,
-            Fællesskabet osv. — fælles-billeder fra hele strandgården).
-          </li>
-        </ul>
-
-        <h3 style={{ marginTop: '1rem' }}>Mine billeder</h3>
-        <p>
-          Klik <strong>Mine billeder</strong> for at se alle dine egne uploads. I fase 1 er der tre faner:
+          Bland gerne vandrette og lodrette billeder. Klik <strong>Upload billede</strong> for at dele
+          et af dine egne billeder. Udfyld:
         </p>
         <ul>
           <li>
-            <strong>Mine Hus Billeder:</strong> Billeder hvor du har valgt dit hus. Brug pilene
-            <em> ↑↓</em> for at rangere hvilke der skal med i jubilæumsbogen først.
+            <strong>Billedfil:</strong> JPEG, PNG, TIFF eller HEIC. Brug originalen (typisk over 2 MB)
+            — mindst 800 pixel på den længste side, 1500+ anbefales for at komme med i bogen. Maks 100 MB.
           </li>
           <li>
-            <strong>Mine Kategori Billeder:</strong> Billeder du har lagt i en fælleskategori.
+            <strong>Hvad kan billederne vise?</strong>
+            <ul>
+              <li>Huset udefra</li>
+              <li>Have/grund</li>
+              <li>Særlige detaljer</li>
+              <li>Stemningsbilleder med ejere og familie</li>
+            </ul>
           </li>
+          <li>Variation er bedre end mange ens billeder.</li>
           <li>
-            <strong>Min Hus Tekst:</strong> En kort tekst (max 900 tegn) som dit hus bidrager med til
-            bogen. Bruges som intro til jeres kapitel.
+            Har du historiske, scannede billeder, så upload dem på samme måde — brug en så høj
+            opløsning som muligt af papirbilledet.
           </li>
         </ul>
-        <p>
-          På hvert billede er der en <strong>Se detaljer / rediger</strong>-knap. Klik for at rette
-          beskrivelse, år, personer eller flytte billedet til en anden kategori.
-        </p>
 
-        <h3 style={{ marginTop: '1rem' }}>Dokumenter</h3>
+        <h3 style={{ marginTop: '1.5rem' }}>Mine billeder</h3>
         <p>
-          Klik <strong>Dokumenter</strong> for at læse referater, mødeindkaldelser, årsregnskaber,
-          historiske dokumenter osv. Du kan filtrere på år, kategori og specifikt møde. Klik på et
-          dokument for at se det — PDF'er vises direkte i browseren; du kan også hente filen ned.
-        </p>
-      </section>
-
-      <section id="udvalg" style={{ marginTop: '2.5rem' }}>
-        <h2>5. Hvad kan Redaktionen</h2>
-        <p>
-          Redaktionen styrer alt det redaktionelle billede-arbejde. Som medlem af Redaktionen har du desuden
-          adgang til alt det almindelige medlemmer kan. Klik <strong>Redaktionen</strong> i toppen — der er ni felter:
-        </p>
-        <ul>
-          <li><strong>Fase:</strong> Sæt fasen for siden (1 indsamling / 2 frys / 3 offentlig) og rediger GDPR-teksten.</li>
-          <li><strong>Gennemgang:</strong> Nye billeder afventer godkendelse. Beslut om hvert billede skal på web og/eller i bogen.</li>
-          <li><strong>Kommentarer:</strong> Tilføjelser fra læsere — flet ind i beskrivelsen, vis som citat, eller afvis.</li>
-          <li><strong>Fjernelser:</strong> GDPR-anmodninger om at slette et billede.</li>
-          <li><strong>Bog:</strong> Billeder udvalgt til jubilæumsbogen. Eksportér enkelt eller som ZIP.</li>
-          <li><strong>Kategorier:</strong> Aktiviteter (Sct. Hans, Vejdag osv.) — bruges som nøgleord i fase 1.</li>
-          <li><strong>Personer:</strong> Godkend foreslåede navne, omdøb, eller slet personer fra billed-arkivet.</li>
-          <li><strong>Hustekster:</strong> Se hvad alle 23 huse har skrevet til bogen.</li>
-        </ul>
-      </section>
-
-      <section id="bestyrelse" style={{ marginTop: '2.5rem' }}>
-        <h2>6. Hvad kan Bestyrelsen</h2>
-        <p>
-          Bestyrelsen styrer møder, dokumenter og brugere. Klik <strong>Bestyrelsen</strong> i toppen:
+          Klik <strong>Mine billeder</strong> for at se alle dine egne uploads. I Fase 1 er der tre faner:
         </p>
         <ul>
           <li>
-            <strong>Møder:</strong> Opret bestyrelsesmøder og generalforsamlinger med dato og titel.
-            Klik på et møde for at se og uploade tilhørende dokumenter (referater, indkaldelser, bilag).
+            <strong>Mine Hus Billeder:</strong> Billeder, hvor du har valgt dit hus. Brug pilene
+            <em> ↑↓</em> til at rangere dine favoritter.
           </li>
           <li>
-            <strong>Dokumenter:</strong> Upload selvstændige dokumenter (sange, historiske dokumenter,
-            vedtægter osv.) der ikke hører til et bestemt møde.
+            <strong>Mine Kategori Billeder:</strong> Billeder, du har lagt i en fælleskategori.
           </li>
           <li>
-            <strong>Brugere:</strong> Opret nye medlemmer, skift roller, omdøb, nulstil adgangskoder
-            eller tildel hus-nummer.
-          </li>
-          <li>
-            <strong>Dokument-kategorier</strong> (kun Administrator): Tilføj nye kategorier til dokument-uploadformularen,
-            omdøb eller slet eksisterende.
+            <strong>Min Hus Tekst:</strong> En kort tekst (max 2000 tegn, ca. 400 ord), som dit hus
+            bidrager med. Bruges som tekst på jeres sider.
           </li>
         </ul>
+        <p>
+          På hvert billede er der en knap, <strong>Se detaljer / rediger</strong>. Klik for at rette
+          beskrivelse, år eller personer — eller flytte billedet til en anden kategori.
+        </p>
+        <p>
+          Du kan også <strong>slette dine egne billeder</strong> i Fase 1: klik <strong>Slet billede</strong>{' '}
+          på billedet og bekræft. (I Fase 2 er siden låst, og når Galleriet er åbent, beder du i
+          stedet Redaktionen om at fjerne et billede.)
+        </p>
         <p className="help">
-          Vigtigt: Inden du uploader bestyrelsesdokumenter — sørg for at personlige oplysninger
-          (navne i konfliktsager, kontonumre osv.) er fjernet eller anonymiseret. Dokumenter er
-          synlige for alle medlemmer.
+          <strong>Vigtigt:</strong> Vi forbeholder os retten til at lave små rettelser i din tekst
+          (grammatik, afsnit og ordstilling) uden at ændre mening, tone eller ordvalg. Vi forbeholder
+          os også retten til at vælge det antal billeder, der passer til opsætningen af din side, ud
+          fra dine præferencer.
         </p>
+      </section>
+
+      <section id="vigtigt" style={{ marginTop: '2.5rem' }}>
+        <h2>5. Vigtigt i Fase 1</h2>
+        <ul>
+          <li>
+            <strong>GDPR:</strong> Ønsker du overhovedet ikke at være med på billeder, så udfyld
+            anmodningen på hjemmesiden eller send en e-mail til Charlotte Jensen
+            (charlottehjen@gmail.com).
+          </li>
+          <li>
+            <strong>Husbilleder:</strong> Læg mellem 3 og 7 billeder ind til din side, i rækkefølge
+            1–7 efter præference. Billederne kommer med efter plads — altså afhængigt af, hvor meget
+            tekst du sender ind.
+          </li>
+          <li>
+            <strong>Kategori-/fællesbilleder:</strong> Upload i de forskellige kategorier — fx
+            aktiviteter (Sct. Hans, Vejdag osv.). Disse bruges som nøgleord i Fase 1.
+          </li>
+        </ul>
       </section>
 
       <section id="sporgsmaal" style={{ marginTop: '2.5rem' }}>
-        <h2>7. Spørgsmål?</h2>
+        <h2>6. Spørgsmål?</h2>
+        <p>Har vi spørgsmål til dine billeder eller din tekst, kontakter vi dig.</p>
         <p>
-          Hvis noget ikke virker som du forventer, eller du har idéer til forbedringer — kontakt
-          Redaktionen (for billed-spørgsmål) eller Bestyrelsen (for alt andet). De har kontaktoplysninger
-          i medlemslisten.
-        </p>
-        <p style={{ marginTop: '1rem', color: 'var(--ink-soft)' }}>
-          Tak fordi du er med til at fejre Strandgaardens 100 år.
+          Har du selv spørgsmål, så ring til Charlotte Jensen (23 20 33 22) eller Axel Fiedler, så
+          finder vi en løsning.
         </p>
       </section>
+
+      <section id="fase2" style={{ marginTop: '2.5rem' }}>
+        <h2>7. Fase 2 – Galleriet (efter jubilæumsbogen)</h2>
+        <p>
+          Når jubilæumsbogen er udgivet i efteråret 2027, åbner vi Galleriet. Her kan du lægge flere
+          billeder ind og interagere med de andre. Sammen er I med til at skabe Strandgaardens
+          hjemmeside med billeder, kommentarer, tekster og tagging af jeres kære — og I kan se alle de
+          andre medlemmers billeder og tekster. Det er et fælles projekt fra fortiden og nutiden til
+          fremtiden.
+        </p>
+        <p>
+          I Fase 1 er Galleriet endnu ikke synligt. Du kan dog allerede nu udfylde følgende på dine
+          egne billeder. Det kommer ikke med i billedbogen, men først i Galleriet senere:
+        </p>
+        <ul>
+          <li><strong>Beskrivelse:</strong> Fortæl historien — hvor, hvornår, hvem og hvad der sker.</li>
+          <li><strong>År:</strong> Ca.-årstal er fint, hvis du ikke kan huske præcist.</li>
+          <li><strong>Tag personer:</strong> Vælg navne fra listen, eller foreslå nye.</li>
+        </ul>
+        <p className="help">
+          Til info: Dokumenter tilføjer vi, når der er tid — måske i Fase 1, ellers i Fase 2. Det kan
+          være referater, mødeindkaldelser, årsregnskaber, historiske dokumenter osv. Du kan filtrere
+          på år, kategori og specifikt møde til den tid. Klik på et dokument for at se det — PDF'er
+          vises direkte i browseren, og du kan også hente filen ned.
+        </p>
+      </section>
+
+      <p style={{ marginTop: '2rem', color: 'var(--ink-soft)' }}>
+        Tak fordi du er med til at fejre Strandgaardens 100 år.
+      </p>
+
+      {/* Role help — folded away so the main flow stays focused on Fase 1. */}
+      <div className="help-role-toggle">
+        <h2 style={{ marginTop: 0 }}>Er du med i Redaktionen eller Bestyrelsen?</h2>
+        <p>
+          Hjælp til de redaktionelle og administrative værktøjer ligger samlet her — fold den ud, hvis
+          du har brug for den.
+        </p>
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => setShowRoleHelp((v) => !v)}
+          aria-expanded={showRoleHelp}
+        >
+          {showRoleHelp
+            ? 'Skjul hjælp til Redaktionen og Bestyrelsen'
+            : 'Vis hjælp til Redaktionen og Bestyrelsen'}
+        </button>
+      </div>
+
+      {showRoleHelp && (
+        <>
+          <section id="redaktionen" style={{ marginTop: '2rem' }}>
+            <h2>Hvad kan Redaktionen</h2>
+            <p>
+              Redaktionen styrer alt det redaktionelle billede-arbejde. Som medlem af Redaktionen har
+              du desuden adgang til alt det almindelige medlemmer kan. Klik <strong>Redaktionen</strong>{' '}
+              i toppen — her er felterne:
+            </p>
+            <ul>
+              <li><strong>Fase:</strong> Sæt fasen for siden (1 indsamling / 2 frys / 3 offentlig) og rediger GDPR-teksten.</li>
+              <li><strong>Gennemgang:</strong> Nye billeder afventer godkendelse. Beslut om hvert billede skal på web og/eller i bogen.</li>
+              <li><strong>Kommentarer:</strong> Tilføjelser fra læsere — flet ind i beskrivelsen, vis som citat, eller afvis.</li>
+              <li><strong>Fjernelser:</strong> GDPR-anmodninger om at slette et billede.</li>
+              <li><strong>Bog:</strong> Billeder udvalgt til jubilæumsbogen. Eksportér enkelt eller som ZIP.</li>
+              <li><strong>Kategorier:</strong> Aktiviteter (Sct. Hans, Vejdag osv.) — bruges som nøgleord i fase 1.</li>
+              <li><strong>Personer:</strong> Godkend foreslåede navne, omdøb, eller slet personer fra billed-arkivet.</li>
+              <li><strong>Hustekster:</strong> Se hvad alle 23 huse har skrevet til bogen.</li>
+            </ul>
+          </section>
+
+          <section id="bestyrelsen" style={{ marginTop: '2.5rem' }}>
+            <h2>Hvad kan Bestyrelsen</h2>
+            <p>
+              Bestyrelsen styrer møder, dokumenter og brugere. Klik <strong>Bestyrelsen</strong> i toppen:
+            </p>
+            <ul>
+              <li>
+                <strong>Møder:</strong> Opret bestyrelsesmøder og generalforsamlinger med dato og titel.
+                Klik på et møde for at se og uploade tilhørende dokumenter (referater, indkaldelser, bilag).
+              </li>
+              <li>
+                <strong>Dokumenter:</strong> Upload selvstændige dokumenter (sange, historiske dokumenter,
+                vedtægter osv.) der ikke hører til et bestemt møde.
+              </li>
+              <li>
+                <strong>Brugere:</strong> Opret nye medlemmer, skift roller, omdøb, nulstil adgangskoder
+                eller tildel hus-nummer.
+              </li>
+              <li>
+                <strong>Dokument-kategorier</strong> (kun Administrator): Tilføj nye kategorier til
+                dokument-uploadformularen, omdøb eller slet eksisterende.
+              </li>
+            </ul>
+            <p className="help">
+              Vigtigt: Inden du uploader bestyrelsesdokumenter — sørg for at personlige oplysninger
+              (navne i konfliktsager, kontonumre osv.) er fjernet eller anonymiseret. Dokumenter er
+              synlige for alle medlemmer.
+            </p>
+          </section>
+        </>
+      )}
     </main>
   );
 };

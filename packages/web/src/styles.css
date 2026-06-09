@@ -2483,3 +2483,38 @@ button.link-muted:hover { color: var(--copper-deep); }
 }
 .help-toc a:hover { color: var(--copper); text-decoration: underline; }
 
+/* Deadline table on the help page */
+.help-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 0.5rem;
+  font-size: 1.02rem;
+}
+.help-table th,
+.help-table td {
+  border: 1px solid var(--line);
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+.help-table thead th {
+  background: var(--paper-lifted);
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+}
+
+/* Role help (Redaktionen + Bestyrelsen) folded behind a button */
+.help-role-toggle {
+  margin-top: 2.5rem;
+  border-top: 1px solid var(--line);
+  padding: 1.5rem;
+  background: var(--paper-lifted);
+}
+.help-role-toggle h2 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 1.5rem;
+  color: var(--ink);
+}
+.help-role-toggle p { margin: 0.3rem 0 1rem; }
+
