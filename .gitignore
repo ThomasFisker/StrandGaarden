@@ -45,6 +45,12 @@ packages/web/public/*
 # ...except the permanent hero/background images used by the SPA
 !packages/web/public/bg/
 
+# House-history book scans (large, possibly copyrighted) + the artifacts
+# extracted from them (persons-seed.csv, houses/*.md, persons-report.csv).
+# Fed through infra/scripts/extract-house-info.ts → import-persons.ts;
+# see infra/scripts/IMPORT-PERSONS.md. Per-machine source data, not app code.
+House Information/
+
 # Backlog document-import working data (per-machine, not app source).
 # These hold scanned PDFs/Word docs fed through
 # infra/scripts/import-documents.ts — see infra/scripts/IMPORT-DOCUMENTS.md.
