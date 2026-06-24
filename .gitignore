@@ -44,3 +44,49 @@ Sample_Pictures/
 packages/web/public/*
 # ...except the permanent hero/background images used by the SPA
 !packages/web/public/bg/
+
+# Backlog document-import working data (per-machine, not app source).
+# These hold scanned PDFs/Word docs fed through
+# infra/scripts/import-documents.ts — see infra/scripts/IMPORT-DOCUMENTS.md.
+DokumenterUpload/
+Inbox/
+_import_2017_2019/
+drafts/
+# Import artifacts the script writes back into the --root tree
+renamed/
+report.csv
+
+# Third-party AI coding-agent scratch dirs (per-user, never shared)
+.adal/
+.agents/
+.augment/
+.bob/
+.codebuddy/
+.commandcode/
+.continue/
+.cortex/
+.crush/
+.factory/
+.goose/
+.iflow/
+.junie/
+.kilocode/
+.kiro/
+.kode/
+.mcpjam/
+.mux/
+.neovate/
+.openhands/
+.pi/
+.pochi/
+.qoder/
+.qwen/
+.roo/
+.trae/
+.vibe/
+.windsurf/
+.zencoder/
+skills/
+skills-lock.json
+.claude/skills/
+.claude/worktrees/

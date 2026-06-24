@@ -609,8 +609,9 @@ const main = async () => {
   const meetingIdByFolder = new Map<string, string | null>();
   const groupMeetingDateByFolder = new Map<string, string | null>();
 
-  const isReferatOrIndkaldelseCategory = (cat: string): boolean =>
-    /^(referat|m[øo]deindkaldelse|indkaldelse)/i.test(cat ?? '');
+  const isReferatCategory = (cat: string): boolean => /^referat/i.test(cat ?? '');
+  const isIndkaldelseCategory = (cat: string): boolean =>
+    /^(m[øo]deindkaldelse|indkaldelse)/i.test(cat ?? '');
 
   for (const [fp, groupFiles] of groups) {
     console.log(`\n── ${fp || '(root)'} (${groupFiles.length} files) ──`);
@@ -653,16 +654,30 @@ const main = async () => {
       }
     }
 
-    // Pick this folder's meeting date.
+    // Pick this folder's meeting date. Referat wins over Indkaldelse:
+    // the referat carries the actual mødedato while the indkaldelse
+    // carries the udsendelsesdato (when the invitation was sent), which
+    // is typically weeks earlier. Falling back to the indkaldelse can
+    // still help when a folder has no referat — but if it titles the
+    // meeting (e.g. "ordinær generalforsamling 8. juli 2019") we'd
+    // ideally prefer that date too. The script doesn't currently parse
+    // titles for dates, so an indkaldelse-only folder will need a
+    // manual PATCH /meetings/{id}/date after import.
     const groupResults = groupFiles
       .map((f) => classifications.get(f.relPath))
       .filter((r): r is ClaudeResult => !!r);
-    const datedPreferred = groupResults.find(
-      (r) => r.extractedDateIso && isReferatOrIndkaldelseCategory(r.categoryDisplayName),
+    const datedReferat = groupResults.find(
+      (r) => r.extractedDateIso && isReferatCategory(r.categoryDisplayName),
+    );
+    const datedIndkaldelse = groupResults.find(
+      (r) => r.extractedDateIso && isIndkaldelseCategory(r.categoryDisplayName),
     );
     const datedFallback = groupResults.find((r) => r.extractedDateIso);
     const groupMeetingDate =
-      datedPreferred?.extractedDateIso ?? datedFallback?.extractedDateIso ?? null;
+      datedReferat?.extractedDateIso ??
+      datedIndkaldelse?.extractedDateIso ??
+      datedFallback?.extractedDateIso ??
+      null;
     groupMeetingDateByFolder.set(fp, groupMeetingDate);
 
     const folderInfo = groupFiles[0]?.meetingFolder ?? null;

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log ind — Strandgaarden 100 år</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="login-split">
+    <aside class="login-hero">
+      <img src="https://picsum.photos/seed/strandg-beach-1954/1600/1800" alt="">
+      <div class="hero-content">
+        <div class="hero-top">
+          <p class="eyebrow">Strandgaarden Interessentskab</p>
+          <p class="hero-quote">Et album for fællesskabet ved havet — samlet gennem hundrede somre.</p>
+        </div>
+        <div class="hero-bottom">
+          <span class="hero-mark"><em>100</em></span>
+          <span class="hero-span">1927 &nbsp;·&nbsp; 2027</span>
+        </div>
+      </div>
+    </aside>
+    <section class="login-panel">
+      <div class="login-card">
+        <p class="eyebrow">Jubilæumsarkiv</p>
+        <h1>Log ind</h1>
+        <p style="color: var(--ink-soft); margin: 0 0 2.5rem;">
+          Velkommen tilbage. Indtast din e-mail og adgangskode for at uploade og finde billeder.
+        </p>
+        <form onsubmit="event.preventDefault();">
+          <div class="field">
+            <label for="email">E-mail</label>
+            <input id="email" type="email" autocomplete="username" placeholder="dit.navn@eksempel.dk">
+          </div>
+          <div class="field">
+            <label for="password">Adgangskode</label>
+            <input id="password" type="password" autocomplete="current-password" placeholder="··········">
+          </div>
+          <button type="submit" class="btn-primary">Log ind <span class="arrow">→</span></button>
+        </form>
+        <p class="hint" style="margin-top: 2.5rem;">
+          Har du glemt din adgangskode? <a href="#" style="color: var(--copper-deep); text-underline-offset: 3px;">Nulstil her</a>.
+        </p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
