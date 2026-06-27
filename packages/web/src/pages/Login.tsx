@@ -4,7 +4,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useSession } from '../session';
 
 export const LoginPage = () => {
-  const { session, signIn, loading } = useSession();
+  const { session, signIn, loading, expired } = useSession();
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,6 +63,20 @@ export const LoginPage = () => {
           <p className="login-lede">
             Velkommen tilbage. Indtast din e-mail og adgangskode for at uploade og finde billeder.
           </p>
+          {expired && !error && (
+            <div
+              style={{
+                padding: '0.85rem 1.1rem',
+                margin: '0 0 1.1rem',
+                background: 'var(--paper-warm, #faf2e6)',
+                borderLeft: '3px solid var(--copper, #b85a2a)',
+                fontSize: '0.97rem',
+              }}
+            >
+              Du blev logget ud, fordi der var gået for lang tid. Det er helt normalt —
+              log blot ind igen for at fortsætte.
+            </div>
+          )}
           <form onSubmit={onSubmit} noValidate>
             <div className="field">
               <label htmlFor="email">E-mail</label>

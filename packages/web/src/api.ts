@@ -40,6 +40,31 @@ const jsonHeaders = (idToken: string) => ({
   'content-type': 'application/json',
 });
 
+/**
+ * Error carrying the HTTP status so callers can branch on it (401 vs 403
+ * vs validation) without parsing the message string. `message` keeps the
+ * old `<scope> failed (HTTP <status>): <detail>` shape for logs.
+ */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly scope: string,
+    readonly detail: string,
+  ) {
+    super(`${scope} failed (HTTP ${status}): ${detail}`);
+    this.name = 'ApiError';
+  }
+}
+
+// Global hook so a single 401 anywhere can trigger app-wide session
+// recovery (silent token refresh, else clean logout). SessionProvider
+// registers the handler; api.ts stays framework-agnostic.
+type UnauthorizedHandler = () => void;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+export const setUnauthorizedHandler = (h: UnauthorizedHandler | null): void => {
+  unauthorizedHandler = h;
+};
+
 const throwFromResponse = async (r: Response, scope: string): Promise<never> => {
   let detail = '';
   try {
@@ -48,7 +73,32 @@ const throwFromResponse = async (r: Response, scope: string): Promise<never> => 
   } catch {
     detail = await r.text();
   }
-  throw new Error(`${scope} failed (HTTP ${r.status}): ${detail}`);
+  if (r.status === 401) unauthorizedHandler?.();
+  throw new ApiError(r.status, scope, detail);
+};
+
+/**
+ * Turn any thrown error into a calm, Danish, elderly-friendly sentence.
+ * Server validation messages (already Danish) pass through; auth/role
+ * statuses get a fixed friendly line. Use in page `catch` blocks instead
+ * of showing `err.message` raw.
+ */
+export const friendlyApiMessage = (err: unknown): string => {
+  if (err instanceof ApiError) {
+    if (err.status === 401)
+      return 'Forbindelsen udløb, fordi der var gået et stykke tid. Vi forsøger at forny den automatisk — prøv venligst igen om et øjeblik. Virker det ikke, så log ind igen.';
+    if (err.status === 403)
+      return 'Din bruger har ikke adgang til dette. Kontakt redaktionen, hvis du mener det er en fejl.';
+    if (err.status === 423)
+      return 'Siden er sat på pause af redaktionen lige nu, så ændringer kan ikke gemmes.';
+    if (err.status >= 500)
+      return 'Der opstod en teknisk fejl på serveren. Prøv igen om lidt — hjælper det ikke, så kontakt redaktionen.';
+    // 400/404/409 etc.: the server detail is Danish and specific.
+    return err.detail || 'Noget gik galt. Prøv igen.';
+  }
+  if (err instanceof Error && /network|fetch/i.test(err.message))
+    return 'Der er ingen forbindelse til internettet lige nu. Tjek din forbindelse og prøv igen.';
+  return err instanceof Error ? err.message : 'Noget gik galt. Prøv igen.';
 };
 
 export const whoami = async (idToken: string): Promise<unknown> => {

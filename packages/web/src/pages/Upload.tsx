@@ -3,7 +3,8 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HouseSelector } from '../components/HouseSelector';
 import { PersonTagInput } from '../components/PersonTagInput';
-import { listActivities, putToS3, requestUploadUrl } from '../api';
+import { friendlyApiMessage, listActivities, putToS3, requestUploadUrl } from '../api';
+import { canUploadPhotos } from '../permissions';
 import { useProfile } from '../profile';
 import { useSession } from '../session';
 import {
@@ -42,6 +43,10 @@ export const UploadPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isAdmin = profile?.groups.includes('admin') ?? false;
+  // Viewers (kigge-login) and any account without an upload role can browse
+  // but not contribute. Gate the form proactively so they get a calm
+  // explanation instead of a raw 403 from the server on submit.
+  const canUpload = canUploadPhotos(profile?.groups);
   const frozen = profile?.stage === 2 && !isAdmin;
   const stageOneNonAdmin = profile?.stage === 1 && !isAdmin;
   const myHouse = profile?.houseNumber ?? null;
@@ -221,12 +226,31 @@ export const UploadPage = () => {
       await putToS3(uploadUrl, file!, (p) => setProgress(p));
       navigate('/mine?justUploaded=1');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload mislykkedes');
+      setError(friendlyApiMessage(err));
     } finally {
       setSubmitting(false);
       setProgress(null);
     }
   };
+
+  if (profile && !canUpload) {
+    return (
+      <main className="content">
+        <p className="eyebrow">Bidrag til bogen</p>
+        <h1 className="display" style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}>
+          Upload <em>billede</em>
+        </h1>
+        <p className="lede">
+          Din bruger kan se og søge i billederne, men ikke selv uploade. Det er kun
+          husenes medlemmer og redaktionen, der lægger billeder op.
+        </p>
+        <p className="lede">
+          Gå til <Link to="/galleri">Galleriet</Link> for at se billederne. Mener du, at du
+          burde kunne uploade, så kontakt redaktionen — så retter vi din adgang.
+        </p>
+      </main>
+    );
+  }
 
   if (frozen) {
     return (
