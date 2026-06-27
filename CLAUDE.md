@@ -401,6 +401,28 @@ limit via `createPresignedPost`, narrow-viewport header overflow,
 **Ops:** prod stage stacks (`-Prod-*`), CloudWatch alarms, automated
 tests. Not urgent.
 
+**Future projects (parked, build later):**
+- **People catalogue** — a browsable "hvem var hvem" archive for the
+  anniversary: each person with occupation, life dates, family
+  relationships, the house(s) they belonged to, and their stories
+  (could be an app page, a print book chapter, or a standalone site).
+  The data already exists as a relational master in `House Information/`
+  (git-ignored, OneDrive-backed), joined by stable `personId` =
+  `slugify(displayName)`: `People_V2.csv` (170 people — occupation/town/
+  born/died/notes), `person_house.csv` (195 person↔house links),
+  `relationships.csv` (221 spouse/parent/child/sibling/in-law),
+  `houses.csv` (23) + `houses/house-N.md` (24 readable histories),
+  `stories.csv` (46 anecdote seeds). Overview doc + relationship diagram
+  in `Slaegts- og ejerbaand mellem husene.docx`; 18 open questions sent
+  out for local correction in `Uafklarede spoergsmaal - huse.docx`
+  (verify answers landed first). Full inventory + resume steps in
+  `House Information/FUTURE-CATALOGUE.md`. **Two gotchas:** (1) the master
+  CSVs are Windows-1252, not UTF-8 (ø=0xf8) — decode with
+  `new TextDecoder('windows-1252')`; (2) the 28 current owners from the
+  2026 membership list are live as photo-tag names but have **no
+  `person_house`/`relationships` rows yet** — linking them (house +
+  family ties) is the natural starting point.
+
 ## Resuming next session
 
 1. `cd "C:/Users/thoma/OneDrive - Second Epic/ClaudeProjects/Strandgaarden"`
