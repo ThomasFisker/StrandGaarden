@@ -47,6 +47,23 @@ Full member → committee → viewer flow plus a multi-stage workflow
 (indsamling → frys → public) that the committee can flip from
 /admin/fase.
 
+### Recent changes (2026-06-28)
+
+- **Persons list seeded** — ~206 approved tag-names live (historical
+  people from `People_V2.csv` + current owners from the 2026 membership
+  list). The browsable *catalogue* remains a parked future project.
+- **Graceful auth UX** — a 401 anywhere triggers a silent Cognito token
+  refresh (else clean logout + a "session udløb" banner on /login); a
+  viewer on /upload gets a friendly "kan ikke uploade" gate instead of a
+  raw 403. Typed `ApiError` + `friendlyApiMessage()` in `web/src/api.ts`.
+- **Section-specific help** — public `/hjaelp` no longer shows
+  Redaktionen/Bestyrelsen help; that content moved to `/admin/hjaelp`
+  (RedaktionenHelp) and `/bestyrelse/hjaelp` (BestyrelsenHelp), each
+  reached via a "Hjælp" card that is the first card on its hub.
+- **House "ready for the book" was built and then reverted** — decided
+  unnecessary given the fixed deadlines. Don't reintroduce. (Some
+  HOUSETEXT#<n> rows keep harmless orphan `bookReady*` attributes.)
+
 ### Infra
 
 - **Stacks (all `eu-west-1`):** Foundation, Ci, Storage, Data, Auth, Api,
@@ -426,12 +443,14 @@ tests. Not urgent.
 ## Resuming next session
 
 1. `cd "C:/Users/thoma/OneDrive - Second Epic/ClaudeProjects/Strandgaarden"`
-2. `git status` — expect clean. Last commit `d968008`
-   (`feat: show category on /galleri/:id; rename Aktivitet → Kategori
-   across UI`). All pushed; CI green.
-3. Open https://d2wq22ivboh02d.cloudfront.net/ (hard-refresh). Login as
+2. `git status` — expect clean. Last commit `83a3ff7`
+   (`revert: remove "house ready for the book" feature`). All pushed;
+   CI green. **For the authoritative current state, read the latest
+   `memory/project_session_state_*.md` checkpoint** — it's kept more
+   current than this section.
+3. Open https://medlemmer.strandgaardenis.dk/ (hard-refresh). Login as
    `thomas.madsen@secondepic.com` / `Picture1!`. Expected current bundle
-   hash: **`index-B7OYznWZ.js`**.
+   hash: **`index-BZWSZcYr.js`** (changes every deploy).
 4. Quick visual-state check (Stage 1 member context, e.g. Thomas2):
    - Header shows `Galleri` (hidden in Stage 1/2 for non-admin) +
      `Upload billede` + `Mine billeder` + `Udvalget` links.
