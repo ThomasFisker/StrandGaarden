@@ -218,8 +218,13 @@ export const HelpPage = () => {
         <h2>6. Spørgsmål?</h2>
         <p>Har vi spørgsmål til dine billeder eller din tekst, kontakter vi dig.</p>
         <p>
-          Har du selv spørgsmål, så ring til Charlotte Jensen (23 20 33 22) eller Axel Fiedler, så
-          finder vi en løsning.
+          Har du selv spørgsmål til <strong>bog og indhold</strong>, så ring til Charlotte Jensen
+          (23 20 33 22), så finder vi en løsning.
+        </p>
+        <p>
+          Har du spørgsmål til det mere <strong>tekniske</strong>, så skriv en e-mail til Thomas på{' '}
+          <a href="mailto:thomas.f.madsen@outlook.com">thomas.f.madsen@outlook.com</a> eller ring
+          (50 32 43 20).
         </p>
       </section>
 
