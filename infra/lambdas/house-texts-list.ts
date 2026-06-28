@@ -48,10 +48,6 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
         it && typeof it.lastEditedByLoginName === 'string' ? it.lastEditedByLoginName : null,
       lastEditedByEmail:
         it && typeof it.lastEditedByEmail === 'string' ? it.lastEditedByEmail : null,
-      bookReady: it ? it.bookReady === true : false,
-      bookReadyAt: it && typeof it.bookReadyAt === 'string' ? it.bookReadyAt : null,
-      bookReadyByLoginName:
-        it && typeof it.bookReadyByLoginName === 'string' ? it.bookReadyByLoginName : null,
     });
   }
 

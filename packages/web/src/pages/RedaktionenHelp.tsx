@@ -26,7 +26,7 @@ export const RedaktionenHelpPage = () => (
         <li><a href="#fase">Fase — siden faser</a></li>
         <li><a href="#gennemgang">Gennemgang af nye billeder</a></li>
         <li><a href="#bog">Bog — udvælgelse og eksport</a></li>
-        <li><a href="#hustekster">Hustekster &amp; status</a></li>
+        <li><a href="#hustekster">Hustekster</a></li>
         <li><a href="#kommentarer">Kommentarer</a></li>
         <li><a href="#fjernelser">Fjernelser (GDPR)</a></li>
         <li><a href="#kategorier">Kategorier</a></li>
@@ -39,13 +39,12 @@ export const RedaktionenHelpPage = () => (
       <p>
         Forsiden <Link to="/admin">Redaktionen</Link> samler alle opgaver som kort. Hvert kort har et
         lille tal (badge), der viser, hvor meget der venter — fx hvor mange billeder der afventer
-        gennemgang, eller hvor mange huse der har meldt sig klar.
+        gennemgang.
       </p>
       <p>En typisk arbejdsgang i indsamlingsfasen:</p>
       <ol>
         <li>Medlemmer uploader billeder og skriver hustekst.</li>
         <li>Du <strong>gennemgår</strong> nye billeder og beslutter, om de skal på web og/eller i bogen.</li>
-        <li>Du følger med i, hvilke huse der har <strong>meldt sig klar</strong>, og kan begynde på deres kapitel.</li>
         <li>Du <strong>udvælger</strong> billeder til bogen og <strong>eksporterer</strong> dem.</li>
         <li>Undervejs godkender du <strong>personer</strong> og besvarer <strong>kommentarer</strong> og <strong>fjernelses-anmodninger</strong>.</li>
       </ol>
@@ -152,27 +151,15 @@ export const RedaktionenHelpPage = () => (
     </section>
 
     <section id="hustekster" style={{ marginTop: '2.5rem' }}>
-      <h2>5. Hustekster &amp; status</h2>
+      <h2>5. Hustekster</h2>
       <p>
-        Under <Link to="/admin/hustekster">Hustekster &amp; status</Link> ser du alle 23 huse samlet:
-        deres tekst til bogen, og om de har <strong>meldt sig klar</strong>.
-      </p>
-      <ul>
-        <li>
-          <strong>Klar til bogen ✓:</strong> et hus, der selv har markeret, at de er færdige med
-          billeder og tekst. Så kan I trygt gå i gang med deres kapitel — også før fristen. Hold
-          musen over mærket for at se hvornår og hvem.
-        </li>
-        <li><strong>Ikke meldt klar:</strong> huset arbejder muligvis stadig.</li>
-        <li>Øverst står en kort optælling: hvor mange af de 23 huse, der er meldt klar, og hvor mange der har skrevet tekst.</li>
-      </ul>
-      <p>
-        Antallet af huse, der har meldt sig klar, vises også som badge på <em>Hustekster &amp; status</em>-kortet
-        på forsiden, så du har signalet med det samme.
+        Under <Link to="/admin/hustekster">Hustekster</Link> ser du alle 23 huse samlet — den tekst,
+        hvert hus har skrevet til bogen. Øverst står en kort optælling af, hvor mange huse der har
+        skrevet noget.
       </p>
       <p className="help">
-        Et hus kan altid åbne igen, hvis de kommer i tanke om mere — så forsvinder mærket, indtil de
-        melder klar på ny.
+        Husene redigerer selv deres tekst på <strong>Mine billeder</strong>. Her er visningen
+        skrivebeskyttet og giver jer overblik, mens I sætter bogen sammen.
       </p>
     </section>
 

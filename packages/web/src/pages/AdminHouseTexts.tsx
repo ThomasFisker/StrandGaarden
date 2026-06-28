@@ -42,7 +42,6 @@ export const AdminHouseTextsPage = () => {
   }, [session]);
 
   const written = items ? items.filter((r) => r.body && r.body.trim().length > 0).length : 0;
-  const ready = items ? items.filter((r) => r.bookReady).length : 0;
 
   return (
     <main className="content">
@@ -51,14 +50,13 @@ export const AdminHouseTextsPage = () => {
         Hus<em>tekster</em>
       </h1>
       <p className="lede">
-        Hvert hus skriver et kort afsnit til bogen og kan melde sig <strong>klar</strong>, når
-        de er færdige. Medlemmer gør begge dele på siden <strong>Mine billeder</strong>; her ser
-        redaktionen alle 23 huse samlet.
+        Hvert hus skriver et kort afsnit til bogen. Medlemmer redigerer teksten på siden{' '}
+        <strong>Mine billeder</strong>; her ser redaktionen alle 23 huse samlet.
         {items && (
           <>
             {' '}
             <span className="subtle">
-              ({ready} af {items.length} huse er meldt klar · {written} har skrevet tekst.)
+              ({written} af {items.length} huse har skrevet noget.)
             </span>
           </>
         )}
@@ -92,35 +90,7 @@ export const AdminHouseTextsPage = () => {
                     flexWrap: 'wrap',
                   }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
-                    <strong>Hus {row.houseNumber}</strong>
-                    {row.bookReady ? (
-                      <span
-                        style={{
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          color: 'var(--sage, #6b8f71)',
-                          border: '1px solid var(--sage, #6b8f71)',
-                          borderRadius: '999px',
-                          padding: '0.05rem 0.55rem',
-                          whiteSpace: 'nowrap',
-                        }}
-                        title={
-                          row.bookReadyAt
-                            ? `Meldt klar ${prettyDate(row.bookReadyAt)}${
-                                row.bookReadyByLoginName ? ` af ${row.bookReadyByLoginName}` : ''
-                              }`
-                            : 'Meldt klar'
-                        }
-                      >
-                        ✓ Klar til bogen
-                      </span>
-                    ) : (
-                      <span className="subtle" style={{ fontSize: '0.8rem' }}>
-                        Ikke meldt klar
-                      </span>
-                    )}
-                  </span>
+                  <strong>Hus {row.houseNumber}</strong>
                   <span className="subtle" style={{ fontSize: '0.9rem' }}>
                     {hasBody ? (
                       <>

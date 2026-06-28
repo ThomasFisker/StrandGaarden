@@ -407,15 +407,6 @@ export class ApiStack extends cdk.Stack {
     });
     props.table.grantReadWriteData(houseTextUpdateFn);
 
-    const houseReadySetFn = new lambdaNodejs.NodejsFunction(this, 'HouseReadySetFn', {
-      ...commonFnProps,
-      entry: path.join(lambdaDir, 'house-ready-set.ts'),
-      functionName: `strandgaarden-${props.stage}-house-ready-set`,
-      description: 'Member-of-house or admin: mark a house finished/ready for the book',
-      timeout: cdk.Duration.seconds(10),
-    });
-    props.table.grantReadWriteData(houseReadySetFn);
-
     const activitiesListFn = new lambdaNodejs.NodejsFunction(this, 'ActivitiesListFn', {
       ...commonFnProps,
       entry: path.join(lambdaDir, 'activities-list.ts'),
@@ -912,12 +903,6 @@ export class ApiStack extends cdk.Stack {
       path: '/house-texts/{house}',
       methods: [apigwv2.HttpMethod.PATCH],
       integration: new apigwIntegrations.HttpLambdaIntegration('HouseTextUpdateIntegration', houseTextUpdateFn),
-      authorizer: jwtAuthorizer,
-    });
-    this.httpApi.addRoutes({
-      path: '/houses/{house}/book-ready',
-      methods: [apigwv2.HttpMethod.PATCH],
-      integration: new apigwIntegrations.HttpLambdaIntegration('HouseReadySetIntegration', houseReadySetFn),
       authorizer: jwtAuthorizer,
     });
 
