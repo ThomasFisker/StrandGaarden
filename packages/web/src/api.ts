@@ -619,6 +619,20 @@ export const updateHouseText = async (
   return r.json();
 };
 
+export const setHouseBookReady = async (
+  idToken: string,
+  house: number,
+  ready: boolean,
+): Promise<{ houseNumber: number; bookReady: boolean; bookReadyAt: string; bookReadyByLoginName: string }> => {
+  const r = await fetch(`${apiBase}/houses/${house}/book-ready`, {
+    method: 'PATCH',
+    headers: jsonHeaders(idToken),
+    body: JSON.stringify({ ready }),
+  });
+  if (!r.ok) return throwFromResponse(r, `houses/${house}/book-ready`);
+  return r.json();
+};
+
 export const listHouseTexts = async (idToken: string): Promise<AdminHouseTextRow[]> => {
   const r = await fetch(`${apiBase}/house-texts`, { headers: bearer(idToken) });
   if (!r.ok) return throwFromResponse(r, 'house-texts');

@@ -3,9 +3,11 @@ import type { FormEvent } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   deletePhoto,
+  friendlyApiMessage,
   getHousePhotos,
   getMyPhotos,
   movePhotoSection,
+  setHouseBookReady,
   swapPhotoPriority,
   updateHouseText,
 } from '../api';
@@ -153,6 +155,23 @@ export const MinePage = () => {
       setError(e instanceof Error ? e.message : 'Kunne ikke slette billedet');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const [markingReady, setMarkingReady] = useState(false);
+  const [readyError, setReadyError] = useState<string | null>(null);
+
+  const setHouseReady = async (ready: boolean) => {
+    if (!session || !profile || profile.houseNumber === null || markingReady) return;
+    setMarkingReady(true);
+    setReadyError(null);
+    try {
+      await setHouseBookReady(session.idToken, profile.houseNumber, ready);
+      await refreshProfile();
+    } catch (e) {
+      setReadyError(friendlyApiMessage(e));
+    } finally {
+      setMarkingReady(false);
     }
   };
 
@@ -537,6 +556,69 @@ export const MinePage = () => {
     </section>
   );
 
+  // "Meld huset klar til bogen" — self-declaration toggle so the
+  // redaktionen can start a finished house's chapter early. Shown to a
+  // Stage-1 member who has a house. Re-openable.
+  const houseReadyCard = profile && profile.houseNumber !== null && !frozen && (
+    <div
+      style={{
+        margin: '0 0 1.25rem',
+        padding: '1rem 1.25rem',
+        background: 'var(--paper-warm, #faf2e6)',
+        borderLeft: `3px solid ${
+          profile.myHouseBookReady ? 'var(--sage, #6b8f71)' : 'var(--copper, #b85a2a)'
+        }`,
+      }}
+    >
+      {profile.myHouseBookReady ? (
+        <>
+          <p style={{ margin: '0 0 0.3rem', fontWeight: 600 }}>
+            ✓ Hus {profile.houseNumber} er meldt klar til bogen
+            {profile.myHouseBookReadyAt
+              ? ` (${new Date(profile.myHouseBookReadyAt).toLocaleDateString('da-DK', {
+                  day: 'numeric',
+                  month: 'long',
+                })})`
+              : ''}
+            .
+          </p>
+          <p className="help" style={{ margin: '0 0 0.6rem' }}>
+            Redaktionen kan nu gå i gang med jeres kapitel. Kommer I i tanke om flere billeder
+            eller rettelser, kan I åbne huset igen.
+          </p>
+          <button
+            type="button"
+            className="btn-card"
+            onClick={() => setHouseReady(false)}
+            disabled={markingReady}
+          >
+            {markingReady ? 'Et øjeblik…' : 'Åbn huset igen'}
+          </button>
+        </>
+      ) : (
+        <>
+          <p style={{ margin: '0 0 0.3rem', fontWeight: 600 }}>
+            Er I færdige med hus {profile.houseNumber}?
+          </p>
+          <p className="help" style={{ margin: '0 0 0.6rem' }}>
+            Når I har uploadet de billeder, I vil have med, og skrevet husets tekst, kan I melde
+            huset klar. Så ved redaktionen, at de kan gå i gang med jeres kapitel — også selvom
+            der er tid til fristen endnu. I kan altid åbne igen.
+          </p>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setHouseReady(true)}
+            disabled={markingReady}
+          >
+            {markingReady ? 'Et øjeblik…' : 'Meld huset klar til bogen'}
+          </button>
+        </>
+      )}
+      {readyError && <div className="error" style={{ marginTop: '0.6rem' }}>{readyError}</div>}
+    </div>
+  );
+
   const tabStrip = stageOneMember && (
     <nav className="mine-tabs" aria-label="Skift mellem hus, kategori og tekst">
       <NavLink
@@ -617,6 +699,8 @@ export const MinePage = () => {
           )}
         </div>
 
+        {houseReadyCard}
+
         {error && <div className="error">{error}</div>}
         {(photos === null || houseSiblings === null) && !error && <p>Indlæser…</p>}
 
@@ -659,6 +743,7 @@ export const MinePage = () => {
         </h1>
         {tabStrip}
         {houseTextEditor}
+        {houseReadyCard}
       </main>
     );
   }

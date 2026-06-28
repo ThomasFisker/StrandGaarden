@@ -315,6 +315,12 @@ export interface MyProfile {
   /** Caller's house chapter-intro text. null when the user has no
    * house assigned, or when the row hasn't been written yet. */
   myHouseText: string | null;
+  /** Has the caller's house been marked finished/ready for the book?
+   * Self-declaration toggle set on /mine; false when no house or not yet
+   * marked. */
+  myHouseBookReady: boolean;
+  /** When the house was last marked ready (or re-opened). null if never. */
+  myHouseBookReadyAt: string | null;
   /** Has the user been shown the optional "set your own password" prompt
    * after first login? Once true, the prompt is suppressed forever. */
   firstLoginAcked: boolean;
@@ -327,6 +333,10 @@ export interface AdminHouseTextRow {
   lastEditedBy: string | null;
   lastEditedByLoginName: string | null;
   lastEditedByEmail: string | null;
+  /** Has the house declared itself finished/ready for the book? */
+  bookReady: boolean;
+  bookReadyAt: string | null;
+  bookReadyByLoginName: string | null;
 }
 
 export interface GdprText {

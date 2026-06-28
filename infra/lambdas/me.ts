@@ -38,19 +38,27 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     typeof it.gdprAcceptedVersion === 'string' ? it.gdprAcceptedVersion : null;
   const houseNumber = typeof it.houseNumber === 'number' ? it.houseNumber : null;
 
-  // House text — fetched whenever the user has a house assigned. Cheap
-  // (single Get on a known key); null if the row hasn't been written yet.
+  // House text + book-ready flag — fetched whenever the user has a house
+  // assigned. Cheap (single Get on a known key); null when the row hasn't
+  // been written yet. The flag lets /mine show the "meld huset klar" card.
   let myHouseText: string | null = null;
+  let myHouseBookReady = false;
+  let myHouseBookReadyAt: string | null = null;
   if (houseNumber !== null) {
     const ht = await ddb.send(
       new GetCommand({
         TableName: tableName,
         Key: { PK: houseTextPk(houseNumber), SK: HOUSETEXT_SK },
-        ProjectionExpression: '#b',
+        ProjectionExpression: '#b, bookReady, bookReadyAt',
         ExpressionAttributeNames: { '#b': 'body' },
       }),
     );
     if (ht.Item && typeof ht.Item.body === 'string') myHouseText = ht.Item.body;
+    if (ht.Item && ht.Item.bookReady === true) {
+      myHouseBookReady = true;
+      myHouseBookReadyAt =
+        typeof ht.Item.bookReadyAt === 'string' ? ht.Item.bookReadyAt : null;
+    }
   }
 
   // House slot usage — count Stage-1 priority slots in the user's house,
@@ -93,6 +101,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer) =>
     myHouseSlotsUsed,
     maxHouseTextChars: cfg.maxHouseTextChars,
     myHouseText,
+    myHouseBookReady,
+    myHouseBookReadyAt,
     firstLoginAcked: it.firstLoginAcked === true,
   });
 };

@@ -5,6 +5,7 @@ import {
   getReviewQueue,
   listActivities,
   listBookPhotos,
+  listHouseTexts,
   listPendingComments,
   listPendingRemovals,
   listPersons,
@@ -19,6 +20,7 @@ interface Counts {
   book: number | null;
   personsPending: number | null;
   activities: number | null;
+  housesReady: number | null;
   stage: Stage | null;
 }
 
@@ -29,6 +31,7 @@ const EMPTY: Counts = {
   book: null,
   personsPending: null,
   activities: null,
+  housesReady: null,
   stage: null,
 };
 
@@ -50,15 +53,17 @@ export const AdminHomePage = () => {
     let active = true;
     (async () => {
       try {
-        const [review, comments, removals, book, persons, activities, config] = await Promise.all([
-          getReviewQueue(session.idToken).catch(() => null),
-          listPendingComments(session.idToken).catch(() => null),
-          listPendingRemovals(session.idToken).catch(() => null),
-          listBookPhotos(session.idToken).catch(() => null),
-          listPersons(session.idToken).catch(() => null),
-          listActivities(session.idToken).catch(() => null),
-          getConfig(session.idToken).catch(() => null),
-        ]);
+        const [review, comments, removals, book, persons, activities, houseTexts, config] =
+          await Promise.all([
+            getReviewQueue(session.idToken).catch(() => null),
+            listPendingComments(session.idToken).catch(() => null),
+            listPendingRemovals(session.idToken).catch(() => null),
+            listBookPhotos(session.idToken).catch(() => null),
+            listPersons(session.idToken).catch(() => null),
+            listActivities(session.idToken).catch(() => null),
+            listHouseTexts(session.idToken).catch(() => null),
+            getConfig(session.idToken).catch(() => null),
+          ]);
         if (!active) return;
         setCounts({
           review: review ? review.length : null,
@@ -67,6 +72,7 @@ export const AdminHomePage = () => {
           book: book ? book.length : null,
           personsPending: persons ? persons.items.filter((p) => p.state === 'pending').length : null,
           activities: activities ? activities.length : null,
+          housesReady: houseTexts ? houseTexts.filter((h) => h.bookReady).length : null,
           stage: config ? config.stage : null,
         });
       } catch (e) {
@@ -130,10 +136,10 @@ export const AdminHomePage = () => {
     },
     {
       to: '/admin/hustekster',
-      title: 'Hustekster',
-      description: 'Hver hus kan skrive en kort tekst til bogen. Aktiveres i fase 1.',
-      badge: null,
-      badgeLabel: '',
+      title: 'Hustekster & status',
+      description: 'Husenes tekster til bogen — og hvilke huse der har meldt sig klar, så I kan begynde på deres kapitel.',
+      badge: counts.housesReady,
+      badgeLabel: 'huse meldt klar',
     },
   ];
 
