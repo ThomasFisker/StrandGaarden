@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../session';
 
@@ -7,15 +6,15 @@ import { useSession } from '../session';
  * caller is signed in, so the welcome email can link to it before the
  * recipient has logged in.
  *
- * The main flow is deliberately focused on Fase 1 and uploading photos
- * for the jubilee book — that's what almost every reader needs. The
- * Redaktionen + Bestyrelsen help is kept, but tucked behind a button so
- * it doesn't distract ordinary members.
+ * Deliberately focused on what ordinary members need: logging in and
+ * uploading photos for the jubilee book. Help for the Redaktionen and
+ * Bestyrelsen tools lives behind the "Hjælp" card inside those sections
+ * (/admin/hjaelp and /bestyrelse/hjaelp) — kept out of here so it doesn't
+ * confuse ordinary members.
  */
 export const HelpPage = () => {
   const { session } = useSession();
   const signedIn = !!session;
-  const [showRoleHelp, setShowRoleHelp] = useState(false);
 
   return (
     <main className="content help-page">
@@ -254,77 +253,11 @@ export const HelpPage = () => {
         Tak fordi du er med til at fejre Strandgaardens 100 år.
       </p>
 
-      {/* Role help — folded away so the main flow stays focused on Fase 1. */}
-      <div className="help-role-toggle">
-        <h2 style={{ marginTop: 0 }}>Er du med i Redaktionen eller Bestyrelsen?</h2>
-        <p>
-          Hjælp til de redaktionelle og administrative værktøjer ligger samlet her — fold den ud, hvis
-          du har brug for den.
-        </p>
-        <button
-          type="button"
-          className="btn-ghost"
-          onClick={() => setShowRoleHelp((v) => !v)}
-          aria-expanded={showRoleHelp}
-        >
-          {showRoleHelp
-            ? 'Skjul hjælp til Redaktionen og Bestyrelsen'
-            : 'Vis hjælp til Redaktionen og Bestyrelsen'}
-        </button>
-      </div>
-
-      {showRoleHelp && (
-        <>
-          <section id="redaktionen" style={{ marginTop: '2rem' }}>
-            <h2>Hvad kan Redaktionen</h2>
-            <p>
-              Redaktionen styrer alt det redaktionelle billede-arbejde. Som medlem af Redaktionen har
-              du desuden adgang til alt det almindelige medlemmer kan. Klik <strong>Redaktionen</strong>{' '}
-              i toppen — her er felterne:
-            </p>
-            <ul>
-              <li><strong>Fase:</strong> Sæt fasen for siden (1 indsamling / 2 frys / 3 offentlig) og rediger GDPR-teksten.</li>
-              <li><strong>Gennemgang:</strong> Nye billeder afventer godkendelse. Beslut om hvert billede skal på web og/eller i bogen.</li>
-              <li><strong>Kommentarer:</strong> Tilføjelser fra læsere — flet ind i beskrivelsen, vis som citat, eller afvis.</li>
-              <li><strong>Fjernelser:</strong> GDPR-anmodninger om at slette et billede.</li>
-              <li><strong>Bog:</strong> Billeder udvalgt til jubilæumsbogen. Eksportér enkelt eller som ZIP.</li>
-              <li><strong>Kategorier:</strong> Aktiviteter (Sct. Hans, Vejdag osv.) — bruges som nøgleord i fase 1.</li>
-              <li><strong>Personer:</strong> Godkend foreslåede navne, omdøb, eller slet personer fra billed-arkivet.</li>
-              <li><strong>Hustekster:</strong> Se hvad alle 23 huse har skrevet til bogen.</li>
-            </ul>
-          </section>
-
-          <section id="bestyrelsen" style={{ marginTop: '2.5rem' }}>
-            <h2>Hvad kan Bestyrelsen</h2>
-            <p>
-              Bestyrelsen styrer møder, dokumenter og brugere. Klik <strong>Bestyrelsen</strong> i toppen:
-            </p>
-            <ul>
-              <li>
-                <strong>Møder:</strong> Opret bestyrelsesmøder og generalforsamlinger med dato og titel.
-                Klik på et møde for at se og uploade tilhørende dokumenter (referater, indkaldelser, bilag).
-              </li>
-              <li>
-                <strong>Dokumenter:</strong> Upload selvstændige dokumenter (sange, historiske dokumenter,
-                vedtægter osv.) der ikke hører til et bestemt møde.
-              </li>
-              <li>
-                <strong>Brugere:</strong> Opret nye medlemmer, skift roller, omdøb, nulstil adgangskoder
-                eller tildel hus-nummer.
-              </li>
-              <li>
-                <strong>Dokument-kategorier</strong> (kun Administrator): Tilføj nye kategorier til
-                dokument-uploadformularen, omdøb eller slet eksisterende.
-              </li>
-            </ul>
-            <p className="help">
-              Vigtigt: Inden du uploader bestyrelsesdokumenter — sørg for at personlige oplysninger
-              (navne i konfliktsager, kontonumre osv.) er fjernet eller anonymiseret. Dokumenter er
-              synlige for alle medlemmer.
-            </p>
-          </section>
-        </>
-      )}
+      <p className="help" style={{ marginTop: '2rem' }}>
+        Er du med i <strong>Redaktionen</strong> eller <strong>Bestyrelsen</strong>? Så finder du
+        vejledning til de værktøjer under <em>Hjælp</em>-kortet inde i din egen sektion
+        (Redaktionen henholdsvis Bestyrelsen i toppen).
+      </p>
     </main>
   );
 };

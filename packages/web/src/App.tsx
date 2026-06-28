@@ -15,6 +15,8 @@ import { AdminCommentsPage } from './pages/AdminComments';
 import { AdminRemovalsPage } from './pages/AdminRemovals';
 import { AdminBookPage } from './pages/AdminBook';
 import { AdminHomePage } from './pages/AdminHome';
+import { RedaktionenHelpPage } from './pages/RedaktionenHelp';
+import { BestyrelsenHelpPage } from './pages/BestyrelsenHelp';
 import { AdminPhasePage } from './pages/AdminPhase';
 import { AdminActivitiesPage } from './pages/AdminActivities';
 import { AdminHouseTextsPage } from './pages/AdminHouseTexts';
@@ -52,6 +54,7 @@ export const App = () => (
         </Route>
         <Route element={<ProtectedRoute requireAny={['admin', 'administrator']} />}>
           <Route path="/admin" element={<AdminHomePage />} />
+          <Route path="/admin/hjaelp" element={<RedaktionenHelpPage />} />
           <Route path="/admin/fase" element={<AdminPhasePage />} />
           <Route path="/admin/aktiviteter" element={<AdminActivitiesPage />} />
           <Route path="/admin/hustekster" element={<AdminHouseTextsPage />} />
@@ -64,6 +67,7 @@ export const App = () => (
         <Route element={<ProtectedRoute requireAny={['board', 'administrator']} />}>
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/bestyrelse" element={<BestyrelsenPage />} />
+          <Route path="/bestyrelse/hjaelp" element={<BestyrelsenHelpPage />} />
           <Route path="/bestyrelse/moder" element={<BestyrelsenMeetingsPage />} />
           <Route path="/bestyrelse/moder/:id" element={<BestyrelsenMeetingDetailPage />} />
           <Route path="/bestyrelse/dokumenter" element={<BestyrelsenDocumentsPage />} />

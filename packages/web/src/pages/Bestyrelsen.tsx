@@ -54,6 +54,13 @@ export const BestyrelsenPage = () => {
 
   const cards: Card[] = [
     {
+      to: '/bestyrelse/hjaelp',
+      title: 'Hjælp',
+      description: 'Vejledning til møder, dokumenter, brugere og roller — og hvad du skal være opmærksom på før upload.',
+      badge: null,
+      badgeLabel: '',
+    },
+    {
       to: '/bestyrelse/moder',
       title: 'Møder',
       description:

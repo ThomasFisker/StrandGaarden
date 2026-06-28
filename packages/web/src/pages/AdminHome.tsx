@@ -86,6 +86,13 @@ export const AdminHomePage = () => {
 
   const cards: Card[] = [
     {
+      to: '/admin/hjaelp',
+      title: 'Hjælp',
+      description: 'Vejledning til alt redaktionsarbejdet — faser, gennemgang, bog, hustekster, kommentarer, fjernelser, kategorier og personer.',
+      badge: null,
+      badgeLabel: '',
+    },
+    {
       to: '/admin/fase',
       title: 'Fase',
       description: 'Sæt fasen for siden (1: indsamling, 2: frys, 3: offentlig). Rediger GDPR-tekst og tærskler.',
