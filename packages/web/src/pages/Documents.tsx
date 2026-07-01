@@ -102,6 +102,7 @@ export const DocumentsPage = () => {
           <label>
             <span>Søg</span>
             <input
+              className="doc-search"
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -122,28 +123,30 @@ export const DocumentsPage = () => {
               ))}
             </select>
           </label>
-          <label>
-            <span>Kategori</span>
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              <option value="">Alle kategorier</option>
-              {data?.filters.categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Møde</span>
-            <select value={meetingId} onChange={(e) => setMeetingId(e.target.value)}>
-              <option value="">Alle møder</option>
-              {meetings.map((m) => (
-                <option key={m.meetingId} value={m.meetingId}>
-                  {MEETING_KIND_LABEL[m.kind] ?? m.kind}: {m.title} ({formatDate(m.date)})
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="filter-pair">
+            <label>
+              <span>Kategori</span>
+              <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="">Alle kategorier</option>
+                {data?.filters.categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Møde</span>
+              <select value={meetingId} onChange={(e) => setMeetingId(e.target.value)}>
+                <option value="">Alle møder</option>
+                {meetings.map((m) => (
+                  <option key={m.meetingId} value={m.meetingId}>
+                    {MEETING_KIND_LABEL[m.kind] ?? m.kind}: {m.title} ({formatDate(m.date)})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           {hasFilter && (
             <button type="button" className="btn-card" onClick={clearFilters}>
               Nulstil

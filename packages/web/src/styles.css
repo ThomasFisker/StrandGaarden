@@ -727,6 +727,15 @@ main.login-split {
   border-bottom: 1px solid var(--line);
   padding: 0.3rem 1.4rem 0.3rem 0.25rem;
 }
+/* Dokumenter page: wider search field + keep Kategori & Møde on one line */
+.filter-row input.doc-search {
+  min-width: 16rem;
+}
+.filter-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 2rem;
+}
 .filters .reset,
 .filter-row button.reset,
 .filter-row > button {
