@@ -338,9 +338,7 @@ exposed on the detail page meta panel.
    - `cd infra && npx tsc --noEmit`
    - `cd packages/web && npx tsc --noEmit`
 3. Commit + `git push origin main`. CI runs `cdk deploy --all` (~3 min).
-   Verify via the workflow run page or `gh run list` (no `gh` CLI on
-   this machine — fall back to the GitHub REST API:
-   `curl -sk https://api.github.com/repos/ThomasFisker/StrandGaarden/actions/runs?branch=main&per_page=1`).
+   Verify with `gh run list` (or the workflow run page).
 4. Hard-refresh the live URL and smoke-test.
 
 **Do NOT run `cdk deploy` locally.** It races CI's deploy on
@@ -351,7 +349,6 @@ CloudFormation locks and produces spurious failure emails (see Sample_Pictures/*
 For UI-only iteration without deploying:
 
 ```
-export PATH="/c/Program Files/nodejs:$PATH"
 npm run dev -w @strandgaarden/web   # localhost:5173 against the deployed dev API
 ```
 
@@ -360,19 +357,16 @@ For features that need real photo content, copy a few files from
 serves them; fetch them from browser JS and feed them through the
 /upload-url → S3 PUT path. Delete from `packages/web/public/` after.
 
-DDB / S3 verification via `aws` CLI from
-`/c/Program Files/Amazon/AWSCLIV2/aws.exe` with
-`AWS_PROFILE=strandgaarden` and `MSYS_NO_PATHCONV=1` for path args.
+DDB / S3 verification via the `aws` CLI with `--profile strandgaarden`
+(region eu-west-1). Configure once: `aws configure --profile strandgaarden`.
 
-**Danish characters in DDB writes:** the Windows `aws.exe` CLI
-double-encodes non-ASCII bytes when reading `--item file://...` — UTF-8
-input gets stored as `Ã¦`/`Ã¸`/`Ã¥` instead of `æ`/`ø`/`å`. Use the
-Node SDK directly via `node -e` from `infra/` (which has
-`@aws-sdk/lib-dynamodb` installed) for any write that contains
-non-ASCII. The Node SDK round-trips Unicode cleanly. Verify by reading
-back via Node + `Buffer.from(s, 'utf8').toString('hex')` — the AWS CLI
-on the Windows console can mask the issue with codepage transcoding,
-so xxd of CLI output is unreliable.
+**Danish characters in DDB writes:** on macOS the `aws` CLI handles UTF-8
+cleanly, so writes containing `æ`/`ø`/`å` round-trip correctly — no special
+handling needed. (Historical: the old Windows `aws.exe` double-encoded
+non-ASCII from `--item file://...`, so we wrote via the Node SDK (`node -e`
+from `infra/`, which has `@aws-sdk/lib-dynamodb`). That workaround is no
+longer required on Mac, but the Node-SDK path stays a safe fallback for any
+tricky non-ASCII write.)
 
 ## Verification convention
 
@@ -442,7 +436,7 @@ tests. Not urgent.
 
 ## Resuming next session
 
-1. `cd "C:/Users/thoma/OneDrive - Second Epic/ClaudeProjects/Strandgaarden"`
+1. `cd ~/dev/StrandGaarden` (Mac; code lives here since the 2026-06-30 migration out of OneDrive — data folders are symlinked in)
 2. `git status` — expect clean. Last commit `83a3ff7`
    (`revert: remove "house ready for the book" feature`). All pushed;
    CI green. **For the authoritative current state, read the latest
@@ -501,14 +495,14 @@ tests. Not urgent.
 8. **Recommended next task** order: committee-member invite → real user
    feedback unblocks the rest of the list.
 6. If something's broken:
-   - API alive: `curl -sk https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com/health`
-     (use `-k` on this Windows shell — schannel revocation otherwise fails).
+   - API alive: `curl -s https://ajsrhml5fi.execute-api.eu-west-1.amazonaws.com/health`
+     (on Mac plain `curl` works; the old Windows `-k`/schannel flag is no longer needed).
    - Stack statuses: `aws cloudformation list-stacks --profile strandgaarden --region eu-west-1 --query 'StackSummaries[?starts_with(StackName,\`Strandgaarden-\`) && StackStatus!=\`DELETE_COMPLETE\`].{name:StackName,status:StackStatus}'`.
    - Photos stuck in `Uploaded`: pipeline log group is
      `/aws/lambda/strandgaarden-dev-process-image`.
-   - CDK synth EPERM on Windows OneDrive: rare now (only if local cdk
-     deploy is run); if it happens just retry — `cdk.out/bundling-temp-*`
-     rename hitting a file lock.
+   - (Historical, Windows-only) CDK synth EPERM on OneDrive from
+     `cdk.out/bundling-temp-*` file locks — no longer applies now that the
+     code lives in `~/dev/StrandGaarden` outside OneDrive.
 
 ## Known dev test state
 
